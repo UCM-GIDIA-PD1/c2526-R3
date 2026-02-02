@@ -1,7 +1,8 @@
 # c2526-R3
 
 # IgnisAI
-<img width="2581" height="1388" alt="logo" src="https://github.com/user-attachments/assets/fb9d048b-1a12-4974-ac37-dff08df065b9" />
+<img width="2581" height="1245" alt="Gemini_Generated_Image_wr92ufwr92ufwr92" src="https://github.com/user-attachments/assets/55b90c3c-eead-4330-b572-862d93f18a51" />
+
 
 
 ## Descripción

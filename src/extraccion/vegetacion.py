@@ -3,12 +3,23 @@ from datetime import datetime, timedelta
 import numpy as np
 import os
 from dotenv import load_dotenv
+from google.oauth2.service_account import Credentials
 
 load_dotenv()
-proyecto = os.getenv("PROYECTO_JUANAN")
 
-ee.Authenticate()
-ee.Initialize(project=proyecto)
+proyecto = os.getenv("PROYECTO_GOOGLE")
+ruta_credenciales = os.getenv("RUTA_CREDENCIALES")
+
+try:
+    credentials = ee.ServiceAccountCredentials(
+        key_file=ruta_credenciales
+    )
+    
+    ee.Initialize(credentials)
+    print("Autenticación exitosa")
+
+except Exception as e:
+    print(f"Error al autenticar la API de Earth Engine, revisa la ruta del archivo de credenciales o el nombre del proyecto: {e}")
 
 def quitar_dias(fecha_str):
     fecha_obj = datetime.strptime(fecha_str, '%Y-%m-%d')

@@ -7,7 +7,6 @@ from google.oauth2.service_account import Credentials
 
 load_dotenv()
 
-proyecto = os.getenv("PROYECTO_GOOGLE")
 ruta_credenciales = os.getenv("RUTA_CREDENCIALES")
 
 try:

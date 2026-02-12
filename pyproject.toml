@@ -7,8 +7,12 @@ requires-python = ">=3.13"
 dependencies = [
     "ee>=0.2",
     "geemap>=0.37.1",
+    "geo>=1.0.1",
+    "geodatasets>=2026.1.0",
+    "geopandas>=1.1.2",
     "numpy>=2.4.2",
     "pandas>=3.0.0",
+    "path>=17.1.1",
     "pyproj>=3.7.2",
     "python-dotenv>=1.2.1",
     "rasterio>=1.5.0",

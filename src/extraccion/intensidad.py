@@ -4,6 +4,17 @@ from io import StringIO
 import os 
 from dotenv import load_dotenv
 
+'''
+Este módulo se encarga de extraer la información de intensidad de los incendios utilizando la API de NASA FIRMS.
+La función fuerza_incendios hace una solicitud a la API, procesa los datos y devuelve un DataFrame con la latitud, longitud, delta_t, frp y 
+fecha de adquisición de los incendios. 
+Se filtran los incendios con baja confianza y se eliminan los duplicados para obtener una lista más precisa de incendios activos.
+ 
+La variable delta_t se calcula como la diferencia entre las temperaturas de los canales 4 y 5 (que captan distintas longitudes de onda), 
+lo que ayuda a identificar la intensidad de los incendios.
+La variable frp (Fire Radiative Power) también se incluye para evaluar la energía liberada por los incendios, lo que es útil para determinar su gravedad. 
+'''
+
 load_dotenv()
 api_key = os.getenv("INTENSIDAD_API_KEY")
 

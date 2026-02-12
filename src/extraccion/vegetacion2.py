@@ -1,3 +1,7 @@
+'''Esta función se corresponde con la extracción de un número identificado 
+con un tipo de vegetación en un archivo, zona urbana o agua. Se aplica rasterización, dada
+una latitud y longitud''' 
+
 import rasterio
 import pandas as pd
 from pyproj import Transformer
@@ -13,5 +17,4 @@ def obtenerNumero(lat, lon):
 def entorno(lat, lon):
   num = obtenerNumero(lat, lon)
   df = pd.read_excel("/content/mapa_vegetacion.xlsx")
-  #return df.iloc[num]["Column6"] --> Para el ejemplo
   return {"entorno" : df.iloc[num]["Column6"]}

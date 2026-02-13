@@ -3,10 +3,20 @@ import geodatasets
 import pandas as pd
 import matplotlib.pyplot as plt
 from pathlib import Path
+from shapely.geometry import Point
+from shapely.prepared import prep
 
-#Para ver todo el contenido del df
+#Para ver todo el contenido del df (no recomendado porque son muchas coordenadas)
 #pd.set_option('display.max_columns', None)
 #pd.set_option('display.max_colwidth', None)
+
+'''
+Las funciones a usar son:
+parse_parquet(path): importa un archivo en .parquet y lo pasa a geodataframe
+is_in(mascara, punto): comprueba si el punto esta dentro de la máscara
+
+Las demás funciones han sido usadas para la creación de los .parquet
+'''
 
 #El archivo es .shp (shapefile) que almacena datos vectoriales que almacena la forma y ubicación de puntos geográficos
 def mascara_europa(path = None):
@@ -28,10 +38,9 @@ def mascara_europa(path = None):
 
     #Conversión a GeoDataframe
     mascara = europa['geometry'].union_all() #junta todos los polígonos correspondientes a cada país eliminando límites internos
-    mascara_europa = gpd.GeoDataFrame(geometry=[mascara])
+    mascara_europa = gpd.GeoDataFrame(geometry=[mascara], crs=europa.crs)
 
     return mascara_europa 
-
 
 def extraer_biogeografica(path = None):
     '''
@@ -55,20 +64,61 @@ def extraer_biogeografica(path = None):
     #Conversión a GeoDataFrame
     bioregiones = f['name'].to_list()
     
-    print("Nombre de las bioregiones: ", bioregiones)
+    #print("Nombre de las bioregiones: ", bioregiones)
 
     #Creamos una máscara para cada una
     mascaras = {}
     for region in bioregiones:
+        print(f"parseando {region}")
         geom = f.loc[f['name'] == region, "geometry"].union_all()
-        mascara = gpd.GeoDataFrame(geometry=[geom])
+        mascara = gpd.GeoDataFrame(geometry=[geom], crs=f.crs)
         mascaras[region] = mascara
 
     return mascaras 
 
+def to_parquet(mascara: gpd.GeoDataFrame, nombre: str):
+    '''
+    Guarda un GeoDataFrame como parquet
+    
+    :param mascara: GeoDataFrame
+    :param nombre: nombre del archivo
+    '''
+    proyecto = Path.cwd().parent.parent
+    path = proyecto / f"data/{nombre}.parquet"
+    mascara = gpd.GeoDataFrame(mascara)
+    mascara.to_parquet(path, index = False)
 
-mascaras = extraer_biogeografica()
-print(mascaras.keys())
-mascaras[next(iter(mascaras))].plot(edgecolor="black")
-plt.show()
+def multiple_to_parquet(mascaras: dict):
+    '''
+    Guarda varios GeoDataFrames en distintos archivos
+    
+    :param mascaras: Diccionario
+    :param nombre: nombre del archivo
+    '''
+    for clave, valor in mascaras.items():
+        assert "geometry" in valor.columns, "No existen datos geometricos"
+        nombre = clave.replace("Bio-geographical", "").replace(" ", "").strip()
+        print(f"Exportando {nombre}...")
+        to_parquet(valor["geometry"], nombre) 
 
+def parse_parquet(path: str):
+    '''
+    Convierte parquet a geodataframe
+    :param path: ruta al archivo (string)
+    '''
+    gdf = gpd.read_parquet(path)
+
+    #Comprobamos que es un GeoDataFrame
+    assert isinstance(gdf, gpd.GeoDataFrame), f"El archivo no es un GeoDataFrame, es un: {type(gdf)}"
+    gdf = gdf.to_crs(4326) #Es el sistema de coordenadas que utiliza Point() 
+    
+    return gdf
+
+def is_in(mascara: gpd.GeoDataFrame, punto: Point):
+    assert not mascara.empty and not mascara is None, "No existe contenido en el GeoDataFrame"
+    assert Point != None, "Punto vacío"
+    return mascara.iloc[0].geometry.contains(punto)
+
+prueba = parse_parquet("data/BlackSeaRegion.parquet")
+if (is_in(prueba,Point(28.6, 44.3))): print("si")
+else: print("no")

@@ -13,7 +13,6 @@ def build_environmental_df(limit=20,sleep=0.2):
         env = fisicas.fetch_environment(row.lat, row.lon, row.date)
         pend = pendiente.pendiente(row.lat, row.lon)
         veg = vegetacion.vegetacion(row.lat, row.lon)
-        #veg2 = entorno(row.lat, row.lon)
         env.update(pend)
         env.update(veg)
         env_rows.append(env)

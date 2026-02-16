@@ -1,8 +1,10 @@
 import requests
 import pandas as pd
 
-def fetch_fires():
-    url = "https://eonet.gsfc.nasa.gov/api/v3/events"
+def fetch_fires(fecha_ini, fecha_end):
+    #fecha_ini y fecha_end es tipo string. El formato debe ser "YYYY-MM-DD"
+
+    url = "https://eonet.gsfc.nasa.gov/api/v3/events?start="+fecha_ini+"&end="+ fecha_end
     params = {
         "status": "open",
         "category": "wildfires"

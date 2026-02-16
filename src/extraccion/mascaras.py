@@ -6,6 +6,8 @@ from pathlib import Path
 from shapely.geometry import Point
 from shapely.prepared import prep
 
+from parquet import to_parquet
+
 #Para ver todo el contenido del df (no recomendado porque son muchas coordenadas)
 #pd.set_option('display.max_columns', None)
 #pd.set_option('display.max_colwidth', None)
@@ -44,16 +46,18 @@ def mascara_europa(path = None):
 
 def extraer_biogeografica(path = None):
     '''
-    if (path = None) Extracción automática desde src/extraccion/ => data/Countries/countries.shp
+    if (path = None) Extracción automática desde src/extraccion/ => data/BiogeoRegions/BiogeoRegions2016.shp
     :param path: ruta del archivo o vacío
     :return bio_mascaras: 12 máscaras con las bioregiones en Europa tipo GeoDataFrame
     '''
-
     #Extracción del archivo
-    if (path == None):
-        actual_p = Path.cwd()
-        data = actual_p.parent.parent / "data" / "BiogeoRegions"
+    if path is None:
+        actual_p = Path(__file__).resolve()
+        data = actual_p.parent.parent.parent / "data" / "BiogeoRegions"
+        print(f"ruta: {data}")
+        assert data.exists(), "La ruta de archivos (c2526-R3/data/BiogeoRegions/) no existe o no es correcta."
         path = data / "BiogeoRegions2016.shp"
+        assert path.exists(), "No existe el archivo BiogeoRegions2016.shp"
 
     f = gpd.read_file(path)
     assert not f.empty, "Archivo vacio"
@@ -63,8 +67,6 @@ def extraer_biogeografica(path = None):
 
     #Conversión a GeoDataFrame
     bioregiones = f['name'].to_list()
-    
-    #print("Nombre de las bioregiones: ", bioregiones)
 
     #Creamos una máscara para cada una
     mascaras = {}
@@ -76,30 +78,18 @@ def extraer_biogeografica(path = None):
 
     return mascaras 
 
-def to_parquet(mascara: gpd.GeoDataFrame, nombre: str):
-    '''
-    Guarda un GeoDataFrame como parquet
-    
-    :param mascara: GeoDataFrame
-    :param nombre: nombre del archivo
-    '''
-    proyecto = Path.cwd().parent.parent
-    path = proyecto / f"data/{nombre}.parquet"
-    mascara = gpd.GeoDataFrame(mascara)
-    mascara.to_parquet(path, index = False)
-
-def multiple_to_parquet(mascaras: dict):
+def bioregions_to_parquet(mascaras: dict):
     '''
     Guarda varios GeoDataFrames en distintos archivos
-    
     :param mascaras: Diccionario
     :param nombre: nombre del archivo
     '''
+    assert isinstance(mascaras, dict), "La variable no es un diccionario"
     for clave, valor in mascaras.items():
         assert "geometry" in valor.columns, "No existen datos geometricos"
         nombre = clave.replace("Bio-geographical", "").replace(" ", "").strip()
         print(f"Exportando {nombre}...")
-        to_parquet(valor["geometry"], nombre) 
+        to_parquet(valor["geometry"], nombre, "BiogeoRegiones") 
 
 def parse_parquet(path: str):
     '''
@@ -119,6 +109,6 @@ def is_in(mascara: gpd.GeoDataFrame, punto: Point):
     assert Point != None, "Punto vacío"
     return mascara.iloc[0].geometry.contains(punto)
 
-prueba = parse_parquet("data/BlackSeaRegion.parquet")
-if (is_in(prueba,Point(28.6, 44.3))): print("si")
-else: print("no")
+
+mascaras = extraer_biogeografica()
+bioregions_to_parquet(mascaras)

@@ -41,7 +41,7 @@ def limpieza(df):
         'latitude': 'lat',
         'longitude': 'lon',
         'acq_date': 'date'
-    })
+  })
   columnas_utiles = ['lat', 'lon', 'frp', 'date']
   return df[columnas_utiles]
 
@@ -75,11 +75,15 @@ def separate_fire_events(df, dist_km=2.0):
         'lat': 'mean',
         'lon': 'mean',
         'frp': ['sum', 'mean', 'count'],
-        'date': 'first'
+        'date': ['first', 'last']
     })
 
     df['lat'] = df['lat'].round(2)
     df['lon'] = df['lon'].round(2)
+
+    resumen.columns = ['lat_mean', 'lon_mean', 'frp_sum', 'frp_mean', 'count', 'date_first', 'date_last']
+
+    resumen['duration_days'] = (resumen['date_last'] - resumen['date_first']).dt.days + 1
     return df, resumen
 
 def fetch_fires(filepath, round_decimals=2):
@@ -87,25 +91,19 @@ def fetch_fires(filepath, round_decimals=2):
     la funcion devuelve dos dataFrames:
     df: el dataframe original solo que tiene un id que lo asocia con un incendio unico
     resumen es lo mas importante y contiene un dataFrame con:
-        lat: la media de las latitudes de los puntos que pertenecen al mismo incendio
-        long: la media de las longitudes de los puntos que pertenecen al mismo incendio
-        frp - sum, mean: la suma y media de los FRP de los puntos que pertenecen al mismo incendio
-        count indica la cantidad de puntos que pertenecen al mismo incendio
+    -   lat: la media de las latitudes de los puntos que pertenecen al mismo incendio
+    -   long: la media de las longitudes de los puntos que pertenecen al mismo incendio
+    -   frp - sum, mean: la suma y media de los FRP de los puntos que pertenecen al mismo incendio
+    -   count indica la cantidad de puntos que pertenecen al mismo incendio
     """
 
     df = pd.read_csv(filepath)
     df_clean = limpieza(df)
-    df_clean, resumen = separate_fire_events(df_clean)
-
-    resumen.columns = ['_'.join(col).strip() if isinstance(col, tuple) else col for col in resumen.columns.values]
+    df_clean, resumen = separate_fire_events(df_clean, 5.0)
 
     resumen['lat_mean'] = resumen['lat_mean'].round(round_decimals)
     resumen['lon_mean'] = resumen['lon_mean'].round(round_decimals)
     resumen['title'] = 'Fire at ' + resumen['lat_mean'].astype(str) + ', ' + resumen['lon_mean'].astype(str) + ' on ' + resumen['date_first'].dt.strftime('%Y-%m-%d')
 
 
-    return df_clean.sort_values(by='fire_id'), resumen.sort_values(by='frp_sum', ascending=False)
-
-
-
-
+    return df_clean.sort_values(by='fire_id'), resumen.sort_values(by='frp_mean', ascending=False)

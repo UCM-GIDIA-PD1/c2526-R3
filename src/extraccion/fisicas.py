@@ -2,7 +2,7 @@ import requests
 
 def fetch_environment(lat, lon, date):
     url = "https://archive-api.open-meteo.com/v1/archive"
-
+    date = date.strftime("%Y-%m-%d")
     params = {
         "latitude": lat,
         "longitude": lon,

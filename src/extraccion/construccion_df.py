@@ -6,8 +6,8 @@ import time
 import pandas as pd
 import vegetacion2
 
-def build_environmental_df(limit=20,sleep=0.2):
-    fires = incendios.fetch_fires().head(limit)
+def build_environmental_df(path, limit=20,sleep=0.2):
+    df_original, fires = incendios.fetch_fires(path)
     env_rows = []
     ini = time.time()
     src = vegetacion2.abrirMapa()

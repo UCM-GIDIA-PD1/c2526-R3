@@ -2,37 +2,9 @@ import requests
 import pandas as pd
 import numpy as np
 from sklearn.cluster import DBSCAN
-'''
-def fetch_fires(fecha_ini, fecha_end):
-    #fecha_ini y fecha_end es tipo string. El formato debe ser "YYYY-MM-DD"
-
-    url = "https://eonet.gsfc.nasa.gov/api/v3/events?start="+fecha_ini+"&end="+ fecha_end
-    params = {
-        "status": "open",
-        "category": "wildfires"
-    }
-
-    data = requests.get(url, params=params).json()
-    rows = []
-
-    for event in data["events"]:
-        eid = event["id"]
-        title = event["title"]
-
-        for geom in event["geometry"]:
-            date = geom["date"][:10]
-            lon, lat = geom["coordinates"]
-            rows.append([eid, title, date, lat, lon])
-
-    return pd.DataFrame(
-        rows,
-        columns=["id", "title", "date", "lat", "lon"]
-    )
-
-'''
-
 
 def limpieza(df):
+  assert not df.empty, "No se pueden analizar incendios, el DataFrame esta vacio"
   df['acq_date'] = pd.to_datetime(df['acq_date'])
   df = df[df['confidence'] != 'l'] #confianza l (low) es que no es fiable
   df = df.drop_duplicates(subset=['latitude', 'longitude', 'acq_date']) #quita incendios iguales
@@ -54,8 +26,7 @@ def separate_fire_events(df, dist_km=2.0):
     - df: DataFrame de FIRMS.
     - dist_km: Distancia máxima para considerar que dos puntos son del mismo incendio.
     """
-    if df.empty:
-        return df
+    assert not df.empty, "El DataFrame contenia fuegos poco relevantes y se vacio, no se pueden separar eventos de incendios"
 
     # 1. Convertir coordenadas a radianes para usar con la métrica haversine
     coords = np.radians(df[['lat', 'lon']])
@@ -88,13 +59,14 @@ def separate_fire_events(df, dist_km=2.0):
 
 def fetch_fires(filepath, round_decimals=2):
     """
-    la funcion devuelve dos dataFrames:
-    df: el dataframe original solo que tiene un id que lo asocia con un incendio unico
+    la funcion devuelve un dataFrame:
     resumen es lo mas importante y contiene un dataFrame con:
-    -   lat: la media de las latitudes de los puntos que pertenecen al mismo incendio
-    -   long: la media de las longitudes de los puntos que pertenecen al mismo incendio
-    -   frp - sum, mean: la suma y media de los FRP de los puntos que pertenecen al mismo incendio
-    -   count indica la cantidad de puntos que pertenecen al mismo incendio
+    -   LAT_MEAN: la media de las latitudes de los puntos que pertenecen al mismo incendio
+    -   LON_MEAN: la media de las longitudes de los puntos que pertenecen al mismo incendio
+    -   FRP - sum, mean: la suma y media de los FRP de los puntos que pertenecen al mismo incendio
+    -   COUNT indica la cantidad de puntos que pertenecen al mismo incendio
+    -   DATE_FIRST: la fecha del primer punto del incendio
+    -   DATE_LAST: la fecha del ultimo punto del incendio
     """
 
     df = pd.read_csv(filepath)
@@ -106,4 +78,35 @@ def fetch_fires(filepath, round_decimals=2):
     resumen['title'] = 'Fire at ' + resumen['lat_mean'].astype(str) + ', ' + resumen['lon_mean'].astype(str) + ' on ' + resumen['date_first'].dt.strftime('%Y-%m-%d')
 
 
-    return df_clean.sort_values(by='fire_id'), resumen.sort_values(by='frp_mean', ascending=False)
+    return resumen.sort_values(by='count', ascending=False)
+
+
+
+'''
+def fetch_fires(fecha_ini, fecha_end):
+    #fecha_ini y fecha_end es tipo string. El formato debe ser "YYYY-MM-DD"
+
+    url = "https://eonet.gsfc.nasa.gov/api/v3/events?start="+fecha_ini+"&end="+ fecha_end
+    params = {
+        "status": "open",
+        "category": "wildfires"
+    }
+
+    data = requests.get(url, params=params).json()
+    rows = []
+
+    for event in data["events"]:
+        eid = event["id"]
+        title = event["title"]
+
+        for geom in event["geometry"]:
+            date = geom["date"][:10]
+            lon, lat = geom["coordinates"]
+            rows.append([eid, title, date, lat, lon])
+
+    return pd.DataFrame(
+        rows,
+        columns=["id", "title", "date", "lat", "lon"]
+    )
+
+'''

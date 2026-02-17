@@ -20,6 +20,7 @@ dependencies = [
     "python-dotenv>=1.2.1",
     "rasterio>=1.5.0",
     "requests>=2.32.5",
+    "scikit-learn>=1.8.0",
     "shapely>=2.1.2",
     "timedelta>=2020.12.3",
 ]

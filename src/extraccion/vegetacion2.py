@@ -6,16 +6,22 @@ import rasterio
 import pandas as pd
 from pyproj import Transformer
 
-def obtenerNumero(lat, lon):
-  with rasterio.open("mapa.tif") as src:
-      #Tranformador de coordenadas, src.crs es el sistema de coordenadas del ráster
-      transformer = Transformer.from_crs("EPSG:4326", src.crs, always_xy=True) 
-      x, y = transformer.transform(lon, lat) #Convierte la coordenada (lon, lat) al sistema del raster
-      row, col = src.index(x, y) #Convierte en fila y columna del ráster
-      num = src.read(1)[row, col] #Lee la primera banda del ráster, y extrae el valor del píxel
-      return num
+def obtenerNumero(lat, lon, src, data):
+    transformer = Transformer.from_crs("EPSG:4326", src.crs, always_xy=True)
+    x, y = transformer.transform(lon, lat)
+    row, col = src.index(x, y)
+    return data[row, col]
 
-def entorno(lat, lon):
-  num = obtenerNumero(lat, lon)
-  df = pd.read_csv("mapa.csv") #Aquí tenemos guardadas las distintas clasificaciones
-  return {"entorno" : df.iloc[num]["Column6"]}
+def entorno(lat, lon, src, data, df):
+    num = obtenerNumero(lat, lon, src, data)
+    if num < 0:
+        num = 44
+    return {"entorno": df.loc[num]["Column6"]}
+
+def abrirMapa(): 
+    return rasterio.open("src/mapa.tif") 
+
+def cerrarMapa(src): 
+    src.close()
+
+

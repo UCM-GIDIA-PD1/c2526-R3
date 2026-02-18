@@ -59,14 +59,14 @@ async def fetch_environment(session, lat, lon, date, indice = None, intentos=3):
                                 "wind_speed_max", "wind_gusts_max", "pressure_mean", "cloud_cover",
                                 "radiation", "evapotranspiration", "sunshine_seconds"]}
 
-async def df_fisicas(filepath, limit = 20):
+async def df_fisicas(filepath, limit = 20, fecha_ini = None, fecha_fin = None):
     
     async with aiohttp.ClientSession() as session:
         ini = time.time()
 
         print("Comenzando extracción...")
 
-        fires = incendios.fetch_fires(filepath, limit)
+        fires = incendios.fetch_fires(filepath, limit, fecha_ini, fecha_fin)
         tareas = [
             fetch_environment(session = session, lat = row['lat_mean'], lon = row['lon_mean'], date = row['date_first'].strftime('%Y-%m-%d'), indice = i,)
             for i, row in enumerate(fires.head(limit).to_dict('records'))

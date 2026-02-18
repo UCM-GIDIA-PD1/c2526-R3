@@ -10,10 +10,10 @@ async def procesar_fila_completa(session, row, index):
     async with sem_global:
         
         await asyncio.sleep(index * 0.1)
-
+        fecha_str = row.date_first.strftime('%Y-%m-%d')
         tareas = [
-            fisicas.fetch_environment(session, row.lat_mean, row.lon_mean, row.date_first),
-            vegetacion.vegetacion(row.lat_mean, row.lon_mean, row.date_first),
+            fisicas.fetch_environment(session, row.lat_mean, row.lon_mean, fecha_str),
+            vegetacion.vegetacion(row.lat_mean, row.lon_mean, fecha_str),
             pendiente.pendiente(row.lat_mean, row.lon_mean),
         ]
 
@@ -23,12 +23,12 @@ async def procesar_fila_completa(session, row, index):
         print("Fila extraida")
         return env_datos
     
-async def build_environmental_df(filepath, limit=100):
+async def build_environmental_df(filepath, limit=100, fecha_ini = None, fecha_fin = None):
     
     ini = time.time()
 
     async with aiohttp.ClientSession() as session:
-        fires = incendios.fetch_fires(filepath, limit)
+        fires = incendios.fetch_fires(filepath, limit, fecha_ini, fecha_fin)
 
         tareas_totales = [
             procesar_fila_completa(session, row, i)
@@ -43,6 +43,6 @@ async def build_environmental_df(filepath, limit=100):
 
     fin = time.time()
     print(f"Extraidos {limit} incendios en {fin - ini:.2f} segundos.")
-
+    print(final_df.head(limit))
     return final_df
     

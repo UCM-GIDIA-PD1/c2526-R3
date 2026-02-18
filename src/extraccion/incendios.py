@@ -30,6 +30,9 @@ def calcular_area_incendios(df, pixel_res_meters=1000):
     Retorna:
     - DataFrame con fire_id y el área calculada en km².
     """
+    if df.empty:
+        return pd.Series(dtype='float64', name='area_ha')
+    
     gdf = gpd.GeoDataFrame(
         df, 
         geometry=gpd.points_from_xy(df['lon'], df['lat']), 
@@ -101,7 +104,7 @@ def separate_fire_events(df, dist_km=2.0):
     resumen['duration_days'] = (resumen['date_last'] - resumen['date_first']).dt.days + 1
     return df, resumen
 
-
+'''
 def crear_parquet(df, filename='resumen_incendios.parquet'):
     """
     Guarda el DataFrame en un archivo Parquet.
@@ -111,8 +114,9 @@ def crear_parquet(df, filename='resumen_incendios.parquet'):
     - filename: Nombre del archivo Parquet (con extensión .parquet).
     """
     df.to_parquet(filename, index=False)
+'''
 
-def fetch_fires(filepath, round_decimals=2):
+def fetch_fires(filepath, round_decimals=2, fecha_ini = None, fecha_fin = None):
     """
     la funcion devuelve un dataFrame:
     resumen es lo mas importante y contiene un dataFrame con:
@@ -128,16 +132,23 @@ def fetch_fires(filepath, round_decimals=2):
 
     df = pd.read_csv(filepath)
     df_clean = limpieza(df)
-    df_clean, resumen = separate_fire_events(df_clean, 5.0)
 
-    areas_df = calcular_area_incendios(df_clean, pixel_res_meters=375) # Cambiar a 375 si es VIIRS
+    if fecha_ini is not None:
+        fecha_ini = pd.to_datetime(fecha_ini)
+        df_clean = df_clean[df_clean['date'] >= fecha_ini]
+    
+    if fecha_fin is not None:
+        fecha_fin = pd.to_datetime(fecha_fin)
+        df_clean = df_clean[df_clean['date'] <= fecha_fin]
+
+    if df_clean.empty:
+        print("No hay incendios en el rango de fechas seleccionado.")
+        return pd.DataFrame()
+
+    df_clean, resumen = separate_fire_events(df_clean, 5.0)
+    
+    areas_df = calcular_area_incendios(df_clean, pixel_res_meters=375) 
 
     resumen['area_ha'] = areas_df
-
-    resumen['lat_mean'] = resumen['lat_mean'].round(round_decimals)
-    resumen['lon_mean'] = resumen['lon_mean'].round(round_decimals)
-    resumen['title'] = 'Fire at ' + resumen['lat_mean'].astype(str) + ', ' + resumen['lon_mean'].astype(str) + ' on ' + resumen['date_first'].dt.strftime('%Y-%m-%d')
     
-    crear_parquet(resumen, 'resumen_incendios.parquet')
-
     return resumen.sort_values(by='count', ascending=False)

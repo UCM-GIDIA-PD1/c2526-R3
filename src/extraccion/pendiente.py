@@ -32,13 +32,13 @@ async def pendiente(lat, lon, indice = None):
         "porcentaje": (np.tan(np.radians(res['slope'])) * 100) if res['slope'] else 0
     }
 
-async def df_pendiente(filepath, limit = 20):
+async def df_pendiente(filepath, limit = 20, fecha_ini = None, fecha_fin = None):
 
   ini = time.time()
 
   print("Comenzando extracción...")
 
-  fires = incendios.fetch_fires(filepath, limit)
+  fires = incendios.fetch_fires(filepath, limit, fecha_ini, fecha_fin)
   tareas = [
         pendiente(row['lat_mean'], row['lon_mean'], indice = i)
         for i, row in enumerate(fires.head(limit).to_dict('records'))

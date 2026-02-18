@@ -9,6 +9,8 @@ from . import incendios
 import pandas as pd
 import time
 
+sem_global = asyncio.Semaphore(10)
+
 load_dotenv()
 
 # Obtener la ruta del json de credenciales desde las variables de entorno
@@ -31,8 +33,13 @@ def quitar_dias(fecha_str):
     '''
     Resta 21 días a la fecha ingresada
     '''
-    fecha_obj = datetime.strptime(fecha_str, '%Y-%m-%d')
+    if isinstance(fecha_str, str):
+        fecha_obj = datetime.strptime(fecha_str, '%Y-%m-%d')
+    else:
+        fecha_obj = fecha_str
+        
     menos_21 = fecha_obj - timedelta(days=21)
+    
     return menos_21.strftime('%Y-%m-%d')
 
 def quita_nubes(image):
@@ -97,11 +104,11 @@ def logica_vegetacion(lat, lon, fecha):
   
 async def vegetacion(lat, lon, fecha, indice = None):
 
-  resultado = await asyncio.to_thread(logica_vegetacion, lat, lon, fecha)
-  if indice is not None:
-     print(f"Vegetación {indice} extraida.")
-  return resultado
-     
+  async with sem_global:
+    resultado = await asyncio.to_thread(logica_vegetacion, lat, lon, fecha)
+    if indice is not None:
+      print(f"Vegetación {indice} extraida.")
+    return resultado
 
 
 async def df_vegetacion(filepath, limit = 20):

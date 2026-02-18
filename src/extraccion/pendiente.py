@@ -5,31 +5,32 @@ import time
 from . import incendios
 import pandas as pd
 
+sem_global = asyncio.Semaphore(10)
+
 async def pendiente(lat, lon, indice = None):
-  ''' Esta función calcula la pendiente de un punto utilizando el algoritmo de Horn utilizando puntos
-  a una distancia de 30 metros '''
+  ''' Esta función calcula la pendiente de un punto utilizando los satelites de Google EE'''
+  async with sem_global:
+    dem = ee.Image('USGS/SRTMGL1_003')
+    punto = ee.Geometry.Point([lon, lat])
 
-  dem = ee.Image('USGS/SRTMGL1_003')
-  punto = ee.Geometry.Point([lon, lat])
+    slope = ee.Terrain.slope(dem)
 
-  slope = ee.Terrain.slope(dem)
+    data = dem.addBands(slope).reduceRegion(
+        reducer=ee.Reducer.first(),
+        geometry=punto,
+        scale=30
+    )
 
-  data = dem.addBands(slope).reduceRegion(
-      reducer=ee.Reducer.first(),
-      geometry=punto,
-      scale=30
-  )
-
-  loop = asyncio.get_event_loop()
-  res = await loop.run_in_executor(None, lambda: data.getInfo())
-  if indice is not None:
-    print(f"Pendiente {indice} extraida.")
-  
-  return {
-      "elevacion_centro": res['elevation'],
-      "grados": res['slope'],
-      "porcentaje": (np.tan(np.radians(res['slope'])) * 100) if res['slope'] else 0
-  }
+    loop = asyncio.get_event_loop()
+    res = await loop.run_in_executor(None, lambda: data.getInfo())
+    if indice is not None:
+      print(f"Pendiente {indice} extraida.")
+    
+    return {
+        "elevacion_centro": res['elevation'],
+        "grados": res['slope'],
+        "porcentaje": (np.tan(np.radians(res['slope'])) * 100) if res['slope'] else 0
+    }
 
 async def df_pendiente(filepath, limit = 20):
 
@@ -46,7 +47,7 @@ async def df_pendiente(filepath, limit = 20):
   final_df = pd.DataFrame(resultados)
 
   fin = time.time()
-  
+
   print(f"Extraidas {limit} filas de pendiente en {fin - ini:.2f} segundos.")
   print(final_df.head(limit))
   return final_df

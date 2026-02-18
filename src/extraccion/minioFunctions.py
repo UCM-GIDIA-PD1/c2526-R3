@@ -1,9 +1,12 @@
 from minio import Minio
 from pathlib import Path
+import io
+import pandas as pd
+import geopandas as gpd
 
 '''
 Comprobar:
-- Archivo keys.txt en el directorio del proyecto con las claves del server.
+- Archivo keys.txt en el directorio del proyecto con las claves personales del server.
 - Tener VPN de la Complu activada.
 '''
 
@@ -29,29 +32,69 @@ def crear_cliente():
 
     return cliente
     
-def subir_fichero(cliente, path_local: Path, path_server: Path):
-    assert path_local.exists(), "ruta no existente"
-    source_file = path_local
-    destination_file = path_server
+def subir_fichero(cliente, path_server: Path, df):
+    assert isinstance(df, gpd.GeoDataFrame) or isinstance(df, pd.DataFrame), f"Ningún dataframe o geodataframe se pasó por parámetro"
+    '''
+    Solo admite los tipos de dataframe (df) y geodataframe (gdf). Especificamos el tipo por el parámetro type
+    y por defecto se tomará el archivo como dataframe. 
     
-    cliente.fput_object(
-        bucket_name=path_server,
-        object_name=destination_file,
-        file_path=source_file,
+    :param cliente: cliente de MinIO
+    :param path_server: path del archivo en MinIO
+    :param type: "df" o "gdf"
+    '''
+    buffer = io.BytesIO()
+    df.to_parquet(buffer)
+    lenght = buffer.tell() #Obtenemos longitud de los datos
+    buffer.seek(0) #Como el buffer es un puntero, hacemos que apunte al principio del fichero
+
+    cliente.put_object(
+        bucket_name= "pd1",
+        object_name=path_server,
+        data=buffer,
+        length=lenght
     )
-    print("Fichero subido :)")
+    print(f"Fichero subido como {path_server}")
     
-def bajar_fichero(cliente, path_server: Path, path_local: Path):
-    source_file = path_server
-    destination_file = path_local
+def bajar_fichero(cliente, path_server: Path, type = "df"):
+    assert type == "gdf" or type == "df", f"Tipo especificado no válido: {type}, especifique 'df' o 'gdf'"
     
-    cliente.fget_object(
-        bucket_name="pd1",
-        object_name=source_file,
-        file_path=destination_file,
-    )
-    print("Fichero cargado :)")
+    response = None
+    try:
+        response = cliente.get_object(
+            bucket_name="pd1",
+            object_name=path_server,
+        )
+
+        buffer = io.BytesIO(response.read()) #Almacenamos fichero en buffer de memoria
+        
+        if (type == "gdf"):
+            gdf = gpd.read_parquet(buffer)
+            print(f"Geodataframe importado correctamente")
+            return gdf
+        else:
+            df = pd.read_parquet(buffer)
+            print(f"Dataframe importado correctamente")
+            return df
+    
+    except Exception as e: 
+        print(f"Error al conectar con el servidor: {e}")
+
+    finally:
+        if response: 
+            response.close()
+
+        
+'''
+#Subir a MinIO Biogeoregiones (raw)
+cliente = crear_cliente()
+path = Path(__file__).resolve().parent.parent.parent / "data" / "BiogeoRegions"
+for archivo in path.iterdir():
+    if archivo.is_file():
+        destination_path = f"grupo3/raw/Biogeoregiones/{archivo.name}"
+        subir_fichero(cliente, archivo, destination_path)
+        print(f"Subido {archivo.name}")
+'''
 
 cliente = crear_cliente()
-path = Path(__file__).resolve().parent.parent.parent / "data/prueba.txt"
-bajar_fichero(cliente, "comun/pruebaG3.txt", path)
+df = pd.DataFrame({"Esto" : ["es una prueba"]})
+subir_fichero(cliente, "grupo3/prueba_subir_fichero.parquet", df)

@@ -7,7 +7,7 @@ load_dotenv()
 
 async def main():
     load_dotenv()
-    incendios = os.getenv('INCENDIOS')
+    incendios = os.getenv('RUTA_INCENDIOS_CSV')
     df_final = await construccion_df.build_environmental_df(incendios, limit = 20)
     print(df_final.head(20))
 

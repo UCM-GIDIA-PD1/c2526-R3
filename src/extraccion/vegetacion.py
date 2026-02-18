@@ -5,6 +5,9 @@ import os
 from dotenv import load_dotenv
 from google.oauth2.service_account import Credentials
 import asyncio
+from . import incendios
+import pandas as pd
+import time
 
 load_dotenv()
 
@@ -92,5 +95,27 @@ def logica_vegetacion(lat, lon, fecha):
   else:
     return {'NDVI': np.nan, 'NDWI': np.nan}
   
-async def vegetacion(lat, lon, fecha):
-  return await asyncio.to_thread(logica_vegetacion, lat, lon, fecha)
+async def vegetacion(lat, lon, fecha, indice = None):
+
+  resultado = await asyncio.to_thread(logica_vegetacion, lat, lon, fecha)
+  if indice is not None:
+     print(f"Vegetación {indice} extraida.")
+  return resultado
+     
+
+
+async def df_vegetacion(filepath, limit = 20):
+  ini = time.time()
+  print("Comenzando extracción...")
+  fires = incendios.fetch_fires(filepath, limit)
+  tareas = [
+        vegetacion(row['lat_mean'], row['lon_mean'], row['date_first'], indice = i)
+        for i, row in enumerate(fires.head(limit).to_dict('records'))
+    ]
+  resultados = await asyncio.gather(*tareas)
+  final_df = pd.DataFrame(resultados)
+  fin = time.time()
+  print(f"Extraidas {limit} filas de vegetación en {fin - ini:.2f} segundos.")
+  print(final_df.head(limit))
+  return final_df
+  

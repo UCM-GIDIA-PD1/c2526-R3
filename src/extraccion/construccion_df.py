@@ -28,7 +28,6 @@ async def build_environmental_df(filepath, limit=100):
     ini = time.time()
 
     async with aiohttp.ClientSession() as session:
-        j = 0
         fires = incendios.fetch_fires(filepath, limit)
 
         tareas_totales = [

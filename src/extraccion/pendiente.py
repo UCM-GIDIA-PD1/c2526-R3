@@ -32,8 +32,11 @@ async def pendiente(lat, lon, indice = None):
   }
 
 async def df_pendiente(filepath, limit = 20):
+
   ini = time.time()
+
   print("Comenzando extracción...")
+
   fires = incendios.fetch_fires(filepath, limit)
   tareas = [
         pendiente(row['lat_mean'], row['lon_mean'], indice = i)
@@ -41,7 +44,9 @@ async def df_pendiente(filepath, limit = 20):
     ]
   resultados = await asyncio.gather(*tareas)
   final_df = pd.DataFrame(resultados)
+
   fin = time.time()
+  
   print(f"Extraidas {limit} filas de pendiente en {fin - ini:.2f} segundos.")
   print(final_df.head(limit))
   return final_df

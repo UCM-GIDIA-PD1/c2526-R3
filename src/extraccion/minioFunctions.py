@@ -83,9 +83,21 @@ def bajar_fichero(cliente, path_server: Path, type = "df"):
         if response: 
             response.close()
 
+def bajar_fichero_local(cliente, path_server: Path, path_local: Path):
+    cliente.fget_object(
+        bucket_name="pd1",
+        object_name=path_server,
+        file_path=path_local,
+    )
+
+def bajar_carpeta(cliente, path_server: Path):
+    ficheros = cliente.list_objects("pd1", prefix=path_server, recursive=True) 
+
+    for fichero in ficheros:
+        fichero.object_name
         
 '''
-#Subir a MinIO Biogeoregiones (raw)
+#Subir a MinIO Biogeoregiones
 cliente = crear_cliente()
 path = Path(__file__).resolve().parent.parent.parent / "data" / "BiogeoRegions"
 for archivo in path.iterdir():
@@ -95,6 +107,8 @@ for archivo in path.iterdir():
         print(f"Subido {archivo.name}")
 '''
 
+''' EJEMPLO SUBIR FICHERO
 cliente = crear_cliente()
 df = pd.DataFrame({"Esto" : ["es una prueba"]})
 subir_fichero(cliente, "grupo3/prueba_subir_fichero.parquet", df)
+'''

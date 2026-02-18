@@ -5,6 +5,8 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
+    "aiohttp>=3.13.3",
+    "asyncio>=4.0.0",
     "ee>=0.2",
     "geemap>=0.37.1",
     "geo>=1.0.1",

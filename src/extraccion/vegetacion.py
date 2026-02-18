@@ -4,6 +4,7 @@ import numpy as np
 import os
 from dotenv import load_dotenv
 from google.oauth2.service_account import Credentials
+import asyncio
 
 load_dotenv()
 
@@ -77,7 +78,7 @@ def imagen(lat, lon, fecha):
 
 
 
-def vegetacion(lat, lon, fecha):
+def logica_vegetacion(lat, lon, fecha):
   '''
   Calcula los valores de NDVI y NDWI para una ubicacion y fecha concretas,
   y en el caso de no haber datos en el rango de fechas, devuelve nulos.
@@ -90,3 +91,6 @@ def vegetacion(lat, lon, fecha):
     return datos['properties']
   else:
     return {'NDVI': np.nan, 'NDWI': np.nan}
+  
+async def vegetacion(lat, lon, fecha):
+  return await asyncio.to_thread(logica_vegetacion, lat, lon, fecha)

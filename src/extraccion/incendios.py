@@ -77,7 +77,7 @@ def fetch_fires(filepath, round_decimals=2):
     resumen['lon_mean'] = resumen['lon_mean'].round(round_decimals)
     resumen['title'] = 'Fire at ' + resumen['lat_mean'].astype(str) + ', ' + resumen['lon_mean'].astype(str) + ' on ' + resumen['date_first'].dt.strftime('%Y-%m-%d')
 
-
+    resumen['date_first'] = resumen['date_first'].dt.strftime('%Y-%m-%d')
     return resumen.sort_values(by='count', ascending=False)
 
 

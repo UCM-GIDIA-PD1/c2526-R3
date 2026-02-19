@@ -1,21 +1,304 @@
-from extraccion import construccion_df, vegetacion, pendiente, fisicas, vegetacion2
-import asyncio
+import sys
 import os
+from pathlib import Path
+import asyncio
 from dotenv import load_dotenv
 import pandas as pd
+import traceback
 
+
+#Sacamos el path actual, su padre y esa será la ruta donde se buscan los otros paquetes
+src_path = Path(__file__).parent
+sys.path.append(str(src_path))
+
+#Cargas desde el INICIO todas las claves de entorno, por si se llaman
 load_dotenv()
 
-async def main():
+# CONFIGURACIÓN DE EARTH ENGINE
+def setup_earth_engine():
+    """Configura Earth Engine usando la variable RUTA_CREDENCIALES."""
 
-    load_dotenv()
-    
-    incendios = os.getenv('INCENDIOS')
-    df_final = await construccion_df.build_environmental_df(incendios, limit = 30)
-    #df_final = await vegetacion.df_vegetacion(incendios)
-    #df_final = await pendiente.df_pendiente(incendios)
-    #df_final = await fisicas.df_fisicas(incendios)
-    #df_final = await vegetacion2.df_vegetacion2(incendios)
+    try:
+        import ee
+
+        ruta_creds = os.getenv('RUTA_CREDENCIALES')
+        
+        print(f"\n🔑 Configurando Earth Engine...")
+        print(f"   📁 RUTA_CREDENCIALES = {ruta_creds}")
+
+        if not ruta_creds:
+            print("   CUIDADO!!! Variable RUTA_CREDENCIALES no definida en .env")
+            return False
+
+        if not os.path.exists(ruta_creds):
+            print(f"   CUIDADO!!! La ruta no existe: {ruta_creds}")
+            return False
+
+        if os.path.isfile(ruta_creds) and ruta_creds.endswith('.json'):
+            json_file = ruta_creds
+        elif os.path.isdir(ruta_creds):
+            json_files = list(Path(ruta_creds).glob('*.json'))
+            if not json_files:
+                print("   CUIDADO!!! No se encontraron archivos .json en el directorio")
+                return False
+            json_file = str(json_files[0])
+            print(f"   📄 Usando credenciales: {json_files[0].name}")
+        else:
+            print("   CUIDADO!!! La ruta no es un archivo JSON ni un directorio")
+            return False
+
+        try:
+            credentials = ee.ServiceAccountCredentials(None, json_file)
+            ee.Initialize(credentials)
+            print("   ✅ Earth Engine inicializado correctamente")
+            return True
+        
+        except Exception as e:
+            print(f"   CUIDADO!!! Error al inicializar Earth Engine: {e}")
+            return False
+
+    except ImportError:
+        print("      CUIDADO!!! Earth Engine no instalado. Ejecuta: pip install earthengine-api")
+        return False
+
+EE_OK = setup_earth_engine()
+
+MODULOS_CARGADOS = False
+try:
+    print("\n Importando módulos de extraccion.Comprobación de uv sync")
+
+    print("   construccion_df")
+    from extraccion import construccion_df
+    print("   ✅ OK")
+
+    print("   vegetacion")
+    from extraccion import vegetacion
+    print("   ✅ OK")
+
+    print("   pendiente")
+    from extraccion import pendiente
+    print("   ✅ OK")
+
+    print("   fisicas")
+    from extraccion import fisicas
+    print("   ✅ OK")
+
+    from extraccion import vegetacion2
+    print("   vegetacion2")
+    print("   ✅ OK")
+
+    MODULOS_CARGADOS = True
+    print("\n BIEN: Todos los módulos cargados correctamente.\n")
+
+except Exception as e:
+    print(f"\n ERROR: Error al importar módulos: {e}")
+    traceback.print_exc()
+    MODULOS_CARGADOS = False
+    input("\nPresiona Enter para continuar...")
+
+def limpiar_pantalla():
+    os.system('cls' if os.name == 'nt' else 'clear')
+
+def formatear_ruta(ruta, max_len=50):
+    if not ruta:
+        return "No definida"
+    if len(ruta) > max_len:
+        return ruta[:max_len] + "..."
+    return ruta
+
+async def mostrar_menu():
+    limpiar_pantalla()
+    print("\n" + "-"*60)
+    print("  SISTEMA DE ANÁLISIS DE INCENDIOS ")
+    print("-"*60)
+
+    ruta_creds = os.getenv('RUTA_CREDENCIALES', 'No definida')
+    ruta_incendios = os.getenv('INCENDIOS', 'No definida')
+    print(f"\n📁 RUTA_CREDENCIALES: {formatear_ruta(ruta_creds)}")
+    print(f"  INCENDIOS: {formatear_ruta(ruta_incendios)}")
+    print(f"  Earth Engine: {'✅ OK' if EE_OK else 'ERROR: Error'}")
+    print(f" Módulos: {'✅ Cargados' if MODULOS_CARGADOS else 'ERROR: No disponibles'}")
+    print(" "*60)
+
+    print("\n📋 MENÚ PRINCIPAL:")
+    if MODULOS_CARGADOS:
+        print("  1. Construcción DF Ambiental")
+        print("  2. Vegetación")
+        print("  3. Pendiente")
+        print("  4. Características Físicas")
+        print("  5. Vegetación 2")
+    else:
+        print("  ->  Módulos no disponibles (ejecuta opción 7 para diagnosticar)")
+    print("  6. Información del Proyecto")
+    print("  7. Diagnosticar Sistema")
+    print("  8. Verificar archivo INCENDIOS")
+    print("  0. Salir")
+    print(" "*60)
+
+async def diagnosticar_sistema():
+
+    print("\n🔍 DIAGNÓSTICO COMPLETO")
+    print(" "*50)
+
+    print(f"Python: {sys.version}")
+    print(f"Directorio actual: {os.getcwd()}")
+    print(f"src path: {src_path}")
+
+    print("\n Variables de entorno (.env):")
+
+    ruta_creds = os.getenv('RUTA_CREDENCIALES')
+    ruta_incendios = os.getenv('INCENDIOS')
+
+    print(f"   RUTA_CREDENCIALES: {'BIEN' if ruta_creds else 'MAL'} {ruta_creds}")
+    print(f"   INCENDIOS: {'BIEN' if ruta_incendios else 'MAL'} {ruta_incendios}")
+
+    if ruta_creds:
+        print(f"\n📁 Verificando RUTA_CREDENCIALES:")
+        if os.path.exists(ruta_creds):
+            print(f"      Existe")
+            if os.path.isfile(ruta_creds):
+                print(f"   📄 Es archivo")
+            else:
+                print(f"   📁 Es directorio")
+                json_files = list(Path(ruta_creds).glob('*.json'))
+                if json_files:
+                    print(f"      Archivos JSON encontrados: {[f.name for f in json_files]}")
+                else:
+                    print(f"      No hay archivos .json")
+        else:
+            print(f"   ERROR: No existe")
+
+    if ruta_incendios:
+
+        print(f"\n   Verificando INCENDIOS:")
+
+        if os.path.exists(ruta_incendios):
+
+            print(f"      Existe")
+
+            if os.path.isfile(ruta_incendios):
+                print(f"   📄 Es archivo")
+                tam = os.path.getsize(ruta_incendios)
+                print(f"   Tamaño: {tam} bytes ({tam/1024/1024:.2f} MB)")
+
+                if ruta_incendios.lower().endswith('.csv'):
+                    try:
+                        df = pd.read_csv(ruta_incendios, nrows=2)
+                        print(f"   BIEN CSV legible, columnas: {list(df.columns)}")
+                    except Exception as e:
+                        print(f"   ERROR Error al leer CSV: {e}")
+            else:
+                print(f"   📁 Es directorio")
+        else:
+            print(f"   ERROR No existe")
+
+
+    print(f"\n📦 Módulos de Python:")
+    modulos = [
+        ('ee', 'earthengine-api'),
+        ('pandas', 'pandas'),
+        ('numpy', 'numpy'),
+        ('dotenv', 'python-dotenv'),
+        ('aiohttp', 'aiohttp')
+    ]
+    for mod, pip in modulos:
+        try:
+            __import__(mod)
+            print(f"   BIEN: {mod}")
+        except ImportError:
+            print(f"   ERROR {mod} (pip install {pip})")
+
+    print(f"\n    Earth Engine inicializado: {'✅ Sí' if EE_OK else '❌ No'}")
+
+async def verificar_archivo_incendios():
+    """Opción 8: ver detalles del archivo de incendios"""
+    print("\n📂 VERIFICACIÓN DETALLADA DEL ARCHIVO INCENDIOS")
+    print("="*50)
+    ruta = os.getenv('INCENDIOS')
+    if not ruta:
+        print("ERROR: Variable INCENDIOS no definida")
+        return
+
+    if not os.path.exists(ruta):
+        print(f"ERROR: El archivo no existe: {ruta}")
+        return
+
+    if not os.path.isfile(ruta):
+        print(f"ERROR: No es un archivo: {ruta}")
+        return
+
+    print(f"📄 Archivo: {ruta}")
+    print(f"📏 Tamaño: {os.path.getsize(ruta):,} bytes")
+    print(f"📁 Extensión: {Path(ruta).suffix}")
+
+    if ruta.lower().endswith('.csv'):
+        try:
+
+            df = pd.read_csv(ruta, nrows=10)
+            print(f"\n BIEN: Primeras 10 filas:")
+            print(df)
+            print(f"\n TABLA: Columnas: {list(df.columns)}")
+            print(f" TABLA: Tipos de datos:\n{df.dtypes}")
+        
+        except Exception as e:
+        
+            print(f"ERROR: Error al leer CSV: {e}")
+
+async def ejecutar_funcion(nombre, func, *args, **kwargs):
+    print(f"Ejecutando: {nombre}")
+    try:
+        resultado = await func(*args, **kwargs) if asyncio.iscoroutinefunction(func) else func(*args, **kwargs)
+        print(f"{nombre} completada.")
+        return resultado
+    except Exception as e:
+        print(f"Error en {nombre}: {e}")
+
+# MAIN
+async def main():
+    ruta_incendios = os.getenv('INCENDIOS')
+
+    while True:
+        await mostrar_menu()
+        opcion = input("\n🔷 Selecciona una opción (0-9): ").strip()
+
+        if opcion == "1" and MODULOS_CARGADOS:
+            await ejecutar_funcion("Construcción DF Ambiental", construccion_df.build_environmental_df, ruta_incendios, limit=30)
+
+        elif opcion == "2" and MODULOS_CARGADOS:
+            await ejecutar_funcion("Vegetación", vegetacion.df_vegetacion, ruta_incendios)
+
+        elif opcion == "3" and MODULOS_CARGADOS:
+            await ejecutar_funcion("Pendiente", pendiente.df_pendiente, ruta_incendios)
+
+        elif opcion == "4" and MODULOS_CARGADOS:
+            await ejecutar_funcion("Características Físicas", fisicas.df_fisicas, ruta_incendios)
+
+        elif opcion == "5" and MODULOS_CARGADOS:
+            await ejecutar_funcion("Vegetación 2", vegetacion2.df_vegetacion2, ruta_incendios)
+
+        elif opcion == "6":
+            print("\n" + " "*60)
+            print(" INFORMACIÓN DEL PROYECTO")
+            print(" "*60)
+            print("Por escribir")
+            print("="*60)
+
+        elif opcion == "7":
+            await diagnosticar_sistema()
+
+        elif opcion == "8":
+            await verificar_archivo_incendios()
+
+        elif opcion == "0":
+            print("\n   ¡Adios! Pasa un buen día ")
+            break
+
+        else:
+            print("\n ERROR: Opción no válida o módulos no cargados.")
+
+        input("\n⏎ Presiona Enter para continuar...")
 
 if __name__ == "__main__":
+    
     asyncio.run(main())
+    

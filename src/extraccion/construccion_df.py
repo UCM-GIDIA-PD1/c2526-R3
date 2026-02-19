@@ -50,8 +50,15 @@ async def build_environmental_df(filepath, limit=100, fecha_ini = None, fecha_fi
     fires = fires.head(limit)
     lista_puntos = list(zip(fires['lon_mean'], fires['lat_mean']))
     veg2_resultados = await asyncio.to_thread(vegetacion2.lista_entorno, lista_puntos, df_aux)
-    env_df = pd.concat([fires, env_df], axis = 1)
-    final_df = pd.concat([fires.reset_index(drop=True), env_df], axis=1)
+    veg2_resultados = pd.DataFrame(veg2_resultados, columns=["vegetacion2"])
+
+    fires = fires.reset_index(drop=True)
+    env_df = env_df.reset_index(drop=True)
+    veg2_resultados = veg2_resultados.reset_index(drop=True)
+    env_df = pd.concat([fires, env_df], axis=1)
+    env_df = pd.concat([veg2_resultados, env_df], axis=1)
+    final_df = env_df
+
 
     fin = time.time()
     print(f"Extraidos {limit} incendios en {fin - ini:.2f} segundos.")

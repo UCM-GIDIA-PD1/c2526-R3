@@ -8,6 +8,7 @@ dependencies = [
     "aiohttp>=3.13.3",
     "asyncio>=4.0.0",
     "ee>=0.2",
+    "fsspec>=2026.2.0",
     "geemap>=0.37.1",
     "geo>=1.0.1",
     "geodatasets>=2026.1.0",

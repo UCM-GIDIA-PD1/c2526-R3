@@ -31,7 +31,7 @@ except Exception as e:
 
 def quitar_dias(fecha_str):
     '''
-    Resta 21 días a la fecha ingresada
+    Resta 21 días a la fecha ingresada (en formato string)
     '''
     if isinstance(fecha_str, str):
         fecha_obj = datetime.strptime(fecha_str, '%Y-%m-%d')
@@ -42,22 +42,6 @@ def quitar_dias(fecha_str):
     
     return menos_21.strftime('%Y-%m-%d')
 
-def quita_nubes(image):
-  '''
-  Elimina nubes de la imagen
-  '''
-  qa = image.select('QA60')
-
-  cloud_bit_mask = 1 << 10
-  cirrus_bit_mask = 1 << 11
-
-  mask = (
-      qa.bitwiseAnd(cloud_bit_mask)
-      .eq(0)
-      .And(qa.bitwiseAnd(cirrus_bit_mask).eq(0))
-  )
-
-  return image.updateMask(mask).divide(10000)
 
 def calcular_indices(img):
     '''
@@ -67,24 +51,30 @@ def calcular_indices(img):
     ndwi = img.normalizedDifference(['B3', 'B8']).rename('NDWI')
     return img.addBands([ndvi, ndwi])
 
-def imagen(lat, lon, fecha):
+def imagen(punto, fecha):
   '''
   Obtiene la imagen del satélite Copernicus para una ubicacion
   y fecha concretas. Para la fecha utiliza un rango de entre la
   fecha introducida y 21 días antes para evitar que no haya datos,
-  y devuelve la mediana de ese rango de fechas.
+  y devuelve la mediana de ese rango de fechas, quitando los datos
+  con nubes.
   '''
-  punto = ee.Geometry.Point([lon, lat])
   fecha_fin = fecha
   fecha_ini = quitar_dias(fecha)
-  imagen_ee_object = (ee.ImageCollection('COPERNICUS/S2_HARMONIZED')
+
+  cloud_score = ee.ImageCollection('GOOGLE/CLOUD_SCORE_PLUS/V1/S2_HARMONIZED')
+  umbral_nubes = 0.5
+
+  img = (ee.ImageCollection('COPERNICUS/S2_HARMONIZED')
             .filterBounds(punto)
             .filterDate(fecha_ini, fecha_fin)
-            .filter(ee.Filter.lt('CLOUDY_PIXEL_PERCENTAGE', 30))
-            .map(quita_nubes)
+            .linkCollection(cloud_score, ['cs_cdf'])
+            .map(lambda img: img.updateMask(img.select('cs_cdf').gte(umbral_nubes)))
+            .select(['B3', 'B4', 'B8'])
             .map(calcular_indices)
             .median())
-  return punto, imagen_ee_object
+  
+  return img
 
 
 
@@ -93,10 +83,13 @@ def logica_vegetacion(lat, lon, fecha):
   Calcula los valores de NDVI y NDWI para una ubicacion y fecha concretas,
   y en el caso de no haber datos en el rango de fechas, devuelve nulos.
   '''
-  punto, img_data = imagen(lat, lon, fecha)
+  punto = ee.Geometry.Point([lon, lat])
+  img_data = imagen(punto, fecha)
 
   if len (img_data.bandNames().getInfo()) > 0:
-    datos = img_data.select(['NDVI', 'NDWI']).sample(punto, 10).first().getInfo()
+
+    datos = img_data.select(['NDVI', 'NDWI']).sample(region = punto).first().getInfo()
+    print(datos['properties'])
 
     return datos['properties']
   else:

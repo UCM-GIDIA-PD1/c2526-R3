@@ -89,15 +89,17 @@ def logica_vegetacion(lat, lon, fecha):
   if len (img_data.bandNames().getInfo()) > 0:
 
     datos = img_data.select(['NDVI', 'NDWI']).sample(region = punto, scale = 10).first().getInfo()
-
-    return datos['properties']
+    if datos is None or 'properties' not in datos:
+      print(f"Advertencia: No se encontraron datos para Lat: {lat}, Lon: {lon}")
+      return{'NDVI':np.nan, 'NDWI':np.nan}
+    else:
+      return datos['properties']
   else:
     return {'NDVI': np.nan, 'NDWI': np.nan}
   
 async def vegetacion(lat, lon, fecha, indice = None):
 
   async with sem_global:
-    
     resultado = await asyncio.to_thread(logica_vegetacion, lat, lon, fecha)
     if indice is not None:
       print(f"Vegetación {indice} extraida.")

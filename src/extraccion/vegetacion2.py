@@ -103,6 +103,7 @@ def lista_entorno(lista_puntos, df_vegetacion):
             return lista_vegetacion
 
 async def df_vegetacion2(filepath, limit=20, fecha_ini=None, fecha_fin=None):
+    
     ini = time.time()
 
     df_aux = pd.read_csv("s3://pd1/grupo3/mapa/mapa_vegetacion.csv", 
@@ -116,7 +117,7 @@ async def df_vegetacion2(filepath, limit=20, fecha_ini=None, fecha_fin=None):
     fires = fires.head(limit)
     lista_puntos = list(zip(fires['lon_mean'], fires['lat_mean']))
 
-    print("Consultando Raster en la nube...")
+
     lista_res = await asyncio.to_thread(lista_entorno, lista_puntos, df_aux)
 
     final_df = pd.DataFrame(lista_res, columns=["vegetacion2"])

@@ -88,8 +88,7 @@ def logica_vegetacion(lat, lon, fecha):
 
   if len (img_data.bandNames().getInfo()) > 0:
 
-    datos = img_data.select(['NDVI', 'NDWI']).sample(region = punto).first().getInfo()
-    print(datos['properties'])
+    datos = img_data.select(['NDVI', 'NDWI']).sample(region = punto, scale = 10).first().getInfo()
 
     return datos['properties']
   else:

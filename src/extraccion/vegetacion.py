@@ -97,6 +97,7 @@ def logica_vegetacion(lat, lon, fecha):
 async def vegetacion(lat, lon, fecha, indice = None):
 
   async with sem_global:
+    
     resultado = await asyncio.to_thread(logica_vegetacion, lat, lon, fecha)
     if indice is not None:
       print(f"Vegetación {indice} extraida.")

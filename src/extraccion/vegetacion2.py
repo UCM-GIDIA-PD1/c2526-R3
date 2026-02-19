@@ -6,11 +6,14 @@ import rasterio
 import pandas as pd
 from pyproj import Transformer
 
+import time
 import os
 import fsspec
 import rasterio
 from rasterio.windows import Window
 from dotenv import load_dotenv
+from . import incendios
+import asyncio
 
 # def obtenerNumero(lat, lon, src, data):
 #     transformer = Transformer.from_crs("EPSG:4326", src.crs, always_xy=True)
@@ -31,6 +34,7 @@ from dotenv import load_dotenv
 #     src.close()
 
 def entorno(lat, lon):
+
     load_dotenv()
 
     df = pd.read_csv(
@@ -63,7 +67,59 @@ def entorno(lat, lon):
                 num = 44
             return df.loc[num]["Column6"]
 
+def lista_entorno(lista_puntos, df_vegetacion): 
+    load_dotenv()
+    
+    minio_config = {
+        "AWS_S3_ENDPOINT": "minio.fdi.ucm.es",
+        "AWS_HTTPS": "YES",
+        "AWS_VIRTUAL_HOSTING": "FALSE",
+        "GDAL_HTTP_UNSAFESSL": "YES",
+    }
 
+    with rasterio.Env(**minio_config,
+                     aws_access_key_id=os.getenv("AWS_ACCESS_KEY_ID"),
+                     aws_secret_access_key=os.getenv("AWS_SECRET_ACCESS_KEY")):
+        
+        with rasterio.open("/vsis3/pd1/grupo3/mapa/mapa.tif") as src:
+            transformer = Transformer.from_crs("EPSG:4326", src.crs, always_xy=True)
+            lista_vegetacion = []
+            
+            for i, (lon, lat) in enumerate(lista_puntos):
+                x, y = transformer.transform(lon, lat)
+                row, col = src.index(x, y)
+                
+                window = Window(col, row, 1, 1)
+                data = src.read(1, window=window)
+                
+                if data.size > 0:
+                    num = data[0, 0]
+                    if num < 0: num = 44
+                    lista_vegetacion.append(df_vegetacion.loc[num]["Column6"])
+                else:
+                    lista_vegetacion.append("Sin datos")
+                
+                print(f"Dato {i} extraído")
+            return lista_vegetacion
 
+async def df_vegetacion2(filepath, limit=20, fecha_ini=None, fecha_fin=None):
+    ini = time.time()
 
+    df_aux = pd.read_csv("s3://pd1/grupo3/mapa/mapa_vegetacion.csv", 
+                         storage_options={
+                             "key": os.getenv("AWS_ACCESS_KEY_ID"),
+                             "secret": os.getenv("AWS_SECRET_ACCESS_KEY"),
+                             "client_kwargs": {"endpoint_url": "https://minio.fdi.ucm.es", "verify": False}
+                         })
 
+    fires = incendios.fetch_fires(filepath, limit, fecha_ini, fecha_fin)
+    fires = fires.head(limit)
+    lista_puntos = list(zip(fires['lon_mean'], fires['lat_mean']))
+
+    print("Consultando Raster en la nube...")
+    lista_res = await asyncio.to_thread(lista_entorno, lista_puntos, df_aux)
+
+    final_df = pd.DataFrame(lista_res, columns=["vegetacion2"])
+    print(f"Finalizado en {time.time() - ini:.2f}s")
+    print(final_df.head(limit))
+    return final_df

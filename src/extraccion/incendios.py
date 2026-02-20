@@ -64,7 +64,7 @@ def calcular_area_incendios(df, pixel_res_meters=1000):
         })
         
     area = pd.DataFrame(resultados).sort_values(by='puntos_activos', ascending=False)
-    return area['area_ha']
+    return area
 
 def separate_fire_events(df, dist_km=2.0):
     """
@@ -104,6 +104,27 @@ def separate_fire_events(df, dist_km=2.0):
 
     resumen['duration_days'] = (resumen['date_last'] - resumen['date_first']).dt.days + 1
     return df, resumen
+
+def sample_one_point_per_fire(df, random_state=42):
+    """
+    Selecciona un punto real aleatorio por cada incendio.
+    
+    Parámetros:
+    - df: DataFrame con columna 'fire_id'
+    
+    Retorna:
+    - DataFrame con un punto real por incendio
+    """
+    if df.empty:
+        return pd.DataFrame()
+    
+    sampled = (
+        df.groupby('fire_id', group_keys=False)
+          .apply(lambda x: x.sample(n=1, random_state=random_state))
+          .reset_index(drop=True)
+    )
+    
+    return sampled
 
 '''
 def crear_parquet(df, filename='resumen_incendios.parquet'):
@@ -147,9 +168,16 @@ def fetch_fires(filepath, round_decimals=2, fecha_ini = None, fecha_fin = None):
         return pd.DataFrame()
 
     df_clean, resumen = separate_fire_events(df_clean, 5.0)
-    
-    areas_df = calcular_area_incendios(df_clean, pixel_res_meters=375) 
 
-    resumen['area_ha'] = areas_df
-    
-    return resumen.sort_values(by='count', ascending=False)
+    # NUEVO:
+    df_sampled = sample_one_point_per_fire(df_clean)
+
+    # Si quieres añadir info de área:
+    areas_df = calcular_area_incendios(df_clean, pixel_res_meters=375)
+    df_sampled = df_sampled.merge(
+        areas_df,
+        on='fire_id',
+        how='left'
+    )
+
+    return df_sampled

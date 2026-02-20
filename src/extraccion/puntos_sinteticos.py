@@ -9,7 +9,7 @@ from . import minioFunctions
 from . import filtros_no_sinteticos
 
 # noIncendios tiene que ser múltiplo de 12 (total de puntos aleatorios para esta zona)
-def crearAleatorios(mascara, parquetAnio, noIncendios, anio, src, transformer):
+def crearAleatorios(mascara, parquetAnio, noIncendios, anio, src, transformer, cliente):
     listaLat = []
     listaLon = []
     fechas = []
@@ -20,7 +20,7 @@ def crearAleatorios(mascara, parquetAnio, noIncendios, anio, src, transformer):
     puntos_por_mes = noIncendios // 12  # número de puntos a generar cada mes en esta zona
 
     # Leer la máscara de la región
-    mascara = gpd.read_parquet(mascara)
+    mascara = minioFunctions.bajar_fichero(cliente, mascara, "gdf")
     mascara = mascara.to_crs("EPSG:4326")
     # Obtener los límites geográficos de la región
     minx, miny, maxx, maxy = mascara.geometry.total_bounds
@@ -45,7 +45,7 @@ def crearAleatorios(mascara, parquetAnio, noIncendios, anio, src, transformer):
     return listaLat, listaLon, fechas
 
 
-def crearCercanos(incendiosZona, mascaraZona, numNoIncendios, frpTotal, parquetAnio, src, transformer):
+def crearCercanos(incendiosZona, numNoIncendios, frpTotal, parquetAnio, src, transformer):
     """
     incendiosZona: DataFrame con los incendios de la zona (ya filtrados, NO una ruta)
     mascaraZona: ruta al archivo de la máscara (se mantiene por compatibilidad, no se usa)
@@ -107,11 +107,12 @@ def crearCercanos(incendiosZona, mascaraZona, numNoIncendios, frpTotal, parquetA
     return numNoIncendios_restante, listaLat, listaLon, fechas
 
 
-def crearSinteticos(parquetAnio, src, data):
+def crearSinteticos(parquetAnio):
     # Cargo claves
     
     load_dotenv()
-
+    
+    cliente = minioFunctions.crear_cliente()
     # 1.- Leer incendios del año (una sola vez)
     df_incendios = pd.read_parquet(parquetAnio)  # df_incendios es el DataFrame completo
 
@@ -128,9 +129,7 @@ def crearSinteticos(parquetAnio, src, data):
     ]
 
     # 3.- Obtener DataFrames de incendios por zona (ya no son rutas, son DataFrames)
-    listaZonas = filtros_no_sinteticos.filtrarZona(mascarasRegiones, df_incendios)
-
-    cliente = minioFunctions.crear_cliente()
+    listaZonas = filtros_no_sinteticos.filtrarZona(mascarasRegiones, df_incendios, cliente)
     mascaraRegionesGDF = []
 
     # 4.- Calcular áreas, número de incendios y FRP total por zona
@@ -183,7 +182,6 @@ def crearSinteticos(parquetAnio, src, data):
               if listaIncendios[i] > 0 and listaFrpTotal[i] > 0:
                   restante, lats, lons, fechas = crearCercanos(
                       listaZonas[i],           # DataFrame de incendios de la zona
-                      mascarasRegiones[i],     # ruta de la máscara (no se usa)
                       listaNoIncendios[i],     # total de puntos para esta zona
                       listaFrpTotal[i],        # suma de FRP en la zona
                       df_incendios,            # DataFrame completo (para validar)
@@ -203,7 +201,7 @@ def crearSinteticos(parquetAnio, src, data):
                       df_incendios,             # DataFrame completo (para validar)
                       restante,
                       anio,
-                      src, transformer
+                      src, transformer, cliente
                   )
                   todas_lats.extend(lats_rand)
                   todas_lons.extend(lons_rand)

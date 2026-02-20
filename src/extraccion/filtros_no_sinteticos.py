@@ -20,10 +20,9 @@ def puntoValido(lat, lon, parquet, src, transformer):
 
   return noIncendio and noAguaUrbano
 
-def filtrarZona(mascarasRegiones, parquetAnio): #Pasamos la lista de parquets de las mascaras y el parquet del año que queremos
+def filtrarZona(mascarasRegiones, parquetAnio, cliente): #Pasamos la lista de parquets de las mascaras y el parquet del año que queremos
   parquetsZonas = []
   for mascaraZona in mascarasRegiones:
-      cliente = minioFunctions.crear_cliente()
       zona = minioFunctions.bajar_fichero(cliente, mascaraZona, "gdf")
       gdf = gpd.GeoDataFrame(
           parquetAnio,

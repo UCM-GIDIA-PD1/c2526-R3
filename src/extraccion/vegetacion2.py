@@ -9,64 +9,58 @@ from pyproj import Transformer
 import time
 import os
 import fsspec
-import rasterio
 from rasterio.windows import Window
 from dotenv import load_dotenv
 from . import incendios
 import asyncio
 from extraccion import minioFunctions
 
-# def obtenerNumero(lat, lon, src, data):
-#     transformer = Transformer.from_crs("EPSG:4326", src.crs, always_xy=True)
-#     x, y = transformer.transform(lon, lat)
-#     row, col = src.index(x, y)
-#     return data[row, col]
+def obtenerNumero(lat, lon, src, transformer):
+    x, y = transformer.transform(lon, lat)
+    row, col = src.index(x, y)
+                
+    window = Window(col, row, 1, 1)
+    data = src.read(1, window=window)
+            
+    if data.size > 0:
+        num = data[0, 0]
+        if num < 0: num = 44
+    else:
+        num = -1
+    return num
 
-# def entorno(lat, lon, src, data, df):
-#     num = obtenerNumero(lat, lon, src, data)
-#     if num < 0:
-#         num = 44
-#     return {"entorno": df.loc[num]["Column6"]}
+# def entorno(lat, lon):
+#     ak, sk = minioFunctions.importar_keys()
 
-# def abrirMapa(): 
-#     return rasterio.open("src/mapa.tif") 
+#     df = pd.read_csv(
+#         "s3://pd1/grupo3/mapa/mapa_vegetacion.csv",
+#         storage_options={
+#             "key": ak,
+#             "secret": sk,
+#             "client_kwargs": {
+#                 "endpoint_url": "https://minio.fdi.ucm.es",
+#                 "verify": False  #Importante porque el acceso necesitaría sino verificación
+#             }
+#         }
+#     )
 
-# def cerrarMapa(src): 
-#     src.close()
-
-def entorno(lat, lon):
-
-    ak, sk = minioFunctions.importar_keys()
-
-    df = pd.read_csv(
-        "s3://pd1/grupo3/mapa/mapa_vegetacion.csv",
-        storage_options={
-            "key": ak,
-            "secret": sk,
-            "client_kwargs": {
-                "endpoint_url": "https://minio.fdi.ucm.es",
-                "verify": False  #Importante porque el acceso necesitaría sino verificación
-            }
-        }
-    )
-
-    minio_config = {
-    "AWS_S3_ENDPOINT": "minio.fdi.ucm.es",  # Se pone SIN https://
-    "AWS_HTTPS": "YES",                     # Aquí indicamos que usa HTTPS
-    "AWS_VIRTUAL_HOSTING": "FALSE",         
-    "GDAL_HTTP_UNSAFESSL": "YES"           
-    }
+#     minio_config = {
+#     "AWS_S3_ENDPOINT": "minio.fdi.ucm.es",  # Se pone SIN https://
+#     "AWS_HTTPS": "YES",                     # Aquí indicamos que usa HTTPS
+#     "AWS_VIRTUAL_HOSTING": "FALSE",         
+#     "GDAL_HTTP_UNSAFESSL": "YES"           
+#     }
    
-    with rasterio.Env(**minio_config):
-        with rasterio.open("/vsis3/pd1/grupo3/mapa/mapa.tif") as src:
-            transformer = Transformer.from_crs("EPSG:4326", src.crs, always_xy=True)
-            x, y = transformer.transform(lon, lat)
-            row, col = src.index(x, y)
-            window = Window(col, row, 1, 1)
-            num = src.read(1, window=window)[0, 0]
-            if num < 0:
-                num = 44
-            return df.loc[num]["Column6"]
+#     with rasterio.Env(**minio_config):
+#         with rasterio.open("/vsis3/pd1/grupo3/mapa/mapa.tif") as src:
+#             transformer = Transformer.from_crs("EPSG:4326", src.crs, always_xy=True)
+#             x, y = transformer.transform(lon, lat)
+#             row, col = src.index(x, y)
+#             window = Window(col, row, 1, 1)
+#             num = src.read(1, window=window)[0, 0]
+#             if num < 0:
+#                 num = 44
+#             return df.loc[num]["Column6"]
 
 def lista_entorno(lista_puntos, df_vegetacion): 
     load_dotenv()
@@ -77,25 +71,19 @@ def lista_entorno(lista_puntos, df_vegetacion):
         "AWS_VIRTUAL_HOSTING": "FALSE",
         "GDAL_HTTP_UNSAFESSL": "YES",
     }
+    ak, sk = minioFunctions.importar_keys()
 
     with rasterio.Env(**minio_config,
-                     aws_access_key_id=os.getenv("AWS_ACCESS_KEY_ID"),
-                     aws_secret_access_key=os.getenv("AWS_SECRET_ACCESS_KEY")):
+                     aws_access_key_id=ak,
+                     aws_secret_access_key=sk):
         
         with rasterio.open("/vsis3/pd1/grupo3/mapa/mapa.tif") as src:
             transformer = Transformer.from_crs("EPSG:4326", src.crs, always_xy=True)
             lista_vegetacion = []
             
             for i, (lon, lat) in enumerate(lista_puntos):
-                x, y = transformer.transform(lon, lat)
-                row, col = src.index(x, y)
-                
-                window = Window(col, row, 1, 1)
-                data = src.read(1, window=window)
-                
-                if data.size > 0:
-                    num = data[0, 0]
-                    if num < 0: num = 44
+                num = obtenerNumero(lat, lon, src, transformer)
+                if num > -1:
                     lista_vegetacion.append(df_vegetacion.loc[num]["Column6"])
                 else:
                     lista_vegetacion.append("Sin datos")
@@ -106,11 +94,12 @@ def lista_entorno(lista_puntos, df_vegetacion):
 async def df_vegetacion2(filepath, limit=20, fecha_ini=None, fecha_fin=None):
     
     ini = time.time()
+    ak, sk = minioFunctions.importar_keys()
 
     df_aux = pd.read_csv("s3://pd1/grupo3/mapa/mapa_vegetacion.csv", 
                          storage_options={
-                             "key": os.getenv("AWS_ACCESS_KEY_ID"),
-                             "secret": os.getenv("AWS_SECRET_ACCESS_KEY"),
+                             "key": ak,
+                             "secret": sk,
                              "client_kwargs": {"endpoint_url": "https://minio.fdi.ucm.es", "verify": False}
                          })
 

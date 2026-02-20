@@ -23,7 +23,8 @@ def puntoValido(lat, lon, parquet, src, transformer):
 def filtrarZona(mascarasRegiones, parquetAnio): #Pasamos la lista de parquets de las mascaras y el parquet del año que queremos
   parquetsZonas = []
   for mascaraZona in mascarasRegiones:
-      zona = gpd.read_parquet(mascaraZona)
+      cliente = minioFunctions.crear_cliente()
+      zona = minioFunctions.bajar_fichero(cliente, mascaraZona, "df")
       gdf = gpd.GeoDataFrame(
           parquetAnio,
           geometry=gpd.points_from_xy(parquetAnio.lon_mean, parquetAnio.lat_mean),

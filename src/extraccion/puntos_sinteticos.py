@@ -133,7 +133,7 @@ def crearSinteticos(parquetAnio):
     mascaraRegionesGDF = []
 
     # 4.- Calcular áreas, número de incendios y FRP total por zona
-    for i in range(listaZonas.len):
+    for i in range(len(listaZonas)):
         mascaraRegionesGDF.append(minioFunctions.bajar_fichero(cliente, mascarasRegiones[i], "gdf"))
     
     listaAreas = []

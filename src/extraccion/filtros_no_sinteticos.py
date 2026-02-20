@@ -24,7 +24,7 @@ def filtrarZona(mascarasRegiones, parquetAnio): #Pasamos la lista de parquets de
   parquetsZonas = []
   for mascaraZona in mascarasRegiones:
       cliente = minioFunctions.crear_cliente()
-      zona = minioFunctions.bajar_fichero(cliente, mascaraZona, "df")
+      zona = minioFunctions.bajar_fichero(cliente, mascaraZona, "gdf")
       gdf = gpd.GeoDataFrame(
           parquetAnio,
           geometry=gpd.points_from_xy(parquetAnio.lon_mean, parquetAnio.lat_mean),

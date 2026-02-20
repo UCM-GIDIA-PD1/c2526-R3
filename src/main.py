@@ -106,6 +106,31 @@ def formatear_ruta(ruta, max_len=50):
         return ruta[:max_len] + "..."
     return ruta
 
+# Función para obtener parámetros
+def obtener_parametros():
+    """Pregunta al usuario si quiere especificar parámetros y los devuelve."""
+    print("\n--- Personalización de parámetros ---")
+    resp = input("¿Desea especificar parámetros personalizados? (s/n): ").strip().lower()
+    if resp != 's':
+        return None, None, None   
+
+    limit_input = input("limit (número entero, dejar vacío para 20): ").strip()
+    try:
+        limit = int(limit_input) if limit_input else 20
+    except ValueError:
+        print("Valor no válido, se usará 20 por defecto.")
+        limit = 20
+
+    # Solicitar fecha_ini
+    fecha_ini = input("fecha_ini (formato YYYY-MM-DD, vacío para None): ").strip()
+    fecha_ini = fecha_ini if fecha_ini else None
+
+    # Solicitar fecha_fin
+    fecha_fin = input("fecha_fin (formato YYYY-MM-DD, vacío para None): ").strip()
+    fecha_fin = fecha_fin if fecha_fin else None
+
+    return limit, fecha_ini, fecha_fin
+
 async def mostrar_menu():
     limpiar_pantalla()
     print("\n" + "-"*60)
@@ -122,11 +147,11 @@ async def mostrar_menu():
 
     print("\n📋 MENÚ PRINCIPAL:")
     if MODULOS_CARGADOS:
-        print("  1. Construcción DF Ambiental")
-        print("  2. Vegetación")
-        print("  3. Pendiente")
-        print("  4. Características Físicas")
-        print("  5. Vegetación 2")
+        print("  1. Construcción DF Ambiental (parámetros: limit, fechas)")
+        print("  2. Vegetación (parámetros: limit, fechas)")
+        print("  3. Pendiente (parámetros: limit, fechas)")
+        print("  4. Características Físicas (parámetros: limit, fechas)")
+        print("  5. Vegetación 2 (parámetros: limit, fechas)")
     else:
         print("  ->  Módulos no disponibles (ejecuta opción 7 para diagnosticar)")
     print("  6. Información del Proyecto")
@@ -261,20 +286,47 @@ async def main():
         await mostrar_menu()
         opcion = input("\n🔷 Selecciona una opción (0-9): ").strip()
 
+        # Permite modificar parámetros
         if opcion == "1" and MODULOS_CARGADOS:
-            await ejecutar_funcion("Construcción DF Ambiental", construccion_df.build_environmental_df, ruta_incendios, limit=30)
+            limit, fecha_ini, fecha_fin = obtener_parametros()
+
+            if limit is None:
+                await ejecutar_funcion("Construcción DF Ambiental", construccion_df.build_environmental_df, ruta_incendios)
+            else:
+                await ejecutar_funcion("Construcción DF Ambiental", construccion_df.build_environmental_df, 
+                                       ruta_incendios, limit=limit, fecha_ini=fecha_ini, fecha_fin=fecha_fin)
 
         elif opcion == "2" and MODULOS_CARGADOS:
-            await ejecutar_funcion("Vegetación", vegetacion.df_vegetacion, ruta_incendios)
+            limit, fecha_ini, fecha_fin = obtener_parametros()
+            if limit is None:
+                await ejecutar_funcion("Vegetación", vegetacion.df_vegetacion, ruta_incendios)
+            else:
+                await ejecutar_funcion("Vegetación", vegetacion.df_vegetacion, 
+                                       ruta_incendios, limit=limit, fecha_ini=fecha_ini, fecha_fin=fecha_fin)
 
         elif opcion == "3" and MODULOS_CARGADOS:
-            await ejecutar_funcion("Pendiente", pendiente.df_pendiente, ruta_incendios)
+            limit, fecha_ini, fecha_fin = obtener_parametros()
+            if limit is None:
+                await ejecutar_funcion("Pendiente", pendiente.df_pendiente, ruta_incendios)
+            else:
+                await ejecutar_funcion("Pendiente", pendiente.df_pendiente, 
+                                       ruta_incendios, limit=limit, fecha_ini=fecha_ini, fecha_fin=fecha_fin)
 
         elif opcion == "4" and MODULOS_CARGADOS:
-            await ejecutar_funcion("Características Físicas", fisicas.df_fisicas, ruta_incendios)
+            limit, fecha_ini, fecha_fin = obtener_parametros()
+            if limit is None:
+                await ejecutar_funcion("Características Físicas", fisicas.df_fisicas, ruta_incendios)
+            else:
+                await ejecutar_funcion("Características Físicas", fisicas.df_fisicas, 
+                                       ruta_incendios, limit=limit, fecha_ini=fecha_ini, fecha_fin=fecha_fin)
 
         elif opcion == "5" and MODULOS_CARGADOS:
-            await ejecutar_funcion("Vegetación 2", vegetacion2.df_vegetacion2, ruta_incendios)
+            limit, fecha_ini, fecha_fin = obtener_parametros()
+            if limit is None:
+                await ejecutar_funcion("Vegetación 2", vegetacion2.df_vegetacion2, ruta_incendios)
+            else:
+                await ejecutar_funcion("Vegetación 2", vegetacion2.df_vegetacion2, 
+                                       ruta_incendios, limit=limit, fecha_ini=fecha_ini, fecha_fin=fecha_fin)
 
         elif opcion == "6":
             print("\n" + " "*60)
@@ -301,4 +353,3 @@ async def main():
 if __name__ == "__main__":
     
     asyncio.run(main())
-    

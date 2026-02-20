@@ -14,6 +14,7 @@ from rasterio.windows import Window
 from dotenv import load_dotenv
 from . import incendios
 import asyncio
+from extraccion import minioFunctions
 
 # def obtenerNumero(lat, lon, src, data):
 #     transformer = Transformer.from_crs("EPSG:4326", src.crs, always_xy=True)
@@ -35,13 +36,13 @@ import asyncio
 
 def entorno(lat, lon):
 
-    load_dotenv()
+    ak, sk = minioFunctions.importar_keys()
 
     df = pd.read_csv(
         "s3://pd1/grupo3/mapa/mapa_vegetacion.csv",
         storage_options={
-            "key": os.getenv("AWS_ACCESS_KEY_ID"),
-            "secret": os.getenv("AWS_SECRET_ACCESS_KEY"),
+            "key": ak,
+            "secret": sk,
             "client_kwargs": {
                 "endpoint_url": "https://minio.fdi.ucm.es",
                 "verify": False  #Importante porque el acceso necesitaría sino verificación

@@ -4,6 +4,7 @@ from sklearn.cluster import DBSCAN
 import geopandas as gpd
 import pandas as pd
 from shapely.geometry import MultiPoint
+from extraccion import minioFunctions
 
 def limpieza(df):
   assert not df.empty, "No se pueden analizar incendios, el DataFrame esta vacio"
@@ -129,8 +130,8 @@ def fetch_fires(filepath, round_decimals=2, fecha_ini = None, fecha_fin = None):
     -   DURATION_DAYS: la duracion del incendio en dias
     -   AREA_HA: el area del incendio en hectareas
     """
-
-    df = pd.read_csv(filepath)
+    cliente = minioFunctions.crear_cliente()
+    df = minioFunctions.bajar_fichero(cliente, 'grupo3/raw/incendios/j1-viirs-22-26.parquet', type="df")
     df_clean = limpieza(df)
 
     if fecha_ini is not None:

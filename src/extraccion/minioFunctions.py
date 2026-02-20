@@ -3,23 +3,23 @@ from pathlib import Path
 import io
 import pandas as pd
 import geopandas as gpd
+import os
+from dotenv import load_dotenv
 
 '''
 Comprobar:
-- Archivo keys.txt en el directorio del proyecto con las claves personales del server.
+- Variables de entorno AWS_ACCESS_KEY_ID y AWS_SECRET_ACCESS_KEY en .env
+con las claves de acceso a MinIO
 - Tener VPN de la Complu activada.
 '''
 
 def importar_keys():
-    path = Path(__file__).resolve().parent.parent.parent / "keys.txt"
-    assert path.exists(), "Archivo con las claves keys.txt no encontrado."
+    load_dotenv()
 
-    with open(path, "r") as f:
-        keys = f.readlines()
-        acces_key = keys[0].strip()
-        secret_key = keys[1].strip()
+    access_key = os.getenv("AWS_ACCESS_KEY_ID")
+    secret_key = os.getenv("AWS_SECRET_ACCESS_KEY")
     
-    return acces_key, secret_key
+    return access_key, secret_key
 
 def crear_cliente():
     ak, sk = importar_keys()

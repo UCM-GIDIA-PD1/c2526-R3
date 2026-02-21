@@ -9,7 +9,7 @@ from . import minioFunctions
 from . import filtros_no_sinteticos
 
 # noIncendios tiene que ser múltiplo de 12 (total de puntos aleatorios para esta zona)
-def crearAleatorios(mascara, parquetAnio, noIncendios, anio, src, transformer, cliente):
+def crearAleatorios(mascara, parquetAnio, noIncendios, anio, src, transformer):
     listaLat = []
     listaLon = []
     fechas = []
@@ -18,12 +18,13 @@ def crearAleatorios(mascara, parquetAnio, noIncendios, anio, src, transformer, c
         noIncendios = ((noIncendios // 12) + 1) * 12
 
     puntos_por_mes = noIncendios // 12  # número de puntos a generar cada mes en esta zona
+    cliente = minioFunctions.crear_cliente()
 
     # Leer la máscara de la región
-    mascara = minioFunctions.bajar_fichero(cliente, mascara, "gdf")
-    mascara = mascara.to_crs("EPSG:4326")
+    mascara_gdf = minioFunctions.bajar_fichero(cliente, mascara, "gdf")
+    mascara_gdf = mascara_gdf.to_crs("EPSG:4326")
     # Obtener los límites geográficos de la región
-    minx, miny, maxx, maxy = mascara.geometry.total_bounds
+    minx, miny, maxx, maxy = mascara_gdf.geometry.total_bounds
 
     #Evitamos que haya errores
     minx = max(minx, -10.0)
@@ -34,13 +35,21 @@ def crearAleatorios(mascara, parquetAnio, noIncendios, anio, src, transformer, c
     # Generar puntos para cada mes (de 1 a 12)
     for mes in range(1, 13):
         for _ in range(puntos_por_mes):
-            lat = np.random.uniform(miny, maxy)
-            lon = np.random.uniform(minx, maxx)
-            if filtros_no_sinteticos.puntoValido(lat, lon, parquetAnio, src, transformer):
-                listaLat.append(lat)
-                listaLon.append(lon)
-                dia = np.random.randint(1, 29)  # día aleatorio entre 1 y 28 (incluido)
-                fechas.append(filtros_no_sinteticos.crearFecha(dia, mes, anio))
+            
+            #Tres intentos de conseguir un mejor punto
+            intentos = 0
+
+            while intentos < 3:
+                lat = np.random.uniform(miny, maxy)
+                lon = np.random.uniform(minx, maxx)
+                intentos += 1
+
+                if filtros_no_sinteticos.puntoValido(lat, lon, parquetAnio, src, transformer):
+                    listaLat.append(lat)
+                    listaLon.append(lon)
+                    dia = np.random.randint(1, 29)  # día aleatorio entre 1 y 28 (incluido)
+                    fechas.append(filtros_no_sinteticos.crearFecha(dia, mes, anio))
+                    break  
 
     return listaLat, listaLon, fechas
 
@@ -57,6 +66,7 @@ def crearCercanos(incendiosZona, numNoIncendios, frpTotal, parquetAnio, src, tra
     from math import cos, sin
     import numpy as np
     import pandas as pd
+    
 
     df = incendiosZona  # ya es un DataFrame
     listaLat = []
@@ -107,12 +117,14 @@ def crearCercanos(incendiosZona, numNoIncendios, frpTotal, parquetAnio, src, tra
     return numNoIncendios_restante, listaLat, listaLon, fechas
 
 
-def crearSinteticos(parquetAnio):
+def crearSinteticos(parquetAnio, src, data):
     # Cargo claves
     
     load_dotenv()
-    
-    cliente = minioFunctions.crear_cliente()
+
+    # Semilla para tener todos el mismo valor
+    np.random.seed(42)
+
     # 1.- Leer incendios del año (una sola vez)
     df_incendios = pd.read_parquet(parquetAnio)  # df_incendios es el DataFrame completo
 
@@ -128,8 +140,11 @@ def crearSinteticos(parquetAnio):
         'grupo3/BiogeoRegiones/ArcticRegion.parquet', 'grupo3/BiogeoRegiones/AlpineRegion.parquet'
     ]
 
+    cliente = minioFunctions.crear_cliente()
+
     # 3.- Obtener DataFrames de incendios por zona (ya no son rutas, son DataFrames)
-    listaZonas = filtros_no_sinteticos.filtrarZona(mascarasRegiones, df_incendios, cliente)
+    listaZonas = filtros_no_sinteticos.filtrarZona(mascarasRegiones, df_incendios,cliente)
+
     mascaraRegionesGDF = []
 
     # 4.- Calcular áreas, número de incendios y FRP total por zona
@@ -146,7 +161,7 @@ def crearSinteticos(parquetAnio):
         listaFrpTotal.append(zona_df['frp_mean'].sum())
 
         # Leer la máscara geográfica para calcular el área
-        area = mascaraRegionesGDF[i].geometry.area.sum()
+        area = mascaraRegionesGDF[i].to_crs("EPSG:3035").geometry.area.sum() / 1e6  # km²
         areaTotal += area
         listaAreas.append(area)
 
@@ -201,11 +216,11 @@ def crearSinteticos(parquetAnio):
                       df_incendios,             # DataFrame completo (para validar)
                       restante,
                       anio,
-                      src, transformer, cliente
+                      src, transformer
                   )
                   todas_lats.extend(lats_rand)
                   todas_lons.extend(lons_rand)
                   todas_fechas.extend(fechas_rand)
 
     # 7.- Devolver DataFrame final
-    return pd.DataFrame({'lat': todas_lats, 'lon': todas_lons, 'fecha': todas_fechas})
+    return pd.DataFrame({'lat_mean': todas_lats, 'lon_mean': todas_lons, 'fecha': todas_fechas})

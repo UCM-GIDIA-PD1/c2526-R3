@@ -8,3 +8,5 @@ keys.txt
 credenciales
 *.parquet
 *.csv
+.vscode
+esc

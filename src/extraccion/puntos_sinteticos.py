@@ -208,4 +208,13 @@ def crearSinteticos(parquetAnio):
                   todas_fechas.extend(fechas_rand)
 
     # 7.- Devolver DataFrame final
-    return pd.DataFrame({'lat': todas_lats, 'lon': todas_lons, 'fecha': todas_fechas})
+    #Ignacio: cambiado nombre "fecha" a "date"
+    return pd.DataFrame({'lat': todas_lats, 'lon': todas_lons, 'date': todas_fechas})
+
+'''
+Ignacio (NOTA)
+Cuidado porque en la generación de dataframes con los puntos de incendios se redondean
+los decimales de lat y lon a 2 y en la generación de puntos sintéticos no se rendondea
+a ningún decimal, por lo que si se juntasen ambos, habría inconsistencia a la hora de 
+comparar coordenadas por ejemplo a la hora de hacer un merge.
+'''

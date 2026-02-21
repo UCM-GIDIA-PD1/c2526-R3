@@ -1,6 +1,6 @@
 import asyncio
 import time
-from . import incendios
+from . import incendios, minioFunctions
 import pandas as pd
 import aiohttp
 
@@ -32,6 +32,10 @@ async def fetch_environment(session, lat, lon, date, indice = None, intentos=3):
                         d = r["daily"]
                         print(f"Características físicas {indice} extraidas.")
                         return {
+                            #Ignacio: añadido ["lat", "lon", "date"]
+                            "lat" : lat,
+                            "lon" : lon,
+                            "date" : date,
                             "temp_mean": d["temperature_2m_mean"][0],
                             "temp_max": d["temperature_2m_max"][0],
                             "temp_min": d["temperature_2m_min"][0],
@@ -55,9 +59,12 @@ async def fetch_environment(session, lat, lon, date, indice = None, intentos=3):
                 print(f"Error de conexión: {e}")
                 await asyncio.sleep(1)
 
-        return {k: None for k in ["temp_mean", "temp_max", "temp_min", "humidity_mean", "precipitation",
+        #Ignacio: añadido ["lat", "lon", "date"]
+        error = {"lat" : lat, "lon" : lon, "date" : date}
+        error.update({k: None for k in ["temp_mean", "temp_max", "temp_min", "humidity_mean", "precipitation",
                                 "wind_speed_max", "wind_gusts_max", "pressure_mean", "cloud_cover",
-                                "radiation", "evapotranspiration", "sunshine_seconds"]}
+                                "radiation", "evapotranspiration", "sunshine_seconds"]})
+        return error
 
 async def df_fisicas(filepath, limit = 20, fecha_ini = None, fecha_fin = None):
     
@@ -79,3 +86,8 @@ async def df_fisicas(filepath, limit = 20, fecha_ini = None, fecha_fin = None):
         print(f"Extraidas {limit} filas de características físicas en {fin - ini:.2f} segundos.")
         print(final_df.head(limit))
         return final_df
+
+async def subir_fisicas_minio(df, nombre):
+    assert isinstance(df, pd.DataFrame), "el df pasado por parámetro debe ser del tipo DataFrame."
+    cliente = minioFunctions.crear_cliente()
+    minioFunctions.subir_fichero(cliente, f"grupo3/raw/Fisicas/{nombre}", df)

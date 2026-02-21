@@ -114,3 +114,8 @@ async def df_vegetacion2(filepath, limit=20, fecha_ini=None, fecha_fin=None):
     print(f"Finalizado en {time.time() - ini:.2f}s")
     print(final_df.head(limit))
     return final_df
+
+def subir_vegetacion2_minio(df, nombre):
+    assert isinstance(df, pd.DataFrame), "el df pasado por parámetro debe ser del tipo DataFrame."
+    cliente = minioFunctions.crear_cliente()
+    minioFunctions.subir_fichero(cliente, f"grupo3/raw/Vegetacion2/{nombre}", df)

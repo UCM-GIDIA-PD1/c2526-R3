@@ -1,4 +1,4 @@
-from . import incendios, pendiente, vegetacion, fisicas, vegetacion2
+from . import incendios, pendiente, vegetacion, fisicas, vegetacion2, minioFunctions
 import time
 import pandas as pd
 import asyncio
@@ -15,7 +15,8 @@ async def procesar_fila_completa(session, row, index):
         tareas = [
             fisicas.fetch_environment(session, row.lat_mean, row.lon_mean, fecha_str),
             vegetacion.vegetacion(row.lat_mean, row.lon_mean, fecha_str),
-            pendiente.pendiente(row.lat_mean, row.lon_mean),
+            #Ignacio: pasamos fecha_str
+            pendiente.pendiente(row.lat_mean, row.lon_mean, fecha_str),
         ]
 
         resultados = await asyncio.gather(*tareas)
@@ -65,3 +66,19 @@ async def build_environmental_df(filepath, limit=100, fecha_ini = None, fecha_fi
     print(final_df.head(limit))
     return final_df
     
+#Ignacio: lo mejor es pasar como primer elemento de la lista el parquet de los
+#incendios/no incendios con los puntos para que el merge(how = 'left') sea más robusto
+def merge_parquets(path_list):
+    '''
+    Devuelve dataframe de todas las variables separadas, ahora juntas
+    :param path_list: lista con todos los paths de minio de las variables a mergear
+    '''
+    assert len(path_list) >= 2, "Longitud de la lista pasada por parámetro no válida."
+    cliente = minioFunctions.crear_cliente()
+    
+    result = minioFunctions.bajar_fichero(cliente, path_list[0], "df")
+    for path in path_list[1:]:
+        df = minioFunctions.bajar_fichero(cliente, path, "df")
+        result = pd.merge(result, df, on=["lat", "lon", "date"], how='left')
+    
+    return result

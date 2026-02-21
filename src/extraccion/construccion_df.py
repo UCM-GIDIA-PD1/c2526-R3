@@ -79,6 +79,8 @@ def merge_parquets(path_list):
     result = minioFunctions.bajar_fichero(cliente, path_list[0], "df")
     for path in path_list[1:]:
         df = minioFunctions.bajar_fichero(cliente, path, "df")
+        result['date'] = pd.to_datetime(result['date'])
+        df['date'] = pd.to_datetime(df['date'])
         result = pd.merge(result, df, on=["lat", "lon", "date"], how='left')
     
     return result

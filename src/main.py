@@ -278,6 +278,12 @@ async def ejecutar_funcion(nombre, func, *args, **kwargs):
     except Exception as e:
         print(f"Error en {nombre}: {e}")
 
+def obtener_lista_ficheros():
+    entrada = input("Introduce los paths separados por espacios: ")
+    datos = entrada.split()
+    lista = list(datos)
+    return lista
+    
 # MAIN
 async def main():
     ruta_incendios = os.getenv('INCENDIOS')
@@ -340,6 +346,13 @@ async def main():
 
         elif opcion == "8":
             await verificar_archivo_incendios()
+
+        elif opcion == "9":
+            print(f"Mergear ficheros: ")
+            lista = obtener_lista_ficheros()
+            df = construccion_df.merge_parquets(lista)
+            print("Merge correcto")
+            print(df)
 
         elif opcion == "0":
             print("\n   ¡Adios! Pasa un buen día ")

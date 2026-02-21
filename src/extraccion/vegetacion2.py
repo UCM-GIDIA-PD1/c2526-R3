@@ -119,6 +119,6 @@ async def df_vegetacion2(filepath, limit=20, fecha_ini=None, fecha_fin=None):
     print(f"Finalizado en {time.time() - ini:.2f}s")
     print(final_df.head(limit))
 
-    minioFunctions.preguntar_subida(final_df)
+    minioFunctions.preguntar_subida(final_df, "grupo3/raw/Vegetacion2/")
 
     return final_df

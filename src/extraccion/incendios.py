@@ -160,6 +160,6 @@ def fetch_fires(filepath, round_decimals=2, fecha_ini = None, fecha_fin = None, 
     print("Hectáreas calculadas")
 
     if question:
-        minioFunctions.preguntar_subida(resumen.sort_values(by='count', ascending=False))
+        minioFunctions.preguntar_subida(resumen.sort_values(by='count', ascending=False), "grupo3/raw/incendios/")
     
     return resumen.sort_values(by='count', ascending=False)

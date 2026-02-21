@@ -56,7 +56,7 @@ async def df_pendiente(filepath, limit = 20, fecha_ini = None, fecha_fin = None)
   print(f"Extraidas {limit} filas de pendiente en {fin - ini:.2f} segundos.")
   print(final_df.head(limit))
 
-  minioFunctions.preguntar_subida(final_df)
+  minioFunctions.preguntar_subida(final_df, "grupo3/raw/Pendiente/")
 
   return final_df
   

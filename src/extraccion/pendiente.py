@@ -60,7 +60,3 @@ async def df_pendiente(filepath, limit = 20, fecha_ini = None, fecha_fin = None)
 
   return final_df
   
-def subir_pendiente_minio(df, nombre):
-  assert isinstance(df, pd.DataFrame), "el df pasado por parámetro debe ser del tipo DataFrame."
-  cliente = minioFunctions.crear_cliente()
-  minioFunctions.subir_fichero(cliente, f"grupo3/raw/Pendiente/{nombre}", df)

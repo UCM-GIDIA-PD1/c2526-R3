@@ -85,16 +85,7 @@ async def df_fisicas(filepath, limit = 20, fecha_ini = None, fecha_fin = None):
 
         print(f"Extraidas {limit} filas de características físicas en {fin - ini:.2f} segundos.")
         print(final_df.head(limit))
-<<<<<<< HEAD
 
         minioFunctions.preguntar_subida(final_df)
 
-=======
-        await subir_fisicas_minio(final_df, "fisicas_prueba")
->>>>>>> rama-Ignacio
         return final_df
-
-async def subir_fisicas_minio(df, nombre):
-    assert isinstance(df, pd.DataFrame), "el df pasado por parámetro debe ser del tipo DataFrame."
-    cliente = minioFunctions.crear_cliente()
-    minioFunctions.subir_fichero(cliente, f"grupo3/raw/Fisicas/{nombre}.parquet", df)

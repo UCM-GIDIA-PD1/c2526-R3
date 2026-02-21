@@ -12,6 +12,12 @@ def limpieza(df):
   df = df[df['confidence'] != 'l'] #confianza l (low) es que no es fiable
   df = df.drop_duplicates(subset=['latitude', 'longitude', 'acq_date']) #quita incendios iguales
   df= df[df['frp'] > 50]
+  df = df[df['type'] == 0] 
+    # Filtrar solo los incendios de tipo 0 (presumed vegetation fire)
+    # 0 = presumed vegetation fire
+    # 1 = active volcano
+    # 2 = other static land source
+    # 3 = offshore
   df = df.rename(columns={
         'latitude': 'lat',
         'longitude': 'lon',

@@ -145,13 +145,13 @@ def fetch_fires(filepath, round_decimals=2, fecha_ini = None, fecha_fin = None):
     if df_clean.empty:
         print("No hay incendios en el rango de fechas seleccionado.")
         return pd.DataFrame()
-
+    print("Df separado")
     df_clean, resumen = separate_fire_events(df_clean, 5.0)
     
     areas_df = calcular_area_incendios(df_clean, pixel_res_meters=375) 
 
     resumen['area_ha'] = areas_df
-
+    print("Hectáreas calculadas")
     minioFunctions.preguntar_subida(resumen.sort_values(by='count', ascending=False))
     
     return resumen.sort_values(by='count', ascending=False)

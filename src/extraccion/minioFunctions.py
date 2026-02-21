@@ -118,6 +118,8 @@ def preguntar_subida(df):
     Pregunta al usuario si desea subir un DataFrame/GeoDataFrame a MinIO.
     """
 
+    #print(f"\n    Earth Engine inicializado: {'✅ Sí' if EE_OK else '❌ No'}")
+
     nombre_sugerido="datos.parquet"
 
     print("\n Subir a MinIO ")

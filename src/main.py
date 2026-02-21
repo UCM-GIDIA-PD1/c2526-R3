@@ -343,7 +343,29 @@ async def main():
             print("\n" + " "*60)
             print(" INFORMACIÓN DEL PROYECTO")
             print(" "*60)
-            print("Por escribir")
+            print("Este código es utilizado para la extracción completa de datos. " \
+            "A tener en cuenta que cada extracción puede ser subida a MinIO si así lo desea su creador." \
+            "Todo está automatizado, siendo el uso de rutas en .env utilizadas para pruebas sin conexión con el servidor." \
+            "" \
+            "Esta se reparte de la siguiente manera:" \
+            "" \
+            "- Main: compuesto por un menú que indica dependencias, librerías y diferentes funciones" \
+            ""
+            "- construccion_df: Se le pasa una ruta de MinIO y construye un DataFrame y un parquet completo con todas las variables a estudiar" \
+            "- fisicas.py: Saca las características físicas al mandar una ruta a un .parquet con la Api Open-Meteo" \
+            "- incendios.py: Extrae, limpia y auna los datos de cada incendio al obtener una ruta de MinIO" \
+            "- pendiente.py: Extrae los datos de la pendiente al mandar una ruta .parquet con los satélites de Google EE" \
+            "- vegetacion.py: Extrae los datos de la vegetación al mandar una ruta .parquet con la Api de Google Earth" \
+            "- vegetacion2.py: Se analizan los datos mediante una rasterización de un .tif para saber si se encuentra en agua, zona urbana o " \
+            "en que tipo de vegetación se encuentra"
+            "- puntos_sinteticos.py: Creación de puntos por incendio basado en cercanía, área, intensidad de incendios y aleatoriedad." \
+            "" \
+            "- filtros_no_sinteticos.py: Funciones para filtrar la creación de puntos sintéticos" \
+            "- mascaras.py: Diferentes funciones de parse y de filtro de máscaras y parquets" \
+            "- minioFunctions: Funciones para subir, bajar y manejar archivos en MinIO sin tener que tenerlos en local" \
+            "- parquet.py: Función para ordenar parquets dentro de MinIO" \
+            "")
+
             print("="*60)
 
         elif opcion == "7":

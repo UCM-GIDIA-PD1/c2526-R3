@@ -354,7 +354,7 @@ async def main():
             limit, fecha_ini, fecha_fin = obtener_parametros()
         
             await ejecutar_funcion("Incendios", incendios.fetch_fires,
-                                    ruta_incendios, fecha_ini=fecha_ini, fecha_fin=fecha_fin)
+                                    ruta_incendios, fecha_ini=fecha_ini, fecha_fin=fecha_fin, question=True)
 
 
         elif opcion == "0":

@@ -151,5 +151,7 @@ def fetch_fires(filepath, round_decimals=2, fecha_ini = None, fecha_fin = None):
     areas_df = calcular_area_incendios(df_clean, pixel_res_meters=375) 
 
     resumen['area_ha'] = areas_df
+
+    minioFunctions.preguntar_subida(resumen.sort_values(by='count', ascending=False))
     
     return resumen.sort_values(by='count', ascending=False)

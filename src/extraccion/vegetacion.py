@@ -5,7 +5,7 @@ import os
 from dotenv import load_dotenv
 from google.oauth2.service_account import Credentials
 import asyncio
-from . import incendios
+from . import incendios, minioFunctions
 import pandas as pd
 import time
 
@@ -124,5 +124,8 @@ async def df_vegetacion(filepath, limit = 20, fecha_ini = None, fecha_fin = None
 
   print(f"Extraidas {limit} filas de vegetación en {fin - ini:.2f} segundos.")
   print(final_df.head(limit))
+
+  minioFunctions.preguntar_subida(final_df)
+
   return final_df
   

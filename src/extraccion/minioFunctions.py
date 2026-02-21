@@ -112,3 +112,37 @@ cliente = crear_cliente()
 df = pd.DataFrame({"Esto" : ["es una prueba"]})
 subir_fichero(cliente, "grupo3/prueba_subir_fichero.parquet", df)
 '''
+
+def preguntar_subida(df):
+    """
+    Pregunta al usuario si desea subir un DataFrame/GeoDataFrame a MinIO.
+    """
+
+    nombre_sugerido="datos.parquet"
+
+    print("\n Subir a MinIO ")
+    respuesta = input("¿Desea subir este archivo a MinIO? (s/n): ").strip().lower()
+    if respuesta != 's':
+        print("Archivo no subido.")
+        return False
+
+    ruta_carpeta = input("Ruta en el bucket (ej. grupo3/mis_datos/): ").strip()
+
+    nombre = input(f"Nombre del archivo para '{nombre_sugerido}': ").strip()
+    
+    if not nombre:
+        nombre = nombre_sugerido
+    if not nombre.endswith('.parquet'):
+        nombre += '.parquet'
+
+    ruta_completa = f"{ruta_carpeta}{nombre}"
+    print(f"Ruta completa: {ruta_completa}")
+
+    try:
+        cliente = crear_cliente()
+        subir_fichero(cliente, ruta_completa, df)
+        print(f" Archivo subido correctamente a {ruta_completa}")
+        return True
+    except Exception as e:
+        print(f" Error al subir el archivo: {e}")
+        return False

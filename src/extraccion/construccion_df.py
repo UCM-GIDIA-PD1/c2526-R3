@@ -1,4 +1,4 @@
-from . import incendios, pendiente, vegetacion, fisicas, vegetacion2
+from . import incendios, pendiente, vegetacion, fisicas, vegetacion2,minioFunctions
 import time
 import pandas as pd
 import asyncio
@@ -63,5 +63,7 @@ async def build_environmental_df(filepath, limit=100, fecha_ini = None, fecha_fi
     fin = time.time()
     print(f"Extraidos {limit} incendios en {fin - ini:.2f} segundos.")
     print(final_df.head(limit))
+
+    minioFunctions.preguntar_subida(final_df)
     return final_df
     

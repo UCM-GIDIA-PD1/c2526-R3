@@ -1,6 +1,6 @@
 import asyncio
 import time
-from . import incendios
+from . import incendios, minioFunctions
 import pandas as pd
 import aiohttp
 
@@ -78,4 +78,7 @@ async def df_fisicas(filepath, limit = 20, fecha_ini = None, fecha_fin = None):
 
         print(f"Extraidas {limit} filas de características físicas en {fin - ini:.2f} segundos.")
         print(final_df.head(limit))
+
+        minioFunctions.preguntar_subida(final_df)
+
         return final_df

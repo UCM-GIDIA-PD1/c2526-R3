@@ -2,7 +2,7 @@ import numpy as np
 import ee
 import asyncio
 import time
-from . import incendios
+from . import incendios,minioFunctions
 import pandas as pd
 
 sem_global = asyncio.Semaphore(10)
@@ -50,5 +50,8 @@ async def df_pendiente(filepath, limit = 20, fecha_ini = None, fecha_fin = None)
 
   print(f"Extraidas {limit} filas de pendiente en {fin - ini:.2f} segundos.")
   print(final_df.head(limit))
+
+  minioFunctions.preguntar_subida(final_df)
+
   return final_df
   

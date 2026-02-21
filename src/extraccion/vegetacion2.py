@@ -113,4 +113,7 @@ async def df_vegetacion2(filepath, limit=20, fecha_ini=None, fecha_fin=None):
     final_df = pd.DataFrame(lista_res, columns=["vegetacion2"])
     print(f"Finalizado en {time.time() - ini:.2f}s")
     print(final_df.head(limit))
+
+    minioFunctions.preguntar_subida(final_df)
+
     return final_df

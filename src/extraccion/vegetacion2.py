@@ -105,12 +105,17 @@ async def df_vegetacion2(filepath, limit=20, fecha_ini=None, fecha_fin=None):
 
     fires = incendios.fetch_fires(filepath, limit, fecha_ini, fecha_fin)
     fires = fires.head(limit)
+    
     lista_puntos = list(zip(fires['lon_mean'], fires['lat_mean']))
 
 
     lista_res = await asyncio.to_thread(lista_entorno, lista_puntos, df_aux)
+    fires = fires[['lat_mean','lon_mean','date_first']].copy().reset_index(drop = True)
 
     final_df = pd.DataFrame(lista_res, columns=["vegetacion2"])
+    final_df = pd.concat([final_df, fires], axis = 1)
+    final_df = final_df.rename(columns={'lat_mean':'lat', 'lon_mean':'lon', 'date_first':'date'})
+
     print(f"Finalizado en {time.time() - ini:.2f}s")
     print(final_df.head(limit))
     return final_df

@@ -104,7 +104,6 @@ async def vegetacion(lat, lon, fecha, indice = None):
     if indice is not None:
       print(f"Vegetación {indice} extraida.")
     
-    #Ignacio: añadido ["lat", "lon", "date"]
     resultado['lat'] = lat
     resultado['lon'] = lon
     resultado['date'] = fecha

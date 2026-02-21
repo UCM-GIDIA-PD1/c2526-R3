@@ -291,6 +291,12 @@ async def ejecutar_funcion(nombre, func, *args, **kwargs):
         print(f" Error en {nombre}: {e}")
         traceback.print_exc()
 
+def obtener_lista_ficheros():
+    entrada = input("Introduce los paths separados por espacios: ")
+    datos = entrada.split()
+    lista = list(datos)
+    return lista
+    
 # MAIN
 async def main():
     while True:
@@ -352,6 +358,7 @@ async def main():
         elif opcion == "8":
             await verificar_archivo_incendios()
 
+<<<<<<< HEAD
         elif opcion == "9" and MODULOS_CARGADOS:
             # Opción 9: Generar puntos sintéticos
             ruta_parquet = input("Ruta del archivo Parquet con incendios (vacío para usar RUTA_PRUEBA de .env): ").strip()
@@ -411,6 +418,14 @@ async def main():
             except Exception as e:
                 print(f"   Error durante la generación: {e}")
                 traceback.print_exc()
+=======
+        elif opcion == "9":
+            print(f"Mergear ficheros: ")
+            lista = obtener_lista_ficheros()
+            df = construccion_df.merge_parquets(lista)
+            print("Merge correcto")
+            print(df)
+>>>>>>> rama-Ignacio
 
         elif opcion == "0":
             print("\n👋 ¡Adiós! Pasa un buen día.")

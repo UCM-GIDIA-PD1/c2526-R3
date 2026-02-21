@@ -222,7 +222,7 @@ def crearSinteticos(parquetAnio, src, data):
                   todas_lons.extend(lons_rand)
                   todas_fechas.extend(fechas_rand)
 
-    final_df = pd.DataFrame({'lat_mean': todas_lats, 'lon_mean': todas_lons, 'fecha': todas_fechas})
+    final_df = pd.DataFrame({'latn': todas_lats, 'lon': todas_lons, 'date': todas_fechas})
 
     minioFunctions.preguntar_subida(final_df)
 

@@ -2,12 +2,12 @@ import numpy as np
 import ee
 import asyncio
 import time
-from . import incendios,minioFunctions
+from . import incendios, minioFunctions
 import pandas as pd
 
 sem_global = asyncio.Semaphore(10)
 
-async def pendiente(lat, lon, indice = None):
+async def pendiente(lat, lon, date, indice = None): #Ignacio: añadido date
   ''' Esta función calcula la pendiente de un punto utilizando los satelites de Google EE'''
   async with sem_global:
     dem = ee.Image('USGS/SRTMGL1_003')
@@ -27,6 +27,10 @@ async def pendiente(lat, lon, indice = None):
       print(f"Pendiente {indice} extraida.")
     
     return {
+        #Ignacio: añadido ["lat", "lon", "date"]
+        "lat" : lat,
+        "lon" : lon, 
+        "date" : date,
         "elevacion_centro": res['elevation'],
         "grados": res['slope'],
         "porcentaje": (np.tan(np.radians(res['slope'])) * 100) if res['slope'] else 0
@@ -40,7 +44,8 @@ async def df_pendiente(filepath, limit = 20, fecha_ini = None, fecha_fin = None)
 
   fires = incendios.fetch_fires(filepath, limit, fecha_ini, fecha_fin)
   tareas = [
-        pendiente(row['lat_mean'], row['lon_mean'], indice = i)
+        #Ignacio: pasamos ahora row["date_first"]
+        pendiente(row['lat_mean'], row['lon_mean'],row['date_first'], indice = i)
         for i, row in enumerate(fires.head(limit).to_dict('records'))
     ]
   resultados = await asyncio.gather(*tareas)
@@ -55,3 +60,7 @@ async def df_pendiente(filepath, limit = 20, fecha_ini = None, fecha_fin = None)
 
   return final_df
   
+def subir_pendiente_minio(df, nombre):
+  assert isinstance(df, pd.DataFrame), "el df pasado por parámetro debe ser del tipo DataFrame."
+  cliente = minioFunctions.crear_cliente()
+  minioFunctions.subir_fichero(cliente, f"grupo3/raw/Pendiente/{nombre}", df)

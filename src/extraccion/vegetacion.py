@@ -103,6 +103,11 @@ async def vegetacion(lat, lon, fecha, indice = None):
     resultado = await asyncio.to_thread(logica_vegetacion, lat, lon, fecha)
     if indice is not None:
       print(f"Vegetación {indice} extraida.")
+    
+    resultado['lat'] = lat
+    resultado['lon'] = lon
+    resultado['date'] = fecha
+    
     return resultado
 
 
@@ -125,7 +130,15 @@ async def df_vegetacion(filepath, limit = 20, fecha_ini = None, fecha_fin = None
   print(f"Extraidas {limit} filas de vegetación en {fin - ini:.2f} segundos.")
   print(final_df.head(limit))
 
+<<<<<<< HEAD
   minioFunctions.preguntar_subida(final_df)
+=======
+  subir_vegetacion_minio(final_df, "vegetacion_prueba")
+>>>>>>> rama-Ignacio
 
   return final_df
-  
+
+def subir_vegetacion_minio(df, nombre):
+  assert isinstance(df, pd.DataFrame), "el df pasado por parámetro debe ser del tipo DataFrame."
+  cliente = minioFunctions.crear_cliente()
+  minioFunctions.subir_fichero(cliente, f"grupo3/raw/Vegetacion/{nombre}.parquet", df)

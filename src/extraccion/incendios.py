@@ -5,6 +5,7 @@ import geopandas as gpd
 import pandas as pd
 from shapely.geometry import MultiPoint
 from extraccion import minioFunctions
+import datetime
 
 def limpieza(df):
   assert not df.empty, "No se pueden analizar incendios, el DataFrame esta vacio"
@@ -70,15 +71,17 @@ def calcular_area_incendios(df, pixel_res_meters=1000):
         })
         
     area = pd.DataFrame(resultados).sort_values(by='puntos_activos', ascending=False)
-    return area['area_ha']
+    return area[['fire_id', 'area_ha']]
 
-def separate_fire_events(df, dist_km=2.0):
+def separate_fire_events(df, dist_km=2.0, mes_inicial=1, mes_final=12):
     """
     Asigna un ID único a cada grupo de puntos que pertenezcan al mismo incendio.
 
     Parámetros:
     - df: DataFrame de FIRMS.
     - dist_km: Distancia máxima para considerar que dos puntos son del mismo incendio.
+    - mes_inicial: Mes inicial del rango de fechas a considerar.
+    - mes_final: Mes final del rango de fechas a considerar.
     """
     assert not df.empty, "El DataFrame contenia fuegos poco relevantes y se vacio, no se pueden separar eventos de incendios"
 
@@ -93,22 +96,42 @@ def separate_fire_events(df, dist_km=2.0):
     db = DBSCAN(eps=epsilon, min_samples=1, metric='haversine').fit(coords)
 
     # 3. Asignar las etiquetas al DataFrame
-    df['fire_id'] = db.labels_
+    df['fire_id'] = db.labels_.astype(str)
+    
+
+    # Diferenciar incendios que ocurren en el mismo lugar pero con una diferencia de tiempo mayor a 6 dias, asignando un nuevo ID a cada uno de ellos
+
+    for incendio in df['fire_id'].unique():
+        incendio_df = df[df['fire_id'] == incendio]
+        ultimo_id = incendio
+        ultima_fecha = datetime.datetime(2020, 1, 1) #fecha de ejemplo que siempre es menor que la fecha de los incendios 
+            
+        for captacion in incendio_df.itertuples():
+            dif = (captacion.date - ultima_fecha).days
+
+            if dif > 6:
+                df.loc[captacion.Index, 'fire_id'] = f'{ultimo_id}_{captacion.Index}'
+                ultimo_id = f'{ultimo_id}_{captacion.Index}'
+            else:
+                df.loc[captacion.Index, 'fire_id'] = ultimo_id
+                
+            ultima_fecha = captacion.date
 
     # Opcional: Contar cuántos puntos hay por incendio y su FRP total
-    resumen = df.groupby('fire_id').agg({
-        'lat': 'mean',
-        'lon': 'mean',
-        'frp': ['sum', 'mean', 'count'],
-        'date': ['first', 'last']
-    })
+        resumen = df.groupby('fire_id').agg({
+            'lat': 'mean',
+            'lon': 'mean',
+            'frp': ['sum', 'mean', 'count'],
+            'date': ['first', 'last']
+        })
 
-    df['lat'] = df['lat'].round(2)
-    df['lon'] = df['lon'].round(2)
+        df['lat'] = df['lat'].round(2)
+        df['lon'] = df['lon'].round(2)
 
-    resumen.columns = ['lat_mean', 'lon_mean', 'frp_sum', 'frp_mean', 'count', 'date_first', 'date_last']
+        resumen.columns = ['lat_mean', 'lon_mean', 'frp_sum', 'frp_mean', 'count', 'date_first', 'date_last']
 
-    resumen['duration_days'] = (resumen['date_last'] - resumen['date_first']).dt.days + 1
+        resumen['duration_days'] = (resumen['date_last'] - resumen['date_first']).dt.days + 1
+
     return df, resumen
 
 '''
@@ -156,8 +179,9 @@ def fetch_fires(filepath, round_decimals=2, fecha_ini = None, fecha_fin = None):
     
     areas_df = calcular_area_incendios(df_clean, pixel_res_meters=375) 
 
-    resumen['area_ha'] = areas_df
+    resumen = resumen.merge(areas_df, on='fire_id', how='left')
     print("Hectáreas calculadas")
     minioFunctions.preguntar_subida(resumen.sort_values(by='count', ascending=False))
-    
+    resumen.to_parquet(r"C:\Users\esteb\Desktop\PD1\datos-incendios\incendios_22_esteban.parquet", index=False)
+
     return resumen.sort_values(by='count', ascending=False)

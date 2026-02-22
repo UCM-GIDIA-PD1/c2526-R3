@@ -113,13 +113,10 @@ df = pd.DataFrame({"Esto" : ["es una prueba"]})
 subir_fichero(cliente, "grupo3/prueba_subir_fichero.parquet", df)
 '''
 
-def preguntar_subida(df):
+def preguntar_subida(df, ruta_carpeta = "grupo3/Datos/"):
     """
     Pregunta al usuario si desea subir un DataFrame/GeoDataFrame a MinIO.
     """
-
-    #print(f"\n    Earth Engine inicializado: {'✅ Sí' if EE_OK else '❌ No'}")
-
     nombre_sugerido="datos.parquet"
 
     print("\n Subir a MinIO ")
@@ -128,7 +125,7 @@ def preguntar_subida(df):
         print("Archivo no subido.")
         return False
 
-    ruta_carpeta = input("Ruta en el bucket (ej. grupo3/mis_datos/): ").strip()
+    print(f"Ruta en el bucket: {ruta_carpeta}")
 
     nombre = input(f"Nombre del archivo para '{nombre_sugerido}': ").strip()
     

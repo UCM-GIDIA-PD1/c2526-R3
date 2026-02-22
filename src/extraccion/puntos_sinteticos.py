@@ -222,8 +222,8 @@ def crearSinteticos(parquetAnio, src, data):
                   todas_lons.extend(lons_rand)
                   todas_fechas.extend(fechas_rand)
 
-    final_df = pd.DataFrame({'latn': todas_lats, 'lon': todas_lons, 'date': todas_fechas})
+    final_df = pd.DataFrame({'lat': todas_lats, 'lon': todas_lons, 'date': todas_fechas})
 
-    minioFunctions.preguntar_subida(final_df)
+    minioFunctions.preguntar_subida(final_df, "grupo3/raw/No_incendios/")
     # 7.- Devolver DataFrame final
     return final_df

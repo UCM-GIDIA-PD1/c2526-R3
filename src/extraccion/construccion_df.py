@@ -65,7 +65,7 @@ async def build_environmental_df(filepath, limit=100, fecha_ini = None, fecha_fi
     print(f"Extraidos {limit} incendios en {fin - ini:.2f} segundos.")
     print(final_df.head(limit))
 
-    minioFunctions.preguntar_subida(final_df)
+    minioFunctions.preguntar_subida(final_df, "grupo3/raw/Incendios_environmental/")
     return final_df
     
 #Ignacio: lo mejor es pasar como primer elemento de la lista el parquet de los

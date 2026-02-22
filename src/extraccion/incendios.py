@@ -146,7 +146,7 @@ def crear_parquet(df, filename='resumen_incendios.parquet'):
     df.to_parquet(filename, index=False)
 '''
 
-def fetch_fires(filepath, round_decimals=2, fecha_ini = None, fecha_fin = None):
+def fetch_fires(filepath, round_decimals=2, fecha_ini = None, fecha_fin = None, question=False):
     """
     la funcion devuelve un dataFrame:
     resumen es lo mas importante y contiene un dataFrame con:
@@ -181,7 +181,8 @@ def fetch_fires(filepath, round_decimals=2, fecha_ini = None, fecha_fin = None):
 
     resumen = resumen.merge(areas_df, on='fire_id', how='left')
     print("Hectáreas calculadas")
-    minioFunctions.preguntar_subida(resumen.sort_values(by='count', ascending=False))
-    resumen.to_parquet(r"C:\Users\esteb\Desktop\PD1\datos-incendios\incendios_22_esteban.parquet", index=False)
 
+    if question:
+        minioFunctions.preguntar_subida(resumen.sort_values(by='count', ascending=False), "grupo3/raw/incendios/")
+    
     return resumen.sort_values(by='count', ascending=False)

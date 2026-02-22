@@ -166,6 +166,7 @@ async def mostrar_menu():
     print("  7. Diagnosticar Sistema")
     print("  8. Verificar archivo INCENDIOS")
     print("  9. Incendios")
+    print("  10. Generar puntos sintéticos (requiere archivo Parquet)")
     print("  0. Salir")
     print(" "*60)
 
@@ -342,7 +343,29 @@ async def main():
             print("\n" + " "*60)
             print(" INFORMACIÓN DEL PROYECTO")
             print(" "*60)
-            print("Por escribir")
+            print("""
+            Este código es utilizado para la extracción completa de datos.
+
+            A tener en cuenta que cada extracción puede ser subida a MinIO si así lo desea su creador.
+            Todo está automatizado, siendo el uso de rutas en .env utilizadas para pruebas sin conexión con el servidor.
+
+            Esta se reparte de la siguiente manera:
+
+            - Main: Compuesto por un menú que indica dependencias, librerías y diferentes funciones.
+            - construccion_df: Se le pasa una ruta de MinIO y construye un DataFrame y un parquet completo con todas las variables a estudiar.
+            - fisicas.py: Saca las características físicas al mandar una ruta a un .parquet con la API Open-Meteo.
+            - incendios.py: Extrae, limpia y aúna los datos de cada incendio al obtener una ruta de MinIO.
+            - pendiente.py: Extrae los datos de la pendiente al mandar una ruta .parquet con los satélites de Google Earth Engine.
+            - vegetacion.py: Extrae los datos de la vegetación al mandar una ruta .parquet con la API de Google Earth.
+            - vegetacion2.py: Analiza los datos mediante una rasterización de un .tif para saber si se encuentra en agua, zona urbana o en qué tipo de vegetación se encuentra.
+            - puntos_sinteticos.py: Creación de puntos por incendio basado en cercanía, área, intensidad de incendios y aleatoriedad.
+            - filtros_no_sinteticos.py: Funciones para filtrar la creación de puntos sintéticos.
+            - mascaras.py: Diferentes funciones de parse y de filtro de máscaras y parquets.
+            - minioFunctions.py: Funciones para subir, bajar y manejar archivos en MinIO sin tener que tenerlos en local.
+            - parquet.py: Función para ordenar parquets dentro de MinIO.
+
+            """)
+
             print("="*60)
 
         elif opcion == "7":
@@ -354,7 +377,67 @@ async def main():
             limit, fecha_ini, fecha_fin = obtener_parametros()
         
             await ejecutar_funcion("Incendios", incendios.fetch_fires,
-                                    ruta_incendios, fecha_ini=fecha_ini, fecha_fin=fecha_fin)
+                                    ruta_incendios, fecha_ini=fecha_ini, fecha_fin=fecha_fin, question=True)
+            
+        elif opcion == "10" and MODULOS_CARGADOS:
+
+            ruta_parquet = input("Ruta del archivo Parquet con incendios (vacío para usar RUTA_PRUEBA de .env): ").strip()
+            if not ruta_parquet:
+                ruta_parquet = os.getenv('RUTA_PRUEBA')
+                if not ruta_parquet:
+                    print("No se definió RUTA_PRUEBA en .env ni se proporcionó ruta.")
+                    input("\n⏎ Presiona Enter para continuar...")
+                    continue
+
+            if not os.path.exists(ruta_parquet):
+                print(f"   El archivo no existe: {ruta_parquet}")
+                input("\n⏎ Presiona Enter para continuar...")
+                continue
+
+            if ruta_parquet.lower().endswith('.csv'):
+                print("   El archivo proporcionado es CSV, pero se necesita Parquet.")
+                convertir = input("¿Convertir a Parquet temporalmente? (s/n): ").strip().lower()
+                if convertir == 's':
+                    try:
+                        print("Leyendo CSV...")
+                        df_csv = pd.read_csv(ruta_parquet)
+                        ruta_parquet_temp = "resumen_incendios.parquet"
+                        df_csv.to_parquet(ruta_parquet_temp)
+                        ruta_parquet = ruta_parquet_temp
+                        print(f" BIEN: Convertido a {ruta_parquet_temp}")
+                    except Exception as e:
+                        print(f" Error al convertir: {e}")
+                        input("\n⏎ Presiona Enter para continuar...")
+                        continue
+                else:
+                    print("   No se puede continuar sin un archivo Parquet.")
+                    input("\n⏎ Presiona Enter para continuar...")
+                    continue
+            elif not ruta_parquet.lower().endswith('.parquet'):
+                print("   El archivo debe tener extensión .parquet")
+                input("\n⏎ Presiona Enter para continuar...")
+                continue
+
+            print(f"\n📊 Generando puntos sintéticos a partir de: {ruta_parquet}")
+            try:
+                
+                # Es un hilo separado para no molestar la sincronización
+
+                df_resultado = await asyncio.to_thread(puntos_sinteticos.crearSinteticos, ruta_parquet, None, None)
+                print(f"\n   Se generaron {len(df_resultado)} puntos sintéticos.")
+                print("\nPrimeras 10 filas:")
+                print(df_resultado.head(10))
+                
+                guardar = input("\n¿Guardar resultado en CSV? (s/n): ").strip().lower()
+                if guardar == 's':
+                    nombre_csv = input("Nombre del archivo CSV (vacío para 'sinteticos.csv'): ").strip()
+                    if not nombre_csv:
+                        nombre_csv = "sinteticos.csv"
+                    df_resultado.to_csv(nombre_csv, index=False)
+                    print(f"   Guardado en {nombre_csv}")
+            except Exception as e:
+                print(f"   Error durante la generación: {e}")
+                traceback.print_exc()    
 
 
         elif opcion == "0":

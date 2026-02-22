@@ -6,6 +6,8 @@ from dotenv import load_dotenv
 import pandas as pd
 import traceback
 
+# Función encargada de unificar y facilitar el debug de cada módulo, avisar de imports faltantes y diferentes rutas
+
 
 #Sacamos el path actual, su padre y esa será la ruta donde se buscan los otros paquetes
 src_path = Path(__file__).parent

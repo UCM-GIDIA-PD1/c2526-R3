@@ -7,6 +7,8 @@ from shapely.geometry import MultiPoint
 from extraccion import minioFunctions
 import datetime
 
+# Funciones encargadas transformar y limpiar los diferentes .csv de incendios en DataFrames utilizables y útiles
+
 def limpieza(df):
   assert not df.empty, "No se pueden analizar incendios, el DataFrame esta vacio"
   df['acq_date'] = pd.to_datetime(df['acq_date'])

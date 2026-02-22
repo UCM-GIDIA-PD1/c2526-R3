@@ -5,6 +5,8 @@ import numpy as np
 import geopandas as gpd 
 from datetime import date
 
+# Filtros encargados de mejorar la precisión y utilidad de datos sintéticos generados
+
 def esIncendio(lat, lon, incendios):
   esIncendio = ((incendios.lat_mean == lat) & (incendios.lon_mean == lon)).any() #Devuelve si alguna fila cumple esta propiedad
   return esIncendio

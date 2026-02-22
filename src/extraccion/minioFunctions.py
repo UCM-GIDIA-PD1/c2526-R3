@@ -113,6 +113,9 @@ df = pd.DataFrame({"Esto" : ["es una prueba"]})
 subir_fichero(cliente, "grupo3/prueba_subir_fichero.parquet", df)
 '''
 
+
+# Función encargada de automatizar la subida de .parquets a Minio
+
 def preguntar_subida(df, ruta_carpeta = "grupo3/Datos/"):
     """
     Pregunta al usuario si desea subir un DataFrame/GeoDataFrame a MinIO.

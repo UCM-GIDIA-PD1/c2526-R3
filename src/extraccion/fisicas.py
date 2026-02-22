@@ -4,6 +4,8 @@ from . import incendios, minioFunctions
 import pandas as pd
 import aiohttp
 
+# Funciones encargadas de utilizar la Api de open-meteo para adquirir datos meteorológicos de cada punto
+
 sem_global = asyncio.Semaphore(20)
 
 async def fetch_environment(session, lat, lon, date, indice = None, intentos=3):

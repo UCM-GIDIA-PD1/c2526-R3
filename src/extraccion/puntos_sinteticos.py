@@ -8,6 +8,8 @@ from dotenv import load_dotenv
 from . import minioFunctions
 from . import filtros_no_sinteticos
 
+# Funciones encargadas de crear puntos sintéticos de acuerdo con el Área, el frp de fuego y el número de incendios
+
 # noIncendios tiene que ser múltiplo de 12 (total de puntos aleatorios para esta zona)
 def crearAleatorios(mascara, parquetAnio, noIncendios, anio, src, transformer):
     listaLat = []

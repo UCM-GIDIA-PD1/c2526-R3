@@ -125,7 +125,7 @@ def obtener_parametros():
     if resp != 's':
         return None, None, None   
 
-    limit_input = input("limit (número entero, dejar vacío para 20): ").strip()
+    limit_input = input("limit (número entero, dejar vacío para 20, -1 para todas las filas): ").strip()
     try:
         limit = int(limit_input) if limit_input else 20
     except ValueError:

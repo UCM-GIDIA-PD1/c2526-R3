@@ -80,9 +80,20 @@ async def df_fisicas(fires, limit = 20, fecha_ini = None, fecha_fin = None):
         #cliente = minioFunctions.crear_cliente()
         #fires = minioFunctions.bajar_fichero(cliente, filepath, "df")
 
+        if limit == -1:
+            rows = fires.to_dict('records')
+        else:
+            rows = fires.head(limit).to_dict('records')
+
         tareas = [
-            fetch_environment(session = session, lat = row['lat_mean'], lon = row['lon_mean'], date = row['date_first'].strftime('%Y-%m-%d'), indice = i,)
-            for i, row in enumerate(fires.head(limit).to_dict('records'))
+            fetch_environment(
+                session=session,
+                lat=row['lat_mean'],
+                lon=row['lon_mean'],
+                date=row['date_first'].strftime('%Y-%m-%d'),
+                indice=i,
+            )
+            for i, row in enumerate(rows)
         ]
         resultados = await asyncio.gather(*tareas)
         final_df = pd.DataFrame(resultados)

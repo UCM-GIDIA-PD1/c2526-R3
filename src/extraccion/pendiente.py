@@ -48,11 +48,20 @@ async def df_pendiente(fires, limit = 20, fecha_ini = None, fecha_fin = None):
   #cliente = minioFunctions.crear_cliente()
   #fires = minioFunctions.bajar_fichero(cliente, filepath, "df")
 
+  if limit == -1:
+    rows = fires.to_dict('records')
+  else:
+      rows = fires.head(limit).to_dict('records')
+
   tareas = [
-        #Ignacio: pasamos ahora row["date_first"]
-        pendiente(row['lat_mean'], row['lon_mean'],row['date_first'], indice = i)
-        for i, row in enumerate(fires.head(limit).to_dict('records'))
-    ]
+      pendiente(
+          row['lat_mean'],
+          row['lon_mean'],
+          row['date_first'],
+          indice=i
+      )
+      for i, row in enumerate(rows)
+  ]
   resultados = await asyncio.gather(*tareas)
   final_df = pd.DataFrame(resultados)
 

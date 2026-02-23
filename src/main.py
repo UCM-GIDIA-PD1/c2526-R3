@@ -242,7 +242,7 @@ def pedirDatos():
 
     """)
     if tipo_ruta == "0":
-        path_server = "grupo3/raw/Incendios_y_no_incendios"
+        path_server = "grupo3/raw/Incendios_y_no_incendios/"
         nombre = input(f"Introduce el nombre del archivo para completar la ruta {path_server}")
         path_server = f"{path_server}{nombre}"
     elif tipo_ruta == "1":
@@ -257,7 +257,7 @@ def pedirDatos():
         path_server = input("Introduce la ruta al parquet que quieres usar (grupo3/raw/.../.parquet): ")
     
     tipo_retorno = input("""Introduce el tipo de documento que quieres que devuelva (df, gdf, parquet). (Recomendado DF)
-                          Por ahora nuestras funciones utilizan DF""").strip().lower()
+                          Por ahora nuestras funciones utilizan DF            """).strip().lower()
     
     devolver_parquet = False
     if tipo_retorno == "parquet":
@@ -281,13 +281,15 @@ def pedirDatos():
 # MAIN
 async def main():
     df_incendios = None
+    pregunta = True
 
     while True:
         await mostrar_menu()
         opcion = input("\n🔷 Selecciona una opción (0-9): ").strip()
 
-        if df_incendios is None and opcion is not "0":
+        if pregunta and opcion is not "0":
             resultado = pedirDatos()
+            pregunta = False
 
             if resultado is not None:
                 df_incendios = resultado

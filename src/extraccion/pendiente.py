@@ -42,7 +42,12 @@ async def df_pendiente(filepath, limit = 20, fecha_ini = None, fecha_fin = None)
 
   print("Comenzando extracción...")
 
-  fires = incendios.fetch_fires(filepath, limit, fecha_ini, fecha_fin)
+  #fires = incendios.fetch_fires(filepath, limit, fecha_ini, fecha_fin)
+  
+  
+  cliente = minioFunctions.crear_cliente()
+  fires = minioFunctions.bajar_fichero(cliente, filepath, "df")
+
   tareas = [
         #Ignacio: pasamos ahora row["date_first"]
         pendiente(row['lat_mean'], row['lon_mean'],row['date_first'], indice = i)
@@ -60,3 +65,5 @@ async def df_pendiente(filepath, limit = 20, fecha_ini = None, fecha_fin = None)
 
   return final_df
   
+
+print(pendiente.py("grupo3/raw/incendios/incendios_2022.parquet"))

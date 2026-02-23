@@ -71,7 +71,8 @@ async def df_vegetacion2(fires, limit=20, fecha_ini=None, fecha_fin=None):
                          })
 
     #fires = incendios.fetch_fires(filepath, limit, fecha_ini, fecha_fin)
-    fires = fires.head(limit)
+    if limit != -1:
+        fires = fires.head(limit)   
     
     lista_puntos = list(zip(fires['lon_mean'], fires['lat_mean']))
 

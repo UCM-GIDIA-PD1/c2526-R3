@@ -86,3 +86,37 @@ def merge_parquets(path_list):
         result = pd.merge(result, df, on=["lat", "lon", "date"], how='left')
     
     return result
+
+def juntar_incendios():
+    '''
+    Toma los puntos de incendios y no incendios de Minio, los junta y los vuelve a subir a una nueva ruta
+    '''
+    #Definir paths
+    path1 = "grupo3/raw/incendios"
+    path2 = "grupo3/raw/No_incendios"
+
+    #Localizar carpetas
+    cliente = minioFunctions.crear_cliente()
+    incendios = cliente.list_objects("pd1", prefix = path1 , recursive = True)
+    no_incendios = cliente.list_objects("pd1", prefix = path2 , recursive = True)
+
+    #Iterar por años
+    for incendio, no_incendio in zip(incendios, no_incendios):
+        df_inc = minioFunctions.bajar_fichero(cliente, incendio.object_name, "df")
+        df_no_inc = minioFunctions.bajar_fichero(cliente, no_incendio.object_name, "df")
+        print(f"Bajados correctamente {incendio.object_name} y {no_incendio.object_name}")
+
+        #Clasificación binaria
+        df_inc["final"] = 1
+        df_inc["final"] = 0
+        
+        #Outer join sobre las columnas de no_incendios => las columnas extra de "incendios" en "no_incendios" seran NaN
+        merged = pd.concat([df_inc, df_no_inc], ignore_index=True)
+
+        merged['date_first'] = merged['date_first'].astype(str)
+        
+        #Subimos a minio
+        anio = incendio.object_name.split("_")[-1] #Cogemos el año y extensión .parquet
+        path_destino = f"grupo3/raw/Incendios_y_no_incendios/incendios_y_no_incendios_{anio}"
+        minioFunctions.subir_fichero(cliente, path_destino, merged)
+        print(f"Subidos a: {path_destino}")

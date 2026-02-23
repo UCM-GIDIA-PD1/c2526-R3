@@ -1,6 +1,6 @@
 import asyncio
 import time
-from . import incendios, minioFunctions
+from .  import incendios, minioFunctions
 import pandas as pd
 import aiohttp
 
@@ -75,7 +75,11 @@ async def df_fisicas(filepath, limit = 20, fecha_ini = None, fecha_fin = None):
 
         print("Comenzando extracción...")
 
-        fires = incendios.fetch_fires(filepath, limit, fecha_ini, fecha_fin)
+        # fires = incendios.fetch_fires(filepath, limit, fecha_ini, fecha_fin)
+        
+        cliente = minioFunctions.crear_cliente()
+        fires = minioFunctions.bajar_fichero(cliente, filepath, "df")
+
         tareas = [
             fetch_environment(session = session, lat = row['lat_mean'], lon = row['lon_mean'], date = row['date_first'].strftime('%Y-%m-%d'), indice = i,)
             for i, row in enumerate(fires.head(limit).to_dict('records'))
@@ -91,3 +95,5 @@ async def df_fisicas(filepath, limit = 20, fecha_ini = None, fecha_fin = None):
         minioFunctions.preguntar_subida(final_df, "grupo3/raw/Fisicas/")
 
         return final_df
+
+print(df_fisicas("grupo3/raw/incendios/incendios_2022.parquet"))

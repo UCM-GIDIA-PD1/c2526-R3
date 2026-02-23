@@ -441,6 +441,10 @@ async def main():
                 print(f"   Error durante la generación: {e}")
                 traceback.print_exc()    
 
+        elif opcion == "11":
+            df = await fisicas.df_fisicas("grupo3/raw/incendios/incendios_2022.parquet", limit = None)
+            print(df)
+
 
         elif opcion == "0":
             print("\n   ¡Adios! Pasa un buen día ")

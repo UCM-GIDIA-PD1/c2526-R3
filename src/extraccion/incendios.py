@@ -148,7 +148,7 @@ def crear_parquet(df, filename='resumen_incendios.parquet'):
     df.to_parquet(filename, index=False)
 '''
 
-def fetch_fires(filepath, round_decimals=2, fecha_ini = None, fecha_fin = None, question=False):
+def fetch_fires(df, round_decimals=2, fecha_ini = None, fecha_fin = None, question=False):
     """
     la funcion devuelve un dataFrame:
     resumen es lo mas importante y contiene un dataFrame con:
@@ -161,8 +161,8 @@ def fetch_fires(filepath, round_decimals=2, fecha_ini = None, fecha_fin = None, 
     -   DURATION_DAYS: la duracion del incendio en dias
     -   AREA_HA: el area del incendio en hectareas
     """
-    cliente = minioFunctions.crear_cliente()
-    df = minioFunctions.bajar_fichero(cliente, 'grupo3/raw/incendios/j1-viirs-22-26.parquet', type="df")
+    #cliente = minioFunctions.crear_cliente()
+    #df = minioFunctions.bajar_fichero(cliente, 'grupo3/raw/incendios/j1-viirs-22-26.parquet', type="df")
     df_clean = limpieza(df)
 
     if fecha_ini is not None:

@@ -111,16 +111,16 @@ async def vegetacion(lat, lon, fecha, indice = None):
     return resultado
 
 
-async def df_vegetacion(filepath, limit = 20, fecha_ini = None, fecha_fin = None):
+async def df_vegetacion(fires, limit = 20, fecha_ini = None, fecha_fin = None):
   
   ini = time.time()
 
   print("Comenzando extracción...")
 
-  fires = incendios.fetch_fires(filepath, limit, fecha_ini, fecha_fin)
+  #fires = incendios.fetch_fires(filepath, limit, fecha_ini, fecha_fin)
   
-  cliente = minioFunctions.crear_cliente()
-  fires = minioFunctions.bajar_fichero(cliente, filepath, "df")
+  #cliente = minioFunctions.crear_cliente()
+  #fires = minioFunctions.bajar_fichero(cliente, filepath, "df")
 
   tareas = [
         vegetacion(row['lat_mean'], row['lon_mean'], row['date_first'], indice = i)

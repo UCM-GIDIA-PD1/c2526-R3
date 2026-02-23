@@ -36,7 +36,7 @@ async def pendiente(lat, lon, date, indice = None): #Ignacio: añadido date
         "porcentaje": (np.tan(np.radians(res['slope'])) * 100) if res['slope'] else 0
     }
 
-async def df_pendiente(filepath, limit = 20, fecha_ini = None, fecha_fin = None):
+async def df_pendiente(fires, limit = 20, fecha_ini = None, fecha_fin = None):
 
   ini = time.time()
 
@@ -45,8 +45,8 @@ async def df_pendiente(filepath, limit = 20, fecha_ini = None, fecha_fin = None)
   #fires = incendios.fetch_fires(filepath, limit, fecha_ini, fecha_fin)
   
   
-  cliente = minioFunctions.crear_cliente()
-  fires = minioFunctions.bajar_fichero(cliente, filepath, "df")
+  #cliente = minioFunctions.crear_cliente()
+  #fires = minioFunctions.bajar_fichero(cliente, filepath, "df")
 
   tareas = [
         #Ignacio: pasamos ahora row["date_first"]

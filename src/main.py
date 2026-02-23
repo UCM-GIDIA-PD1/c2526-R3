@@ -233,9 +233,26 @@ def pedirDatos():
 
     cliente = minioFunctions.crear_cliente()
     
-    path_server = input("Introduce la ruta al parquet que quieres usar: ")
+    tipo_ruta = input("""
+    Elige la ruta que quieras usar:
+          1- NoIncendios
+          2- Incendios
+          Otro input - Path diferente
+
+    """)
+
+    if tipo_ruta == "1":
+        path_server = "grupo3/raw/No_incendios/"
+        nombre = input(f"Introduce el nombre del archivo para completar la ruta {path_server}")
+        path_server = f"{path_server}{nombre}"
+    elif tipo_ruta == "2":
+        path_server = "grupo3/raw/No_incendios/"
+        nombre = input(f"Introduce el nombre del archivo para completar la ruta {path_server}")
+        path_server = f"{path_server}{nombre}"
+    else:
+        path_server = input("Introduce la ruta al parquet que quieres usar (grupo3/raw/.../.parquet): ")
     
-    tipo_retorno = input("Introduce el tipo de documento que quieres que devuelva (df, gdf, parquet): ").strip().lower()
+    tipo_retorno = input("Introduce el tipo de documento que quieres que devuelva (df, gdf, parquet). (Recomendado DF) ").strip().lower()
     
     devolver_parquet = False
     if tipo_retorno == "parquet":
@@ -258,17 +275,17 @@ def pedirDatos():
 
 # MAIN
 async def main():
-    ruta_incendios = None
+    df_incendios = None
 
     while True:
         await mostrar_menu()
         opcion = input("\n🔷 Selecciona una opción (0-9): ").strip()
 
-        if ruta_incendios is None and opcion is not "0":
+        if df_incendios is None and opcion is not "0":
             resultado = pedirDatos()
 
             if resultado is not None:
-                ruta_incendios = resultado
+                df_incendios = resultado
                 print(f"Recuerda que esta ruta se utilizará en todas las operaciones posteriores")
             else:
                 print(f"No se consiguió tener el documento")
@@ -279,42 +296,42 @@ async def main():
             limit, fecha_ini, fecha_fin = obtener_parametros()
 
             if limit is None:
-                await ejecutar_funcion("Construcción DF Ambiental", construccion_df.build_environmental_df, ruta_incendios)
+                await ejecutar_funcion("Construcción DF Ambiental", construccion_df.build_environmental_df, df_incendios)
             else:
                 await ejecutar_funcion("Construcción DF Ambiental", construccion_df.build_environmental_df, 
-                                       ruta_incendios, limit=limit, fecha_ini=fecha_ini, fecha_fin=fecha_fin)
+                                       df_incendios, limit=limit, fecha_ini=fecha_ini, fecha_fin=fecha_fin)
 
         elif opcion == "2" and MODULOS_CARGADOS:
             limit, fecha_ini, fecha_fin = obtener_parametros()
             if limit is None:
-                await ejecutar_funcion("Vegetación", vegetacion.df_vegetacion, ruta_incendios)
+                await ejecutar_funcion("Vegetación", vegetacion.df_vegetacion, df_incendios)
             else:
                 await ejecutar_funcion("Vegetación", vegetacion.df_vegetacion, 
-                                       ruta_incendios, limit=limit, fecha_ini=fecha_ini, fecha_fin=fecha_fin)
+                                       df_incendios, limit=limit, fecha_ini=fecha_ini, fecha_fin=fecha_fin)
 
         elif opcion == "3" and MODULOS_CARGADOS:
             limit, fecha_ini, fecha_fin = obtener_parametros()
             if limit is None:
-                await ejecutar_funcion("Pendiente", pendiente.df_pendiente, ruta_incendios)
+                await ejecutar_funcion("Pendiente", pendiente.df_pendiente, df_incendios)
             else:
                 await ejecutar_funcion("Pendiente", pendiente.df_pendiente, 
-                                       ruta_incendios, limit=limit, fecha_ini=fecha_ini, fecha_fin=fecha_fin)
+                                       df_incendios, limit=limit, fecha_ini=fecha_ini, fecha_fin=fecha_fin)
 
         elif opcion == "4" and MODULOS_CARGADOS:
             limit, fecha_ini, fecha_fin = obtener_parametros()
             if limit is None:
-                await ejecutar_funcion("Características Físicas", fisicas.df_fisicas, ruta_incendios)
+                await ejecutar_funcion("Características Físicas", fisicas.df_fisicas, df_incendios)
             else:
                 await ejecutar_funcion("Características Físicas", fisicas.df_fisicas, 
-                                       ruta_incendios, limit=limit, fecha_ini=fecha_ini, fecha_fin=fecha_fin)
+                                       df_incendios, limit=limit, fecha_ini=fecha_ini, fecha_fin=fecha_fin)
 
         elif opcion == "5" and MODULOS_CARGADOS:
             limit, fecha_ini, fecha_fin = obtener_parametros()
             if limit is None:
-                await ejecutar_funcion("Vegetación 2", vegetacion2.df_vegetacion2, ruta_incendios)
+                await ejecutar_funcion("Vegetación 2", vegetacion2.df_vegetacion2, df_incendios)
             else:
                 await ejecutar_funcion("Vegetación 2", vegetacion2.df_vegetacion2, 
-                                       ruta_incendios, limit=limit, fecha_ini=fecha_ini, fecha_fin=fecha_fin)
+                                       df_incendios, limit=limit, fecha_ini=fecha_ini, fecha_fin=fecha_fin)
 
         elif opcion == "6":
             print("\n" + " "*60)
@@ -351,7 +368,7 @@ async def main():
         elif opcion == "8":
             resultado = pedirDatos()
             if resultado is not None:
-                ruta_incendios = resultado
+                df_incendios = resultado
                 print(f"Ruta guardada")
             else:
                 print(f"Fallo al guardar la ruta")
@@ -361,7 +378,7 @@ async def main():
             limit, fecha_ini, fecha_fin = obtener_parametros()
         
             await ejecutar_funcion("Incendios", incendios.fetch_fires,
-                                    ruta_incendios, fecha_ini=fecha_ini, fecha_fin=fecha_fin, question=True)
+                                    df_incendios, fecha_ini=fecha_ini, fecha_fin=fecha_fin, question=True)
             
         elif opcion == "10" and MODULOS_CARGADOS:
 

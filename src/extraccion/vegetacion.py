@@ -33,10 +33,13 @@ def quitar_dias(fecha_str):
     '''
     Resta 21 días a la fecha ingresada (en formato string)
     '''
-    if isinstance(fecha_str, str):
-        fecha_obj = datetime.strptime(fecha_str, '%Y-%m-%d')
-    else:
-        fecha_obj = fecha_str
+    # if isinstance(fecha_str, str):
+    #     fecha_obj = datetime.strptime(fecha_str, '%Y-%m-%d')
+    # else:
+    #     fecha_obj = fecha_str
+
+    fecha_str = str(fecha_str)[:10]
+    fecha_obj = datetime.strptime(fecha_str, '%Y-%m-%d')
         
     menos_21 = fecha_obj - timedelta(days=21)
     
@@ -59,6 +62,8 @@ def imagen(punto, fecha):
   y devuelve la mediana de ese rango de fechas, quitando los datos
   con nubes.
   '''
+  fecha = str(fecha)[:10]
+  
   fecha_fin = fecha
   fecha_ini = quitar_dias(fecha)
 

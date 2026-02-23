@@ -5,6 +5,7 @@ import asyncio
 from dotenv import load_dotenv
 import pandas as pd
 import traceback
+from extraccion import minioFunctions
 
 # Función encargada de unificar y facilitar el debug de cada módulo, avisar de imports faltantes y diferentes rutas
 
@@ -148,10 +149,8 @@ async def mostrar_menu():
     print("-"*60)
 
     ruta_creds = os.getenv('RUTA_CREDENCIALES', 'No definida')
-    ruta_incendios = os.getenv('INCENDIOS', 'No definida')
+
     print(f"\n📁 RUTA_CREDENCIALES: {formatear_ruta(ruta_creds)}")
-    print(f"  INCENDIOS: {formatear_ruta(ruta_incendios)}")
-    print(f"  Earth Engine: {'✅ OK' if EE_OK else 'ERROR: Error'}")
     print(f" Módulos: {'✅ Cargados' if MODULOS_CARGADOS else 'ERROR: No disponibles'}")
     print(" "*60)
 
@@ -166,7 +165,7 @@ async def mostrar_menu():
         print("  ->  Módulos no disponibles (ejecuta opción 7 para diagnosticar)")
     print("  6. Información del Proyecto")
     print("  7. Diagnosticar Sistema")
-    print("  8. Verificar archivo INCENDIOS")
+    print("  8. Cambiar ruta para la extracción de datos")
     print("  9. Incendios")
     print("  10. Generar puntos sintéticos (requiere archivo Parquet)")
     print("  0. Salir")
@@ -184,10 +183,8 @@ async def diagnosticar_sistema():
     print("\n Variables de entorno (.env):")
 
     ruta_creds = os.getenv('RUTA_CREDENCIALES')
-    ruta_incendios = os.getenv('INCENDIOS')
 
     print(f"   RUTA_CREDENCIALES: {'BIEN' if ruta_creds else 'MAL'} {ruta_creds}")
-    print(f"   INCENDIOS: {'BIEN' if ruta_incendios else 'MAL'} {ruta_incendios}")
 
     if ruta_creds:
         print(f"\n📁 Verificando RUTA_CREDENCIALES:")
@@ -204,30 +201,6 @@ async def diagnosticar_sistema():
                     print(f"      No hay archivos .json")
         else:
             print(f"   ERROR: No existe")
-
-    if ruta_incendios:
-
-        print(f"\n   Verificando INCENDIOS:")
-
-        if os.path.exists(ruta_incendios):
-
-            print(f"      Existe")
-
-            if os.path.isfile(ruta_incendios):
-                print(f"   📄 Es archivo")
-                tam = os.path.getsize(ruta_incendios)
-                print(f"   Tamaño: {tam} bytes ({tam/1024/1024:.2f} MB)")
-
-                if ruta_incendios.lower().endswith('.csv'):
-                    try:
-                        df = pd.read_csv(ruta_incendios, nrows=2)
-                        print(f"   BIEN CSV legible, columnas: {list(df.columns)}")
-                    except Exception as e:
-                        print(f"   ERROR Error al leer CSV: {e}")
-            else:
-                print(f"   📁 Es directorio")
-        else:
-            print(f"   ERROR No existe")
 
 
     print(f"\n📦 Módulos de Python:")
@@ -247,40 +220,6 @@ async def diagnosticar_sistema():
 
     print(f"\n    Earth Engine inicializado: {'✅ Sí' if EE_OK else '❌ No'}")
 
-async def verificar_archivo_incendios():
-    """Opción 8: ver detalles del archivo de incendios"""
-    print("\n📂 VERIFICACIÓN DETALLADA DEL ARCHIVO INCENDIOS")
-    print("="*50)
-    ruta = os.getenv('INCENDIOS')
-    if not ruta:
-        print("ERROR: Variable INCENDIOS no definida")
-        return
-
-    if not os.path.exists(ruta):
-        print(f"ERROR: El archivo no existe: {ruta}")
-        return
-
-    if not os.path.isfile(ruta):
-        print(f"ERROR: No es un archivo: {ruta}")
-        return
-
-    print(f"📄 Archivo: {ruta}")
-    print(f"📏 Tamaño: {os.path.getsize(ruta):,} bytes")
-    print(f"📁 Extensión: {Path(ruta).suffix}")
-
-    if ruta.lower().endswith('.csv'):
-        try:
-
-            df = pd.read_csv(ruta, nrows=10)
-            print(f"\n BIEN: Primeras 10 filas:")
-            print(df)
-            print(f"\n TABLA: Columnas: {list(df.columns)}")
-            print(f" TABLA: Tipos de datos:\n{df.dtypes}")
-        
-        except Exception as e:
-        
-            print(f"ERROR: Error al leer CSV: {e}")
-
 async def ejecutar_funcion(nombre, func, *args, **kwargs):
     print(f"Ejecutando: {nombre}")
     try:
@@ -290,15 +229,51 @@ async def ejecutar_funcion(nombre, func, *args, **kwargs):
     except Exception as e:
         print(f"Error en {nombre}: {e}")
 
+def pedirDatos():
+
+    cliente = minioFunctions.crear_cliente()
     
+    path_server = input("Introduce la ruta al parquet que quieres usar: ")
+    
+    tipo_retorno = input("Introduce el tipo de documento que quieres que devuelva (df, gdf, parquet): ").strip().lower()
+    
+    devolver_parquet = False
+    if tipo_retorno == "parquet":
+        devolver_parquet = True
+        tipo_descarga = "df"  
+    else:
+        tipo_descarga = tipo_retorno  
+    
+    try:
+        df = minioFunctions.bajar_fichero(cliente, path_server, tipo_descarga)
+    except Exception as e:
+        print(f"Error al descargar el fichero: {e}")
+        return None
+    
+    if devolver_parquet:
+        parquet_bytes = df.to_parquet() 
+        return parquet_bytes
+    else:
+        return df
+
 # MAIN
 async def main():
-    ruta_incendios = os.getenv('INCENDIOS')
+    ruta_incendios = None
 
     while True:
         await mostrar_menu()
         opcion = input("\n🔷 Selecciona una opción (0-9): ").strip()
 
+        if ruta_incendios is None and opcion is not "0":
+            resultado = pedirDatos()
+
+            if resultado is not None:
+                ruta_incendios = resultado
+                print(f"Recuerda que esta ruta se utilizará en todas las operaciones posteriores")
+            else:
+                print(f"No se consiguió tener el documento")
+        
+        
         # Permite modificar parámetros
         if opcion == "1" and MODULOS_CARGADOS:
             limit, fecha_ini, fecha_fin = obtener_parametros()
@@ -374,7 +349,14 @@ async def main():
             await diagnosticar_sistema()
 
         elif opcion == "8":
-            await verificar_archivo_incendios()
+            resultado = pedirDatos()
+            if resultado is not None:
+                ruta_incendios = resultado
+                print(f"Ruta guardada")
+            else:
+                print(f"Fallo al guardar la ruta")
+            continue
+
         elif opcion == "9" and MODULOS_CARGADOS:
             limit, fecha_ini, fecha_fin = obtener_parametros()
         

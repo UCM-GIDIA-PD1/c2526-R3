@@ -68,7 +68,7 @@ async def fetch_environment(session, lat, lon, date, indice = None, intentos=3):
                                 "radiation", "evapotranspiration", "sunshine_seconds"]})
         return error
 
-async def df_fisicas(filepath, limit = 20, fecha_ini = None, fecha_fin = None):
+async def df_fisicas(fires, limit = 20, fecha_ini = None, fecha_fin = None):
     
     async with aiohttp.ClientSession() as session:
         ini = time.time()
@@ -77,8 +77,8 @@ async def df_fisicas(filepath, limit = 20, fecha_ini = None, fecha_fin = None):
 
         # fires = incendios.fetch_fires(filepath, limit, fecha_ini, fecha_fin)
         
-        cliente = minioFunctions.crear_cliente()
-        fires = minioFunctions.bajar_fichero(cliente, filepath, "df")
+        #cliente = minioFunctions.crear_cliente()
+        #fires = minioFunctions.bajar_fichero(cliente, filepath, "df")
 
         tareas = [
             fetch_environment(session = session, lat = row['lat_mean'], lon = row['lon_mean'], date = row['date_first'].strftime('%Y-%m-%d'), indice = i,)
@@ -96,4 +96,3 @@ async def df_fisicas(filepath, limit = 20, fecha_ini = None, fecha_fin = None):
 
         return final_df
 
-print(df_fisicas("grupo3/raw/incendios/incendios_2022.parquet"))

@@ -66,4 +66,3 @@ async def df_pendiente(filepath, limit = 20, fecha_ini = None, fecha_fin = None)
   return final_df
   
 
-print(pendiente.py("grupo3/raw/incendios/incendios_2022.parquet"))

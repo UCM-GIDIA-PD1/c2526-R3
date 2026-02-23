@@ -250,7 +250,7 @@ def pedirDatos():
         nombre = input(f"Introduce el nombre del archivo para completar la ruta {path_server}")
         path_server = f"{path_server}{nombre}"
     elif tipo_ruta == "2":
-        path_server = "grupo3/raw/No_incendios/"
+        path_server = "grupo3/raw/incendios/"
         nombre = input(f"Introduce el nombre del archivo para completar la ruta {path_server}")
         path_server = f"{path_server}{nombre}"
     else:

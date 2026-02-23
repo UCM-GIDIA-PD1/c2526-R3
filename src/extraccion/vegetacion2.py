@@ -50,7 +50,7 @@ def lista_entorno(lista_puntos, df_vegetacion):
             
             for i, (lon, lat) in enumerate(lista_puntos):
                 num = obtenerNumero(lat, lon, src, transformer)
-                if num > -1:
+                if num > -1 and num < 45:
                     lista_vegetacion.append(df_vegetacion.loc[num]["Column6"])
                 else:
                     lista_vegetacion.append("Sin datos")

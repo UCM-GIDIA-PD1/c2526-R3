@@ -122,10 +122,19 @@ async def df_vegetacion(fires, limit = 20, fecha_ini = None, fecha_fin = None):
   #cliente = minioFunctions.crear_cliente()
   #fires = minioFunctions.bajar_fichero(cliente, filepath, "df")
 
+  if limit == -1:
+    rows = fires.to_dict('records')
+  else:
+    rows = fires.head(limit).to_dict('records')
   tareas = [
-        vegetacion(row['lat_mean'], row['lon_mean'], row['date_first'], indice = i)
-        for i, row in enumerate(fires.head(limit).to_dict('records'))
-    ]
+      vegetacion(
+          row['lat_mean'],
+          row['lon_mean'],
+          row['date_first'],
+          indice=i
+      )
+      for i, row in enumerate(rows)
+  ]
   resultados = await asyncio.gather(*tareas)
   final_df = pd.DataFrame(resultados)
 

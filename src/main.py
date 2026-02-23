@@ -252,7 +252,8 @@ def pedirDatos():
     else:
         path_server = input("Introduce la ruta al parquet que quieres usar (grupo3/raw/.../.parquet): ")
     
-    tipo_retorno = input("Introduce el tipo de documento que quieres que devuelva (df, gdf, parquet). (Recomendado DF) ").strip().lower()
+    tipo_retorno = input("""Introduce el tipo de documento que quieres que devuelva (df, gdf, parquet). (Recomendado DF)
+                          Por ahora nuestras funciones utilizan DF""").strip().lower()
     
     devolver_parquet = False
     if tipo_retorno == "parquet":

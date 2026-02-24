@@ -40,7 +40,12 @@ pd1/
         ├── Biogeoregiones/
         ├── Countries/
         ├── Fisicas/
-        ├── incendios/      # nomenclatura incendios_{año}.parquet
-        ├── No_incendios/   
-        └── Vegetacion/
+        ├── incendios/ # nomenclatura incendios_{año}.parquet
+        ├── Incendios_y_no_incendios/ # nomenclatura incendios_y_no_incendios_{año}.parquet
+        ├── Pendiente/
+        ├── No_incendios/ # nomenclatura no_incendios_{año}.parquet
+        ├── Vegetacion/   
+        └── Vegetacion2/
 ```
+
+Para las características de Fisicas, Pendiente, Vegetación y Vegetación2 la nomenclatura de archivos dentro de sus respectivas carpetas es incendios_y_no_incendios_{característica}_{año}.parquet

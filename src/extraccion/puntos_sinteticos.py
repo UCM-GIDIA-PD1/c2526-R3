@@ -9,9 +9,21 @@ from . import minioFunctions
 from . import filtros_no_sinteticos
 
 # Funciones encargadas de crear puntos sintéticos de acuerdo con el Área, el frp de fuego y el número de incendios
-
-# noIncendios tiene que ser múltiplo de 12 (total de puntos aleatorios para esta zona)
 def crearAleatorios(mascara, parquetAnio, noIncendios, anio, src, transformer):
+
+    '''
+    Crea puntos aleatorios dentro de una máscara geográfica, asegurando que sean válidos según ciertos filtros.
+    Parámetros:
+    - mascara: ruta al archivo de la máscara geográfica (archivo Parquet con geometría).
+    - parquetAnio: DataFrame con los incendios del año (para validar puntos).
+    - noIncendios: número total de puntos de no incendio a generar en esta zona (debe ser múltiplo de 12).
+    - anio: año para asignar a los puntos generados.
+    - src: objeto raster para validar puntos.
+    - transformer: objeto Transformer para validar puntos.
+    Devuelve:
+    - tres listas: latitudes, longitudes y fechas de los puntos generados.
+    '''
+
     listaLat = []
     listaLon = []
     fechas = []
@@ -57,20 +69,28 @@ def crearAleatorios(mascara, parquetAnio, noIncendios, anio, src, transformer):
 
 
 def crearCercanos(incendiosZona, numNoIncendios, frpTotal, parquetAnio, src, transformer):
+
     """
-    incendiosZona: DataFrame con los incendios de la zona (ya filtrados, NO una ruta)
-    mascaraZona: ruta al archivo de la máscara (se mantiene por compatibilidad, no se usa)
-    numNoIncendios: número total de puntos de no incendio a generar en esta zona
-    frpTotal: suma de frp_mean de todos los incendios de la zona
-    parquetAnio: DataFrame con todos los incendios del año (para validar puntos)
-    src, data: objeto raster y datos para validar puntos
+    Crea puntos sintéticos cercanos a incendios reales, distribuidos proporcionalmente al FRP de cada incendio.
+
+    Parámetros:
+    - incendiosZona: DataFrame con los incendios de la zona (ya filtrados, NO una ruta)
+    - numNoIncendios: número total de puntos de no incendio a generar en esta zona
+    - frpTotal: suma de frp_mean de todos los incendios de la zona
+    - parquetAnio: DataFrame con todos los incendios del año (para validar puntos)
+    - src, transformer: objeto raster y objeto Transformer para validar puntos
+
+    Devuelve:
+    - numNoIncendios_restante: número de puntos que no se han podido generar cerca de incendios (para generar aleatorios)
+    - tres listas: latitudes, longitudes y fechas de los puntos generados.
     """
+
     from math import cos, sin
     import numpy as np
     import pandas as pd
     
 
-    df = incendiosZona  # ya es un DataFrame
+    df = incendiosZona
     listaLat = []
     listaLon = []
     fechas = []
@@ -119,8 +139,18 @@ def crearCercanos(incendiosZona, numNoIncendios, frpTotal, parquetAnio, src, tra
     return numNoIncendios_restante, listaLat, listaLon, fechas
 
 
-def crearSinteticos(parquetAnio, src, data):
-    # Cargo claves
+def crearSinteticos(parquetAnio, src):
+
+    '''
+    Función para crear puntos sintéticos de no incendio, distribuidos proporcionalmente al número de incendios y al área de cada zona
+
+    Parámetros:
+    - parquetAnio: ruta al archivo parquet con los incendios del año
+    - src: objeto raster con la información de la imagen
+
+    Devuelve:
+    - DataFrame con los puntos sintéticos generados
+    '''
     
     load_dotenv()
 

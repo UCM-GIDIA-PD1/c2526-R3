@@ -8,6 +8,15 @@ import os
 sem_global = asyncio.Semaphore(20)
 
 async def procesar_fila_completa(session, row, index):
+
+    """
+    Extrae las caracteristicas ambientales para una sola observacion.
+    
+    Importante:
+    - Asume que 'row' es una tupla que contiene los atributos 'date_first', 'lat_mean' y 'lon_mean'.
+    - Aplica un retraso escalonado (index * 0.1) para disminuir el riesgo de bloqueos por parte de las APIs
+    """
+
     async with sem_global:
         
         await asyncio.sleep(index * 0.1)
@@ -27,6 +36,14 @@ async def procesar_fila_completa(session, row, index):
     
 async def build_environmental_df(filepath, limit=100, fecha_ini = None, fecha_fin = None):
     
+    """
+    Construye el DataFrame uniendo informacion de incendios con variables fisicas, topograficas y de vegetacion
+    
+    Importante:
+    - Se asume que el indice generado por fetch_fires coincide secuencialmente 
+      con el orden procesado lo que permite la concatenacion lateral (axis=1) directa
+    """
+
     ini = time.time()
 
     async with aiohttp.ClientSession() as session:
@@ -71,10 +88,15 @@ async def build_environmental_df(filepath, limit=100, fecha_ini = None, fecha_fi
 #Ignacio: lo mejor es pasar como primer elemento de la lista el parquet de los
 #incendios/no incendios con los puntos para que el merge(how = 'left') sea más robusto
 def merge_parquets(path_list):
-    '''
-    Devuelve dataframe de todas las variables separadas, ahora juntas
-    :param path_list: lista con todos los paths de minio de las variables a mergear
-    '''
+    
+    """
+    Realiza un 'left join' iterativo sobre una lista de DataFrames alojados en MinIO
+    
+    Reglas de negocio:
+    - Se necesitan como minimo dos rutas de archivo para poder operar
+    - Usa 'lat', 'lon' y 'date' como claves de cruce
+    """
+
     assert len(path_list) >= 2, "Longitud de la lista pasada por parámetro no válida."
     cliente = minioFunctions.crear_cliente()
     
@@ -88,9 +110,16 @@ def merge_parquets(path_list):
     return result
 
 def juntar_incendios():
-    '''
-    Toma los puntos de incendios y no incendios de Minio, los junta y los vuelve a subir a una nueva ruta
-    '''
+    
+    """
+    Descarga, etiqueta y concatena los puntos historicos de incendios y no incendios.
+    
+    Suposiciones:
+    - Se supone que los archivos de incendios y no incendios estan organizados en carpetas separadas 
+      y que cada archivo de una carpeta tiene un archivo correspondiente en la otra carpeta con el mismo año cronologico. 
+    - Define la variable objetivo 'final', asignando 1 a eventos de incendio y 0 a puntos de no incendio para clasificar
+    """
+
     #Definir paths
     path1 = "grupo3/raw/incendios"
     path2 = "grupo3/raw/No_incendios"
@@ -108,7 +137,7 @@ def juntar_incendios():
 
         #Clasificación binaria
         df_inc["final"] = 1
-        df_inc["final"] = 0
+        df_no_inc["final"] = 0
         
         #Outer join sobre las columnas de no_incendios => las columnas extra de "incendios" en "no_incendios" seran NaN
         merged = pd.concat([df_inc, df_no_inc], ignore_index=True)

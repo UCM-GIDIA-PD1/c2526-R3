@@ -16,6 +16,15 @@ import asyncio
 from extraccion import minioFunctions
 
 def obtenerNumero(lat, lon, src, transformer):
+
+    '''
+    Extrae el valor del pixel correspondiente a una coordenada dentro de un archivo raster
+    
+    Casos limite:
+    - Si no hay nada que leer devuelve -1
+    - Cualquier valor negativo se reasigna al indice 44
+    '''
+     
     x, y = transformer.transform(lon, lat)
     row, col = src.index(x, y)
                 
@@ -30,6 +39,19 @@ def obtenerNumero(lat, lon, src, transformer):
     return num
 
 def lista_entorno(lista_puntos, df_vegetacion): 
+
+    """
+    Mapea una lista de coordenadas a sus respectivas categorias de vegetacion o terreno
+    
+    Abre una conexion al raster alojado en MinIO y traduce el valor numerico de cada 
+    pixel utilizando el indice de df_vegetacion
+    
+    Importante:
+    - Las descriptivas estan en 'Column6'
+    - Solo procesa valores de pixel en el rango [0, 44] y los valores fuera de este
+      rango se clasifican como 'Sin datos'
+    """
+
     load_dotenv()
     
     minio_config = {
@@ -59,6 +81,12 @@ def lista_entorno(lista_puntos, df_vegetacion):
             return lista_vegetacion
 
 async def df_vegetacion2(fires, limit=20, fecha_ini=None, fecha_fin=None):
+
+    """
+    Se extraen los datos de vegetacion para una serie de incendios
+    
+    Requiere que el DataFrame fires contenga las columnas 'lat_mean', 'lon_mean' y 'date_first'
+    """
     
     ini = time.time()
     ak, sk = minioFunctions.importar_keys()

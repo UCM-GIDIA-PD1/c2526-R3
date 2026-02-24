@@ -48,7 +48,7 @@ def quitar_dias(fecha_str):
 
 def calcular_indices(img):
     '''
-    Calcula los indices NDVI y NDWI a partir de una imagen
+    Funcion que calcula los indices NDVI y NDWI a partir de una imagen de satélite con las bandas necesarias (B3, B4, B8)
     '''
     ndvi = img.normalizedDifference(['B8', 'B4']).rename('NDVI')
     ndwi = img.normalizedDifference(['B3', 'B8']).rename('NDWI')
@@ -56,11 +56,13 @@ def calcular_indices(img):
 
 def imagen(punto, fecha):
   '''
-  Obtiene la imagen del satélite Copernicus para una ubicacion
-  y fecha concretas. Para la fecha utiliza un rango de entre la
-  fecha introducida y 21 días antes para evitar que no haya datos,
-  y devuelve la mediana de ese rango de fechas, quitando los datos
-  con nubes.
+  Obtiene la imagen del satélite Copernicus en un rango de 21 dias ignorando los datos con nubes
+
+  Parametros:
+  - punto: ee.Geometry.Point con la ubicacion
+
+  Devuelve:
+  - img: ee.Image con los datos de la imagen procesada (mediana de las imagenes disponibles en el rango de fechas)
   '''
   fecha = str(fecha)[:10]
   
@@ -84,10 +86,14 @@ def imagen(punto, fecha):
 
 
 def logica_vegetacion(lat, lon, fecha):
+
   '''
-  Calcula los valores de NDVI y NDWI para una ubicacion y fecha concretas,
-  y en el caso de no haber datos en el rango de fechas, devuelve nulos.
+  Extrae los índices de vegetación (NDVI y NDWI) para una ubicación y fecha
+
+  Devuelve:
+  - resultado: diccionario con los valores de NDVI y NDWI o NaN si no se pudieron obtener datos
   '''
+
   punto = ee.Geometry.Point([lon, lat])
   img_data = imagen(punto, fecha)
 
@@ -104,6 +110,16 @@ def logica_vegetacion(lat, lon, fecha):
   
 async def vegetacion(lat, lon, fecha, indice = None):
 
+  '''
+  Obtiene los indices de vegetacion para una ubicacion y fecha
+
+  Parámetros:
+  - indice: indice del punto en el DataFrame (opcional, para depurar)
+
+  Devuelve:
+  - resultado: diccionario con los valores de NDVI y NDWI para la ubicación y fecha dadas
+  '''
+
   async with sem_global:
     resultado = await asyncio.to_thread(logica_vegetacion, lat, lon, fecha)
     if indice is not None:
@@ -117,6 +133,19 @@ async def vegetacion(lat, lon, fecha, indice = None):
 
 
 async def df_vegetacion(fires, limit = 20, fecha_ini = None, fecha_fin = None):
+
+  '''
+  Obtiene un DataFrame con los índices de vegetación para los incendios en un rango de fechas
+
+  Parámetros:
+  - fires: DataFrame con los incendios con columnas 'lat_mean', 'lon_mean', y 'date_first'
+  - limit: número de incendios a procesar (por defecto 20)
+  - fecha_ini: fecha inicial del rango (por defecto None)
+  - fecha_fin: fecha final del rango (por defecto None)
+  
+  Devuelve:
+  - final_df: DataFrame con los índices de vegetación para los incendios procesados
+  '''
   
   ini = time.time()
 

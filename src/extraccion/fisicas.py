@@ -9,6 +9,20 @@ import aiohttp
 sem_global = asyncio.Semaphore(20)
 
 async def fetch_environment(session, lat, lon, date, indice = None, intentos=3):
+
+    '''
+    Consulta la API de Open-Meteo para obtener datos meteorológicos diarios para una ubicación y fecha específicas
+
+    Parámetros:
+    - session: instancia de aiohttp.ClientSession para realizar la solicitud HTTP
+    - date: fecha para la cual se desean obtener los datos meteorológicos (formato string 'YYYY-MM-DD')
+    - indice: índice del punto en el DataFrame (opcional, para fines de depuración)
+    - intentos: número de intentos para realizar la solicitud en caso de fallo (por defecto es 3)
+
+    Devuelve:
+    - Diccionario con los datos meteorológicos obtenidos o None si no se obtuvieron datos.
+    '''
+
     async with sem_global:
         url = "https://archive-api.open-meteo.com/v1/archive"
         params = {
@@ -69,6 +83,19 @@ async def fetch_environment(session, lat, lon, date, indice = None, intentos=3):
         return error
 
 async def df_fisicas(fires, limit = 20, fecha_ini = None, fecha_fin = None):
+
+    '''
+    Obtiene características físicas de cada incendio utilizando la función fetch_environment.
+
+    Parámetros:
+    - fires: DataFrame que contiene información sobre los incendios, incluyendo lat_mean, lon_mean y date_first.
+    - limit: número máximo de filas a procesar del DataFrame (por defecto es 20).
+    - fecha_ini: fecha de inicio para filtrar los incendios (opcional).
+    - fecha_fin: fecha de fin para filtrar los incendios (opcional).
+    
+    Devuelve:
+    - DataFrame con las características físicas obtenidas para cada incendio.
+    '''
     
     async with aiohttp.ClientSession() as session:
         ini = time.time()

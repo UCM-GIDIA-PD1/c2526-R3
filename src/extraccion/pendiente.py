@@ -8,7 +8,14 @@ import pandas as pd
 sem_global = asyncio.Semaphore(10)
 
 async def pendiente(lat, lon, date, indice = None): #Ignacio: añadido date
-  ''' Esta función calcula la pendiente de un punto utilizando los satelites de Google EE'''
+  """
+    Calcula la elevacion y pendiente (en grados y porcentaje) de un punto usando Google Earth Engine.
+    
+    Importante:
+    - Utiliza el modelo USGS/SRTMGL1_003.
+    - Asume que Earth Engine siempre devolvera un diccionario con las claves 'elevation' y 'slope'.
+    - Si el valor de 'slope' es vacio o 0, el calculo del porcentaje asume 0 por defecto.
+    """
   async with sem_global:
     dem = ee.Image('USGS/SRTMGL1_003')
     punto = ee.Geometry.Point([lon, lat])
@@ -37,41 +44,47 @@ async def pendiente(lat, lon, date, indice = None): #Ignacio: añadido date
     }
 
 async def df_pendiente(fires, limit = 20, fecha_ini = None, fecha_fin = None):
-
-  ini = time.time()
-
-  print("Comenzando extracción...")
-
-  #fires = incendios.fetch_fires(filepath, limit, fecha_ini, fecha_fin)
   
-  
-  #cliente = minioFunctions.crear_cliente()
-  #fires = minioFunctions.bajar_fichero(cliente, filepath, "df")
+    """
+    Extrae la informacion del terreno de una serie de incendios 
+    
+    Requiere que el DataFrame fires contenga las columnas 'lat_mean', 'lon_mean' y 'date_first'.
+    """
 
-  if limit == -1:
-    rows = fires.to_dict('records')
-  else:
-      rows = fires.head(limit).to_dict('records')
+    ini = time.time()
 
-  tareas = [
-      pendiente(
-          row['lat_mean'],
-          row['lon_mean'],
-          row['date_first'],
-          indice=i
-      )
-      for i, row in enumerate(rows)
-  ]
-  resultados = await asyncio.gather(*tareas)
-  final_df = pd.DataFrame(resultados)
+    print("Comenzando extracción...")
 
-  fin = time.time()
+    #fires = incendios.fetch_fires(filepath, limit, fecha_ini, fecha_fin)
+    
+    
+    #cliente = minioFunctions.crear_cliente()
+    #fires = minioFunctions.bajar_fichero(cliente, filepath, "df")
 
-  print(f"Extraidas {limit} filas de pendiente en {fin - ini:.2f} segundos.")
-  print(final_df.head(limit))
+    if limit == -1:
+        rows = fires.to_dict('records')
+    else:
+        rows = fires.head(limit).to_dict('records')
 
-  minioFunctions.preguntar_subida(final_df, "grupo3/raw/Pendiente/")
+    tareas = [
+        pendiente(
+            row['lat_mean'],
+            row['lon_mean'],
+            row['date_first'],
+            indice=i
+        )
+        for i, row in enumerate(rows)
+    ]
+    resultados = await asyncio.gather(*tareas)
+    final_df = pd.DataFrame(resultados)
 
-  return final_df
+    fin = time.time()
+
+    print(f"Extraidas {limit} filas de pendiente en {fin - ini:.2f} segundos.")
+    print(final_df.head(limit))
+
+    minioFunctions.preguntar_subida(final_df, "grupo3/raw/Pendiente/")
+
+    return final_df
   
 

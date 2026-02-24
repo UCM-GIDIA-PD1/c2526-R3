@@ -10,24 +10,26 @@ import datetime
 # Funciones encargadas transformar y limpiar los diferentes .csv de incendios en DataFrames utilizables y útiles
 
 def limpieza(df):
-  assert not df.empty, "No se pueden analizar incendios, el DataFrame esta vacio"
-  df['acq_date'] = pd.to_datetime(df['acq_date'])
-  df = df[df['confidence'] != 'l'] #confianza l (low) es que no es fiable
-  df = df.drop_duplicates(subset=['latitude', 'longitude', 'acq_date']) #quita incendios iguales
-  df= df[df['frp'] > 50]
-  df = df[df['type'] == 0] 
-    # Filtrar solo los incendios de tipo 0 (presumed vegetation fire)
-    # 0 = presumed vegetation fire
-    # 1 = active volcano
-    # 2 = other static land source
-    # 3 = offshore
-  df = df.rename(columns={
-        'latitude': 'lat',
-        'longitude': 'lon',
-        'acq_date': 'date'
-  })
-  columnas_utiles = ['lat', 'lon', 'frp', 'date']
-  return df[columnas_utiles]
+
+    '''
+    Limpia el DataFrame de incendios eliminando filas con baja confianza, duplicados y filtrando por tipo de incendio.
+    Parámetros: dataFrame de incendios con columnas 'latitude', 'longitude', 'acq_date', 'confidence', 'frp' y 'type'.
+    Devuelve: DataFrame limpio con columnas 'lat', 'lon', 'frp' y 'date'.
+    '''
+
+    assert not df.empty, "No se pueden analizar incendios, el DataFrame esta vacio"
+    df['acq_date'] = pd.to_datetime(df['acq_date'])
+    df = df[df['confidence'] != 'l']
+    df = df.drop_duplicates(subset=['latitude', 'longitude', 'acq_date'])
+    df= df[df['frp'] > 50]
+    df = df[df['type'] == 0]
+    df = df.rename(columns={
+            'latitude': 'lat',
+            'longitude': 'lon',
+            'acq_date': 'date'
+    })
+    columnas_utiles = ['lat', 'lon', 'frp', 'date']
+    return df[columnas_utiles]
 
 def calcular_area_incendios(df, pixel_res_meters=1000):
     """
@@ -76,15 +78,18 @@ def calcular_area_incendios(df, pixel_res_meters=1000):
     return area[['fire_id', 'area_ha']]
 
 def separate_fire_events(df, dist_km=2.0, mes_inicial=1, mes_final=12):
+
     """
     Asigna un ID único a cada grupo de puntos que pertenezcan al mismo incendio.
 
     Parámetros:
     - df: DataFrame de FIRMS.
     - dist_km: Distancia máxima para considerar que dos puntos son del mismo incendio.
-    - mes_inicial: Mes inicial del rango de fechas a considerar.
-    - mes_final: Mes final del rango de fechas a considerar.
+    Devuelve:
+    - df: DataFrame con una nueva columna 'fire_id' que identifica cada incendio.
+    - resumen: DataFrame con un resumen de cada incendio, incluyendo su ubicación media, suma y media de FRP, cantidad de puntos, fecha del primer y último punto, y duración en días.
     """
+
     assert not df.empty, "El DataFrame contenia fuegos poco relevantes y se vacio, no se pueden separar eventos de incendios"
 
     # 1. Convertir coordenadas a radianes para usar con la métrica haversine
@@ -148,10 +153,17 @@ def crear_parquet(df, filename='resumen_incendios.parquet'):
     df.to_parquet(filename, index=False)
 '''
 
-def fetch_fires(df, round_decimals=2, fecha_ini = None, fecha_fin = None, question=False):
+def fetch_fires(df, fecha_ini = None, fecha_fin = None, question=False):
+
     """
-    la funcion devuelve un dataFrame:
-    resumen es lo mas importante y contiene un dataFrame con:
+    Funcion que procesa un DataFrame de incendios, limpiándolo, separando los eventos de incendio y calculando el área de cada incendio
+    Parámetros:
+    - df: DataFrame con los datos de incendios.
+    - round_decimals: número de decimales a redondear para las coordenadas (por defecto 2).
+    - fecha_ini: fecha inicial del rango de incendios a procesar (por defecto None).
+    - fecha_fin: fecha final del rango de incendios a procesar (por defecto None).
+    - question: booleano que indica si se debe preguntar al usuario si quiere subir el resumen a MinIO (por defecto False).
+    Devuelve resumen con la información relevante de cada incendio, incluyendo:
     -   LAT_MEAN: la media de las latitudes de los puntos que pertenecen al mismo incendio
     -   LON_MEAN: la media de las longitudes de los puntos que pertenecen al mismo incendio
     -   FRP - sum, mean: la suma y media de los FRP de los puntos que pertenecen al mismo incendio
@@ -161,6 +173,7 @@ def fetch_fires(df, round_decimals=2, fecha_ini = None, fecha_fin = None, questi
     -   DURATION_DAYS: la duracion del incendio en dias
     -   AREA_HA: el area del incendio en hectareas
     """
+
     #cliente = minioFunctions.crear_cliente()
     #df = minioFunctions.bajar_fichero(cliente, 'grupo3/raw/incendios/j1-viirs-22-26.parquet', type="df")
     df_clean = limpieza(df)

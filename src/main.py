@@ -122,7 +122,7 @@ def obtener_parametros():
     """Pregunta al usuario si quiere especificar parámetros y los devuelve."""
     print("\n--- Personalización de parámetros ---")
     resp = input("¿Desea especificar parámetros personalizados? (s/n): ").strip().lower()
-    if resp is not 's':
+    if resp != 's':
         return None, None, None   
 
     limit_input = input("limit (número entero, dejar vacío para 20, -1 para todas las filas): ").strip()
@@ -287,7 +287,7 @@ async def main():
         await mostrar_menu()
         opcion = input("\n🔷 Selecciona una opción (0-9): ").strip()
 
-        if pregunta and opcion is not "0":
+        if pregunta and opcion != "0":
             resultado = pedirDatos()
             pregunta = False
 

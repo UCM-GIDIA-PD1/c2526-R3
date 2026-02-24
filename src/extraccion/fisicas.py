@@ -96,13 +96,15 @@ async def df_fisicas(fires, limit = 20, fecha_ini = None, fecha_fin = None):
     - DataFrame con las características físicas obtenidas para cada incendio.
     '''
     
-     if fecha_ini is not None:
-            fecha_ini = pd.to_datetime(fecha_ini)
+    if fecha_ini is not None:
+            fecha_ini = pd.to_datetime(fecha_ini, "%Y-%m-%d")
             date = pd.to_datetime(fires['date_first'])
+            print(date)
+            print(fecha_ini)
             fires = fires[date >= fecha_ini]
     
     if fecha_fin is not None:
-        fecha_fin = pd.to_datetime(fecha_fin)
+        fecha_fin = pd.to_datetime(fecha_fin, "%Y-%m-%d")
         date = pd.to_datetime(fires['date_first'])
         fires = fires[date <= fecha_fin]
 
@@ -110,8 +112,6 @@ async def df_fisicas(fires, limit = 20, fecha_ini = None, fecha_fin = None):
         ini = time.time()
 
         print("Comenzando extracción...")
-
-       
 
         if limit == -1:
             rows = fires.to_dict('records')

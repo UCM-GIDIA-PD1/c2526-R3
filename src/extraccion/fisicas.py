@@ -9,7 +9,6 @@ import aiohttp
 sem_global = asyncio.Semaphore(20)
 
 async def fetch_environment(session, lat, lon, date, indice = None, intentos=3):
-
     '''
     Consulta la API de Open-Meteo para obtener datos meteorológicos diarios para una ubicación y fecha específicas
 
@@ -22,7 +21,7 @@ async def fetch_environment(session, lat, lon, date, indice = None, intentos=3):
     Devuelve:
     - Diccionario con los datos meteorológicos obtenidos o None si no se obtuvieron datos.
     '''
-
+    
     async with sem_global:
         url = "https://archive-api.open-meteo.com/v1/archive"
         params = {
@@ -47,8 +46,10 @@ async def fetch_environment(session, lat, lon, date, indice = None, intentos=3):
                     if "daily" in r:
                         d = r["daily"]
                         print(f"Características físicas {indice} extraidas.")
+                        
+                        await asyncio.sleep(3)
+
                         return {
-                            #Ignacio: añadido ["lat", "lon", "date"]
                             "lat" : lat,
                             "lon" : lon,
                             "date" : date,
@@ -75,7 +76,6 @@ async def fetch_environment(session, lat, lon, date, indice = None, intentos=3):
                 print(f"Error de conexión: {e}")
                 await asyncio.sleep(1)
 
-        #Ignacio: añadido ["lat", "lon", "date"]
         error = {"lat" : lat, "lon" : lon, "date" : date}
         error.update({k: None for k in ["temp_mean", "temp_max", "temp_min", "humidity_mean", "precipitation",
                                 "wind_speed_max", "wind_gusts_max", "pressure_mean", "cloud_cover",
@@ -83,7 +83,6 @@ async def fetch_environment(session, lat, lon, date, indice = None, intentos=3):
         return error
 
 async def df_fisicas(fires, limit = 20, fecha_ini = None, fecha_fin = None):
-
     '''
     Obtiene características físicas de cada incendio utilizando la función fetch_environment.
 
@@ -102,11 +101,6 @@ async def df_fisicas(fires, limit = 20, fecha_ini = None, fecha_fin = None):
 
         print("Comenzando extracción...")
 
-        # fires = incendios.fetch_fires(filepath, limit, fecha_ini, fecha_fin)
-        
-        #cliente = minioFunctions.crear_cliente()
-        #fires = minioFunctions.bajar_fichero(cliente, filepath, "df")
-
         if limit == -1:
             rows = fires.to_dict('records')
         else:
@@ -117,7 +111,7 @@ async def df_fisicas(fires, limit = 20, fecha_ini = None, fecha_fin = None):
                 session=session,
                 lat=row['lat_mean'],
                 lon=row['lon_mean'],
-                date=row['date_first'].strftime('%Y-%m-%d'),
+                date=row['date_first'].split()[0],
                 indice=i,
             )
             for i, row in enumerate(rows)

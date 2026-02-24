@@ -181,11 +181,11 @@ def fetch_fires(df_clean, fecha_ini = None, fecha_fin = None, question=False, li
 
     if fecha_ini is not None:
         fecha_ini = pd.to_datetime(fecha_ini)
-        df_clean = df_clean[df_clean['date'] >= fecha_ini]
+        df_clean = df_clean[pd.to_datetime(df_clean['date']) >= fecha_ini]
     
     if fecha_fin is not None:
         fecha_fin = pd.to_datetime(fecha_fin)
-        df_clean = df_clean[df_clean['date'] <= fecha_fin]
+        df_clean = df_clean[pd.to_datetime(df_clean['date']) <= fecha_fin]
 
     if df_clean.empty:
         print("No hay incendios en el rango de fechas seleccionado.")
@@ -202,7 +202,7 @@ def fetch_fires(df_clean, fecha_ini = None, fecha_fin = None, question=False, li
         print("Hectáreas calculadas")
     else:
         resumen = df_clean.copy()
-        
+
     if question:
         minioFunctions.preguntar_subida(resumen.sort_values(by='count', ascending=False), "grupo3/raw/incendios/")
     

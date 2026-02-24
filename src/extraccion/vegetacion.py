@@ -94,17 +94,21 @@ def logica_vegetacion(lat, lon, fecha):
   - resultado: diccionario con los valores de NDVI y NDWI o NaN si no se pudieron obtener datos
   '''
 
-  punto = ee.Geometry.Point([lon, lat])
-  img_data = imagen(punto, fecha)
+  try:
+    punto = ee.Geometry.Point([lon, lat])
+    img_data = imagen(punto, fecha)
 
-  datos = img_data.select(['NDVI', 'NDWI']).sample(region = punto, scale = 10).getInfo()
+    datos = img_data.select(['NDVI', 'NDWI']).sample(region = punto, scale = 10).getInfo()
 
-  if datos is None or 'properties' not in datos:
-    print(f"Advertencia: No se encontraron datos para Lat: {lat}, Lon: {lon}")
+    if datos is None or 'properties' not in datos:
+      print(f"Advertencia: No se encontraron datos para Lat: {lat}, Lon: {lon}")
+      return{'NDVI':np.nan, 'NDWI':np.nan}
+    else:
+      return datos['properties']
+    
+  except Exception as e:
+    print(f"Error al obtener datos para Lat: {lat}, Lon: {lon}, Fecha: {fecha}. Detalles del error: {e}")
     return{'NDVI':np.nan, 'NDWI':np.nan}
-  else:
-    return datos['properties']
-
   
 async def vegetacion(lat, lon, fecha, indice = None):
 
@@ -172,7 +176,8 @@ async def df_vegetacion(fires, limit = 20, fecha_ini = None, fecha_fin = None):
 
   fin = time.time()
 
-  print(f"Extraidas {limit} filas de vegetación en {fin - ini:.2f} segundos.")
+  
+  print(f"Extraídas {len(final_df)} filas de vegetación en {fin - ini:.2f} segundos.")
   print(final_df.head(limit))
 
   minioFunctions.preguntar_subida(final_df, "grupo3/raw/Vegetacion/")

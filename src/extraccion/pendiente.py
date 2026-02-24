@@ -80,7 +80,7 @@ async def df_pendiente(fires, limit = 20, fecha_ini = None, fecha_fin = None):
 
     fin = time.time()
 
-    print(f"Extraidas {limit} filas de pendiente en {fin - ini:.2f} segundos.")
+    print(f"Extraidas {len(final_df)} filas de pendiente en {fin - ini:.2f} segundos.")
     print(final_df.head(limit))
 
     minioFunctions.preguntar_subida(final_df, "grupo3/raw/Pendiente/")

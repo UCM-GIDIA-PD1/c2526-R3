@@ -240,7 +240,7 @@ def pedirDatos():
           2- Incendios
           Otro input - Path diferente
 
-    """)
+    Selección: """)
     if tipo_ruta == "0":
         path_server = "grupo3/raw/Incendios_y_no_incendios/"
         nombre = input(f"Introduce el nombre del archivo para completar la ruta {path_server}")
@@ -256,13 +256,19 @@ def pedirDatos():
     else:
         path_server = input("Introduce la ruta al parquet que quieres usar (grupo3/raw/.../.parquet): ")
     
-    tipo_retorno = input("""Introduce el tipo de documento que quieres que devuelva (df, gdf, parquet). (Recomendado DF)
-                          Por ahora nuestras funciones utilizan DF            """).strip().lower()
+    tipo_retorno = input("""Introduce el tipo de documento que quieres que devuelva (df, gdf, parquet, csv). (Recomendado DF)
+                         Si quieres comenzar con un nuevo csv seleccione esta opción y construccion_df
+                         Nuestras funciones utilizan DF:            
+                         """).strip().lower()
     
     devolver_parquet = False
     if tipo_retorno == "parquet":
         devolver_parquet = True
         tipo_descarga = "df"  
+    elif tipo_retorno == "csv":
+        csv = minioFunctions.bajar_csv(cliente, path_server,sep=';', encoding='latin1', header=0)
+        df = pd.read_csv(csv)
+        return df
     else:
         tipo_descarga = tipo_retorno  
     

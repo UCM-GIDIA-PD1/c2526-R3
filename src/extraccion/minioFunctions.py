@@ -148,3 +148,35 @@ def preguntar_subida(df, ruta_carpeta = "grupo3/Datos/"):
     except Exception as e:
         print(f" Error al subir el archivo: {e}")
         return False
+    
+def bajar_csv(cliente, path_server: Path, **kwargs):
+    
+    """
+    Descarga un archivo CSV desde MinIO y lo devuelve como DataFrame.
+    
+    :param cliente: cliente de MinIO
+    :param path_server: ruta del archivo CSV en MinIO
+    :param **kwargs: argumentos 
+    :return: DataFrame con los datos del CSV
+    """
+
+    response = None
+    try:
+        response = cliente.get_object(
+            bucket_name="pd1",
+            object_name=path_server,
+        )
+
+        buffer = io.BytesIO(response.read())  
+        df = pd.read_csv(buffer, **kwargs)  
+        
+        print(f"CSV importado correctamente desde {path_server}")
+        return df
+    
+    except Exception as e: 
+        print(f"Error al conectar con el servidor: {e}")
+        return None
+
+    finally:
+        if response: 
+            response.close()

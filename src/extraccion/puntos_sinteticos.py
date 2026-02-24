@@ -9,13 +9,13 @@ from . import minioFunctions
 from . import filtros_no_sinteticos
 
 # Funciones encargadas de crear puntos sintéticos de acuerdo con el Área, el frp de fuego y el número de incendios
-def crearAleatorios(mascara, parquetAnio, noIncendios, anio, src, transformer):
+def crearAleatorios(mascara, df, noIncendios, anio, src, transformer):
 
     '''
     Crea puntos aleatorios dentro de una máscara geográfica, asegurando que sean válidos según ciertos filtros.
     Parámetros:
     - mascara: ruta al archivo de la máscara geográfica (archivo Parquet con geometría).
-    - parquetAnio: DataFrame con los incendios del año (para validar puntos).
+    - df: DataFrame con los incendios del año (para validar puntos).
     - noIncendios: número total de puntos de no incendio a generar en esta zona (debe ser múltiplo de 12).
     - anio: año para asignar a los puntos generados.
     - src: objeto raster para validar puntos.
@@ -58,7 +58,7 @@ def crearAleatorios(mascara, parquetAnio, noIncendios, anio, src, transformer):
                 lon = np.random.uniform(minx, maxx)
                 intentos += 1
 
-                if filtros_no_sinteticos.puntoValido(lat, lon, parquetAnio, src, transformer):
+                if filtros_no_sinteticos.puntoValido(lat, lon, df, src, transformer):
                     listaLat.append(lat)
                     listaLon.append(lon)
                     dia = np.random.randint(1, 29)  # día aleatorio entre 1 y 28 (incluido)
@@ -68,7 +68,7 @@ def crearAleatorios(mascara, parquetAnio, noIncendios, anio, src, transformer):
     return listaLat, listaLon, fechas
 
 
-def crearCercanos(incendiosZona, numNoIncendios, frpTotal, parquetAnio, src, transformer):
+def crearCercanos(incendiosZona, numNoIncendios, frpTotal, df, src, transformer):
 
     """
     Crea puntos sintéticos cercanos a incendios reales, distribuidos proporcionalmente al FRP de cada incendio.
@@ -77,7 +77,7 @@ def crearCercanos(incendiosZona, numNoIncendios, frpTotal, parquetAnio, src, tra
     - incendiosZona: DataFrame con los incendios de la zona (ya filtrados, NO una ruta)
     - numNoIncendios: número total de puntos de no incendio a generar en esta zona
     - frpTotal: suma de frp_mean de todos los incendios de la zona
-    - parquetAnio: DataFrame con todos los incendios del año (para validar puntos)
+    - df: DataFrame con todos los incendios del año (para validar puntos)
     - src, transformer: objeto raster y objeto Transformer para validar puntos
 
     Devuelve:
@@ -129,7 +129,7 @@ def crearCercanos(incendiosZona, numNoIncendios, frpTotal, parquetAnio, src, tra
                     lat = varianza_lat + fila['lat_mean']
                     lon = varianza_lon + fila['lon_mean']
 
-                    if filtros_no_sinteticos.puntoValido(lat, lon, parquetAnio, src, transformer):
+                    if filtros_no_sinteticos.puntoValido(lat, lon, df, src, transformer):
                         listaLat.append(lat)
                         listaLon.append(lon)
                         fechas.append(filtros_no_sinteticos.crearFecha(dia_base, mes, anio_incendio))
@@ -139,13 +139,13 @@ def crearCercanos(incendiosZona, numNoIncendios, frpTotal, parquetAnio, src, tra
     return numNoIncendios_restante, listaLat, listaLon, fechas
 
 
-def crearSinteticos(parquetAnio, src):
+def crearSinteticos(df_incendios, src):
 
     '''
     Función para crear puntos sintéticos de no incendio, distribuidos proporcionalmente al número de incendios y al área de cada zona
 
     Parámetros:
-    - parquetAnio: ruta al archivo parquet con los incendios del año
+    - df: ruta al archivo parquet con los incendios del año
     - src: objeto raster con la información de la imagen
 
     Devuelve:
@@ -158,7 +158,7 @@ def crearSinteticos(parquetAnio, src):
     np.random.seed(42)
 
     # 1.- Leer incendios del año (una sola vez)
-    df_incendios = pd.read_parquet(parquetAnio)  # df_incendios es el DataFrame completo
+    #df_incendios = pd.read_parquet(df)  # df_incendios es el DataFrame completo
 
     #print(df_incendios)
     no_incendiosTotales = len(df_incendios) * 30

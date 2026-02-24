@@ -1,4 +1,4 @@
-from . import incendios, pendiente, vegetacion, fisicas, vegetacion2, minioFunctions
+from . import incendios, pendiente, vegetacion, fisicas, vegetacion2, minioFunctions, puntos_sinteticos
 import time
 import pandas as pd
 import asyncio
@@ -34,7 +34,7 @@ async def procesar_fila_completa(session, row, index):
         print("Fila extraida")
         return env_datos
     
-async def build_environmental_df(filepath, limit=100, fecha_ini = None, fecha_fin = None):
+async def build_environmental_df(file, limit=100, fecha_ini = None, fecha_fin = None):
     
     """
     Construye el DataFrame uniendo informacion de incendios con variables fisicas, topograficas y de vegetacion
@@ -47,11 +47,23 @@ async def build_environmental_df(filepath, limit=100, fecha_ini = None, fecha_fi
     ini = time.time()
 
     async with aiohttp.ClientSession() as session:
-        fires = incendios.fetch_fires(filepath, limit, fecha_ini, fecha_fin)
+
+        #Enviamos un df directamente
+        fires = incendios.fetch_fires(file, limit, fecha_ini, fecha_fin, True)
+        no_fires = puntos_sinteticos.crearSinteticos(fires, None)
+
+        fires["final"] = 1
+        no_fires["final"] = 0
+        
+        #Outer join sobre las columnas de no_incendios => las columnas extra de "incendios" en "no_incendios" seran NaN
+        merged = pd.concat([fires, no_fires], ignore_index=True)
+
+        merged['date_first'] = merged['date_first'].astype(str)
+
 
         tareas_totales = [
             procesar_fila_completa(session, row, i)
-            for i, row in enumerate(fires.head(limit).itertuples())
+            for i, row in enumerate(merged.head(limit).itertuples())
         ]
 
         print(f"Iniciando extracción: {limit} incendios...")
@@ -65,15 +77,15 @@ async def build_environmental_df(filepath, limit=100, fecha_ini = None, fecha_fi
                              "secret": os.getenv("AWS_SECRET_ACCESS_KEY"),
                              "client_kwargs": {"endpoint_url": "https://minio.fdi.ucm.es", "verify": False}
                          })
-    fires = fires.head(limit)
-    lista_puntos = list(zip(fires['lon_mean'], fires['lat_mean']))
+    merged = merged.head(limit)
+    lista_puntos = list(zip(merged['lon_mean'], merged['lat_mean']))
     veg2_resultados = await asyncio.to_thread(vegetacion2.lista_entorno, lista_puntos, df_aux)
     veg2_resultados = pd.DataFrame(veg2_resultados, columns=["vegetacion2"])
 
-    fires = fires.reset_index(drop=True)
+    merged = merged.reset_index(drop=True)
     env_df = env_df.reset_index(drop=True)
     veg2_resultados = veg2_resultados.reset_index(drop=True)
-    env_df = pd.concat([fires, env_df], axis=1)
+    env_df = pd.concat([merged, env_df], axis=1)
     env_df = pd.concat([veg2_resultados, env_df], axis=1)
     final_df = env_df
 

@@ -99,14 +99,9 @@ async def df_fisicas(fires, limit = 20, fecha_ini = None, fecha_fin = None):
     fin_none = fecha_fin == None
     ini_none = fecha_ini == None
 
-    if not fin_none:
-        mes_fecha_fin = int(fecha_fin[5:7])
-
-    if not ini_none:
-        mes_fecha_ini = int(fecha_ini[5:7])
-
     if not fin_none and not ini_none: 
-        fires = fires[fires.date_first.str[5:7].astype(int).between(mes_fecha_ini, mes_fecha_fin)]
+        fires = fires[fires.date_first.between(fecha_ini, fecha_fin)]
+            
 
     # if fecha_ini is not None:
     #         fecha_ini = pd.to_datetime(fecha_ini, "%Y-%m-%d")

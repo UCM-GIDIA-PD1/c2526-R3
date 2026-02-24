@@ -101,6 +101,8 @@ async def df_fisicas(fires, limit = 20, fecha_ini = None, fecha_fin = None):
 
         print("Comenzando extracción...")
 
+        fires = incendios.fetch_fires(fires, fecha_ini, fecha_fin, False, False)
+
         if limit == -1:
             rows = fires.to_dict('records')
         else:

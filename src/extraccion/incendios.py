@@ -153,7 +153,7 @@ def crear_parquet(df, filename='resumen_incendios.parquet'):
     df.to_parquet(filename, index=False)
 '''
 
-def fetch_fires(df, fecha_ini = None, fecha_fin = None, question=False):
+def fetch_fires(df_clean, fecha_ini = None, fecha_fin = None, question=False, limpiar = True):
 
     """
     Funcion que procesa un DataFrame de incendios, limpiándolo, separando los eventos de incendio y calculando el área de cada incendio
@@ -176,7 +176,8 @@ def fetch_fires(df, fecha_ini = None, fecha_fin = None, question=False):
 
     #cliente = minioFunctions.crear_cliente()
     #df = minioFunctions.bajar_fichero(cliente, 'grupo3/raw/incendios/j1-viirs-22-26.parquet', type="df")
-    df_clean = limpieza(df)
+    if limpiar:
+        df_clean = limpieza(df_clean)
 
     if fecha_ini is not None:
         fecha_ini = pd.to_datetime(fecha_ini)
@@ -190,13 +191,18 @@ def fetch_fires(df, fecha_ini = None, fecha_fin = None, question=False):
         print("No hay incendios en el rango de fechas seleccionado.")
         return pd.DataFrame()
     print("Df separado")
-    df_clean, resumen = separate_fire_events(df_clean, 5.0)
+
+    if limpiar:
+        df_clean, resumen = separate_fire_events(df_clean, 5.0)
     
-    areas_df = calcular_area_incendios(df_clean, pixel_res_meters=375) 
+    if limpiar:
+        areas_df = calcular_area_incendios(df_clean, pixel_res_meters=375) 
 
-    resumen = resumen.merge(areas_df, on='fire_id', how='left')
-    print("Hectáreas calculadas")
-
+        resumen = resumen.merge(areas_df, on='fire_id', how='left')
+        print("Hectáreas calculadas")
+    else:
+        resumen = df_clean.copy()
+        
     if question:
         minioFunctions.preguntar_subida(resumen.sort_values(by='count', ascending=False), "grupo3/raw/incendios/")
     

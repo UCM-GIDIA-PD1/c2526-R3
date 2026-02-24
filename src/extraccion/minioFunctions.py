@@ -14,6 +14,9 @@ con las claves de acceso a MinIO
 '''
 
 def importar_keys():
+    '''
+    Importa las claves desde el archivo .env
+    '''
     load_dotenv()
 
     access_key = os.getenv("AWS_ACCESS_KEY_ID")
@@ -22,6 +25,9 @@ def importar_keys():
     return access_key, secret_key
 
 def crear_cliente():
+    '''
+    Crea el cliente de acceso a minio
+    '''
     ak, sk = importar_keys()
     
     cliente = Minio(
@@ -35,12 +41,11 @@ def crear_cliente():
 def subir_fichero(cliente, path_server: Path, df):
     assert isinstance(df, gpd.GeoDataFrame) or isinstance(df, pd.DataFrame), f"Ningún dataframe o geodataframe se pasó por parámetro"
     '''
-    Solo admite los tipos de dataframe (df) y geodataframe (gdf). Especificamos el tipo por el parámetro type
-    y por defecto se tomará el archivo como dataframe. 
+    Sube un dataframe o geodataframe como parquet a la ruta especificada de minio.
     
-    :param cliente: cliente de MinIO
+    :param cliente: cliente de MinIO (función crear_cliente())
     :param path_server: path del archivo en MinIO
-    :param type: "df" o "gdf"
+    :param df: DataFrame o GeoDataFrame
     '''
     buffer = io.BytesIO()
     df.to_parquet(buffer)
@@ -56,6 +61,13 @@ def subir_fichero(cliente, path_server: Path, df):
     print(f"Fichero subido como {path_server}")
     
 def bajar_fichero(cliente, path_server: Path, type = "df"):
+    '''
+    Baja un dataframe o geodataframe como parquet desde la ruta especificada.
+
+    :param cliente: cliente de MinIO (función crear_cliente())
+    :param path_server: path del archivo en MinIO
+    :param type: especificar el tipo "df" o "gdf"
+    '''
     assert type == "gdf" or type == "df", f"Tipo especificado no válido: {type}, especifique 'df' o 'gdf'"
     
     response = None
@@ -89,30 +101,6 @@ def bajar_fichero_local(cliente, path_server: Path, path_local: Path):
         object_name=path_server,
         file_path=path_local,
     )
-
-def bajar_carpeta(cliente, path_server: Path):
-    ficheros = cliente.list_objects("pd1", prefix=path_server, recursive=True) 
-
-    for fichero in ficheros:
-        fichero.object_name
-        
-'''
-#Subir a MinIO Biogeoregiones
-cliente = crear_cliente()
-path = Path(__file__).resolve().parent.parent.parent / "data" / "BiogeoRegions"
-for archivo in path.iterdir():
-    if archivo.is_file():
-        destination_path = f"grupo3/raw/Biogeoregiones/{archivo.name}"
-        subir_fichero(cliente, archivo, destination_path)
-        print(f"Subido {archivo.name}")
-'''
-
-''' EJEMPLO SUBIR FICHERO
-cliente = crear_cliente()
-df = pd.DataFrame({"Esto" : ["es una prueba"]})
-subir_fichero(cliente, "grupo3/prueba_subir_fichero.parquet", df)
-'''
-
 
 # Función encargada de automatizar la subida de .parquets a Minio
 
@@ -148,35 +136,3 @@ def preguntar_subida(df, ruta_carpeta = "grupo3/Datos/"):
     except Exception as e:
         print(f" Error al subir el archivo: {e}")
         return False
-    
-def bajar_csv(cliente, path_server: Path, **kwargs):
-    
-    """
-    Descarga un archivo CSV desde MinIO y lo devuelve como DataFrame.
-    
-    :param cliente: cliente de MinIO
-    :param path_server: ruta del archivo CSV en MinIO
-    :param **kwargs: argumentos 
-    :return: DataFrame con los datos del CSV
-    """
-
-    response = None
-    try:
-        response = cliente.get_object(
-            bucket_name="pd1",
-            object_name=path_server,
-        )
-
-        buffer = io.BytesIO(response.read())  
-        df = pd.read_csv(buffer, **kwargs)  
-        
-        print(f"CSV importado correctamente desde {path_server}")
-        return df
-    
-    except Exception as e: 
-        print(f"Error al conectar con el servidor: {e}")
-        return None
-
-    finally:
-        if response: 
-            response.close()

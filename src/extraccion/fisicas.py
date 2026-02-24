@@ -96,12 +96,22 @@ async def df_fisicas(fires, limit = 20, fecha_ini = None, fecha_fin = None):
     - DataFrame con las características físicas obtenidas para cada incendio.
     '''
     
+     if fecha_ini is not None:
+            fecha_ini = pd.to_datetime(fecha_ini)
+            date = pd.to_datetime(fires['date_first'])
+            fires = fires[date >= fecha_ini]
+    
+    if fecha_fin is not None:
+        fecha_fin = pd.to_datetime(fecha_fin)
+        date = pd.to_datetime(fires['date_first'])
+        fires = fires[date <= fecha_fin]
+
     async with aiohttp.ClientSession() as session:
         ini = time.time()
 
         print("Comenzando extracción...")
 
-        fires = incendios.fetch_fires(fires, fecha_ini, fecha_fin, False, False)
+       
 
         if limit == -1:
             rows = fires.to_dict('records')

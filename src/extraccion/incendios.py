@@ -26,9 +26,9 @@ def limpieza(df):
     df = df.rename(columns={
             'latitude': 'lat',
             'longitude': 'lon',
-            'acq_date': 'date_first'
+            'acq_date': 'date'
     })
-    columnas_utiles = ['lat', 'lon', 'frp', 'date_first']
+    columnas_utiles = ['lat', 'lon', 'frp', 'date']
     return df[columnas_utiles]
 
 def calcular_area_incendios(df, pixel_res_meters=1000):
@@ -153,7 +153,7 @@ def crear_parquet(df, filename='resumen_incendios.parquet'):
     df.to_parquet(filename, index=False)
 '''
 
-def fetch_fires(df_clean, fecha_ini = None, fecha_fin = None, question=False, limpiar = True):
+def fetch_fires(df, fecha_ini = None, fecha_fin = None, question=False):
 
     """
     Funcion que procesa un DataFrame de incendios, limpiándolo, separando los eventos de incendio y calculando el área de cada incendio
@@ -176,32 +176,26 @@ def fetch_fires(df_clean, fecha_ini = None, fecha_fin = None, question=False, li
 
     #cliente = minioFunctions.crear_cliente()
     #df = minioFunctions.bajar_fichero(cliente, 'grupo3/raw/incendios/j1-viirs-22-26.parquet', type="df")
-    if limpiar:
-        df_clean = limpieza(df_clean)
+    df_clean = limpieza(df)
 
     if fecha_ini is not None:
         fecha_ini = pd.to_datetime(fecha_ini)
-        df_clean = df_clean[pd.to_datetime(df_clean['date_first']) >= fecha_ini]
+        df_clean = df_clean[df_clean['date'] >= fecha_ini]
     
     if fecha_fin is not None:
         fecha_fin = pd.to_datetime(fecha_fin)
-        df_clean = df_clean[pd.to_datetime(df_clean['date_first']) <= fecha_fin]
+        df_clean = df_clean[df_clean['date'] <= fecha_fin]
 
     if df_clean.empty:
         print("No hay incendios en el rango de fechas seleccionado.")
         return pd.DataFrame()
     print("Df separado")
-
-    if limpiar:
-        df_clean, resumen = separate_fire_events(df_clean, 5.0)
+    df_clean, resumen = separate_fire_events(df_clean, 5.0)
     
-    if limpiar:
-        areas_df = calcular_area_incendios(df_clean, pixel_res_meters=375) 
+    areas_df = calcular_area_incendios(df_clean, pixel_res_meters=375) 
 
-        resumen = resumen.merge(areas_df, on='fire_id', how='left')
-        print("Hectáreas calculadas")
-    else:
-        resumen = df_clean.copy()
+    resumen = resumen.merge(areas_df, on='fire_id', how='left')
+    print("Hectáreas calculadas")
 
     if question:
         minioFunctions.preguntar_subida(resumen.sort_values(by='count', ascending=False), "grupo3/raw/incendios/")

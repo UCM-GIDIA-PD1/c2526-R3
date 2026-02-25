@@ -49,3 +49,27 @@ pd1/
 ```
 
 Para las características de Fisicas, Pendiente, Vegetación y Vegetación2 la nomenclatura de archivos dentro de sus respectivas carpetas es incendios_y_no_incendios_{característica}_{año}.parquet
+
+## Configuración de Google Earth Engine
+Para poder utilizar este proyecto, es necesario crear un proyecto en Google Cloud, registrarse en Earth Engine y generar unas credenciales de acceso, siguiendo los pasos:
+
+1. Ve a [Google Earth Engine](https://earthengine.google.com/), haz clic en **"Get Started"** y selecciona la cuenta de Google con la que deseas crear el proyecto.
+2. En la pantalla de Configuración, de las dos opciones que aparecen, selecciona **"Consultar si cumples con los requisitos para el uso no comercial"**.
+3. Rellena los datos de tu organización:
+   - **Tipo de organización:** Institución académica.
+   - **Institución:** (Tu universidad).
+   - **Alcance geográfico:** Regional -> Europa.
+   - Haz clic en **"Verificar requisitos"**.
+4. Elige el plan **"Comunidad"** y haz clic en Continuar.
+5. Haz clic en **"Registrar"**.
+
+6. Una vez en tu proyecto, **habilita la API de Google Earth Engine**.
+7. Haz clic en el icono de las tres barras arriba a la izquierda, pon el cursor en el apartado **"API y servicios"** y selecciona **"Credenciales"**.
+8. Baja hasta el apartado de *Cuentas de servicio* y pulsa en **"Administrar cuentas de servicio"**.
+9. Haz clic en **"Crear cuenta de servicio"** y asígnale el nombre que prefieras.
+10. En la sección del rol, busca y selecciona **"Administrador de recursos de Earth Engine"**. (El último paso opcional no es necesario rellenarlo). Haz clic en **"Listo"**.
+
+11. Una vez creada la cuenta de servicio, haz clic en ella dentro de la lista para ver sus detalles y ve a la pestaña **"Claves"**.
+12. Haz clic en **"Agregar clave"** → **"Crear una nueva"** (elige el formato JSON). Se te descargará un archivo `.json` automáticamente.
+13. Cambia el nombre de ese archivo descargado a `google-credentials.json` (si vas a meterlo dentro de la carpeta del proyecto).
+14. Por último, añade la ruta de este archivo a tus variables de entorno bajo el nombre de `RUTA_CREDENCIALES`.

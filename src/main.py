@@ -458,7 +458,10 @@ async def main():
             df = await fisicas.df_fisicas("grupo3/raw/incendios/incendios_2022.parquet", limit = None)
             print(df)
 
-
+        elif opcion == "12":
+            construccion_df.concatenar_df_fisicas()
+            print('Archivo concatenado y en el minio')
+    
         elif opcion == "0":
             print("\n   ¡Adios! Pasa un buen día ")
             break

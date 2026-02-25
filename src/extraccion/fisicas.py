@@ -146,4 +146,3 @@ async def df_fisicas(fires, limit = 20, fecha_ini = None, fecha_fin = None):
         minioFunctions.preguntar_subida(final_df, "grupo3/raw/Fisicas/")
 
         return final_df
-

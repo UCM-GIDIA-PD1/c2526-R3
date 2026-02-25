@@ -72,4 +72,10 @@ Para poder utilizar este proyecto, es necesario crear un proyecto en Google Clou
 11. Una vez creada la cuenta de servicio, haz clic en ella dentro de la lista para ver sus detalles y ve a la pestaña **"Claves"**.
 12. Haz clic en **"Agregar clave"** → **"Crear una nueva"** (elige el formato JSON). Se te descargará un archivo `.json` automáticamente.
 13. Cambia el nombre de ese archivo descargado a `google-credentials.json` (si vas a meterlo dentro de la carpeta del proyecto).
+
 14. Por último, añade la ruta de este archivo a tus variables de entorno bajo el nombre de `RUTA_CREDENCIALES`.
+
+## Configuración de MinIO
+El proyecto cuenta con funciones de conexión con MinIO. Principalmente, se usan funciones para subir y bajar ficheros sin necesidad de trabajar en local. Para que esto funcione es necesario añadir a tus variables de entorno:
+1. ACCESS_KEY de MinIO, con nombre AWS_ACCESS_KEY_ID.
+2. SECRET_KEY de MinIO, con nombre AWS_SECRET_ACCESS_KEY. 

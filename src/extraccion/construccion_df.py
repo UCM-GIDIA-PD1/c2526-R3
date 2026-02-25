@@ -7,7 +7,7 @@ import os
 
 sem_global = asyncio.Semaphore(20)
 
-async def procesar_fila_completa(session, row, index):
+async def procesar_fila_completa(session, row, index,directo):
 
     """
     Extrae las caracteristicas ambientales para una sola observacion.
@@ -22,7 +22,7 @@ async def procesar_fila_completa(session, row, index):
         await asyncio.sleep(index * 0.1)
         fecha_str = row.date_first.strftime('%Y-%m-%d')
         tareas = [
-            fisicas.fetch_environment(session, row.lat_mean, row.lon_mean, fecha_str),
+            fisicas.fetch_environment(session, row.lat_mean, row.lon_mean, fecha_str,directo),
             vegetacion.vegetacion(row.lat_mean, row.lon_mean, fecha_str),
             #Ignacio: pasamos fecha_str
             pendiente.pendiente(row.lat_mean, row.lon_mean, fecha_str),
@@ -34,7 +34,7 @@ async def procesar_fila_completa(session, row, index):
         print("Fila extraida")
         return env_datos
     
-async def build_environmental_df(file, limit=100, fecha_ini = None, fecha_fin = None):
+async def build_environmental_df(file, limit=100, fecha_ini = None, fecha_fin = None, directo = False):
     
     """
     Construye el DataFrame uniendo informacion de incendios con variables fisicas, topograficas y de vegetacion
@@ -62,7 +62,7 @@ async def build_environmental_df(file, limit=100, fecha_ini = None, fecha_fin = 
 
 
         tareas_totales = [
-            procesar_fila_completa(session, row, i)
+            procesar_fila_completa(session, row, i,directo)
             for i, row in enumerate(merged.head(limit).itertuples())
         ]
 

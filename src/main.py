@@ -313,7 +313,7 @@ async def main():
                 await ejecutar_funcion("Construcción DF Ambiental", construccion_df.build_environmental_df, df_incendios)
             else:
                 await ejecutar_funcion("Construcción DF Ambiental", construccion_df.build_environmental_df, 
-                                       df_incendios, limit=limit, fecha_ini=fecha_ini, fecha_fin=fecha_fin)
+                                       df_incendios, limit=limit, fecha_ini=fecha_ini, fecha_fin=fecha_fin, directo = True)
 
         elif opcion == "2" and MODULOS_CARGADOS:
             limit, fecha_ini, fecha_fin = obtener_parametros()
@@ -455,6 +455,7 @@ async def main():
                 traceback.print_exc()    
 
         elif opcion == "11":
+            lista = []
             df = await fisicas.df_fisicas("grupo3/raw/incendios/incendios_2022.parquet", limit = None)
             print(df)
 

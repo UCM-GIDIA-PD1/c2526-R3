@@ -4,10 +4,11 @@ import pandas as pd
 import asyncio
 import aiohttp
 import os
+import numpy as np
 
 sem_global = asyncio.Semaphore(20)
 
-async def procesar_fila_completa(session, row, index,directo):
+async def procesar_fila_completa(session, row, index, directo):
 
     """
     Extrae las caracteristicas ambientales para una sola observacion.
@@ -22,9 +23,8 @@ async def procesar_fila_completa(session, row, index,directo):
         await asyncio.sleep(index * 0.1)
         fecha_str = row.date_first.strftime('%Y-%m-%d')
         tareas = [
-            fisicas.fetch_environment(session, row.lat_mean, row.lon_mean, fecha_str,directo),
+            fisicas.fetch_environment(session, row.lat_mean, row.lon_mean, fecha_str, directo),
             vegetacion.vegetacion(row.lat_mean, row.lon_mean, fecha_str),
-            #Ignacio: pasamos fecha_str
             pendiente.pendiente(row.lat_mean, row.lon_mean, fecha_str),
         ]
 
@@ -34,7 +34,7 @@ async def procesar_fila_completa(session, row, index,directo):
         print("Fila extraida")
         return env_datos
     
-async def build_environmental_df(file, limit=100, fecha_ini = None, fecha_fin = None, directo = False):
+async def build_environmental_df(file, limit=100, fecha_ini=None, fecha_fin=None, directo = False):
     
     """
     Construye el DataFrame uniendo informacion de incendios con variables fisicas, topograficas y de vegetacion
@@ -46,31 +46,37 @@ async def build_environmental_df(file, limit=100, fecha_ini = None, fecha_fin = 
 
     ini = time.time()
 
+    assert isinstance(file, pd.DataFrame), f"No es un DataFrame"
+
+    fires = incendios.fetch_fires(file, fecha_ini, fecha_fin)
+    
+    assert not fires.empty, "El DataFrame está vacio"
+
+    no_fires = puntos_sinteticos.crearSinteticos(fires, False)
+    
+    no_fires = no_fires.rename(columns={'lat': 'lat_mean', 'lon': 'lon_mean', 'date': 'date_first'})
+    
+    for col in fires.columns:
+        if col not in no_fires.columns and col != 'final':
+            no_fires[col] = pd.NA
+
+    fires["final"] = 1
+    no_fires["final"] = 0
+
+    merged = pd.concat([fires, no_fires], ignore_index=True)
+    merged['date_first'] = pd.to_datetime(merged['date_first'])
+
     async with aiohttp.ClientSession() as session:
 
-        #Enviamos un df directamente
-        fires = incendios.fetch_fires(file, limit, fecha_ini, fecha_fin, True)
-        no_fires = puntos_sinteticos.crearSinteticos(fires, None)
-
-        fires["final"] = 1
-        no_fires["final"] = 0
-        
-        #Outer join sobre las columnas de no_incendios => las columnas extra de "incendios" en "no_incendios" seran NaN
-        merged = pd.concat([fires, no_fires], ignore_index=True)
-
-        merged['date_first'] = merged['date_first'].astype(str)
-
-
         tareas_totales = [
-            procesar_fila_completa(session, row, i,directo)
+            procesar_fila_completa(session, row, i, directo)
             for i, row in enumerate(merged.head(limit).itertuples())
         ]
 
-        print(f"Iniciando extracción: {limit} incendios...")
+        print(f"Iniciando extracción: {limit} puntos...")
         env_rows = await asyncio.gather(*tareas_totales)
         env_df = pd.DataFrame(env_rows)
 
-    #Lectura del csv de vegetación 2
     df_aux = pd.read_csv("s3://pd1/grupo3/mapa/mapa_vegetacion.csv", 
                          storage_options={
                              "key": os.getenv("AWS_ACCESS_KEY_ID"),
@@ -89,12 +95,12 @@ async def build_environmental_df(file, limit=100, fecha_ini = None, fecha_fin = 
     env_df = pd.concat([veg2_resultados, env_df], axis=1)
     final_df = env_df
 
-
     fin = time.time()
-    print(f"Extraidos {limit} incendios en {fin - ini:.2f} segundos.")
+    print(f"Extraidos {limit} puntos en {fin - ini:.2f} segundos.")
     print(final_df.head(limit))
 
     minioFunctions.preguntar_subida(final_df, "grupo3/raw/Incendios_environmental/")
+
     return final_df
     
 #Ignacio: lo mejor es pasar como primer elemento de la lista el parquet de los

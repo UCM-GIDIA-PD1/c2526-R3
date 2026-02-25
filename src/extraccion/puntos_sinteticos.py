@@ -139,7 +139,7 @@ def crearCercanos(incendiosZona, numNoIncendios, frpTotal, df, src, transformer)
     return numNoIncendios_restante, listaLat, listaLon, fechas
 
 
-def crearSinteticos(df_incendios, src):
+def crearSinteticos(df_incendios, subir = True):
 
     '''
     Función para crear puntos sintéticos de no incendio, distribuidos proporcionalmente al número de incendios y al área de cada zona
@@ -255,7 +255,10 @@ def crearSinteticos(df_incendios, src):
                   todas_fechas.extend(fechas_rand)
 
     final_df = pd.DataFrame({'lat': todas_lats, 'lon': todas_lons, 'date': todas_fechas})
-
-    minioFunctions.preguntar_subida(final_df, "grupo3/raw/No_incendios/")
+    
+    print("Hecho")
+    
+    if subir:
+        minioFunctions.preguntar_subida(final_df, "grupo3/raw/No_incendios/")
     # 7.- Devolver DataFrame final
     return final_df

@@ -266,8 +266,7 @@ def pedirDatos():
         devolver_parquet = True
         tipo_descarga = "df"  
     elif tipo_retorno == "csv":
-        csv = minioFunctions.bajar_csv(cliente, path_server,sep=';', encoding='latin1', header=0)
-        df = pd.read_csv(csv)
+        df = minioFunctions.bajar_csv(cliente, path_server,sep=',', encoding='utf-8', header=0)
         return df
     else:
         tipo_descarga = tipo_retorno  

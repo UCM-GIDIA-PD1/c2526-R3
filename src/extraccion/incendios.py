@@ -10,25 +10,25 @@ import datetime
 # Funciones encargadas transformar y limpiar los diferentes .csv de incendios en DataFrames utilizables y útiles
 
 def limpieza(df):
-
     '''
     Limpia el DataFrame de incendios eliminando filas con baja confianza, duplicados y filtrando por tipo de incendio.
     Parámetros: dataFrame de incendios con columnas 'latitude', 'longitude', 'acq_date', 'confidence', 'frp' y 'type'.
-    Devuelve: DataFrame limpio con columnas 'lat', 'lon', 'frp' y 'date'.
+    Devuelve: DataFrame limpio con columnas 'lat', 'lon', 'frp' y 'date'.    
     '''
 
     assert not df.empty, "No se pueden analizar incendios, el DataFrame esta vacio"
     df['acq_date'] = pd.to_datetime(df['acq_date'])
     df = df[df['confidence'] != 'l']
     df = df.drop_duplicates(subset=['latitude', 'longitude', 'acq_date'])
-    df= df[df['frp'] > 50]
-    df = df[df['type'] == 0]
+    df = df[df['frp'] > 50]
+
     df = df.rename(columns={
             'latitude': 'lat',
             'longitude': 'lon',
             'acq_date': 'date'
     })
     columnas_utiles = ['lat', 'lon', 'frp', 'date']
+
     return df[columnas_utiles]
 
 def calcular_area_incendios(df, pixel_res_meters=1000):

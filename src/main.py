@@ -402,7 +402,7 @@ async def main():
                     print("No se definió RUTA_PRUEBA en .env ni se proporcionó ruta.")
                     input("\n⏎ Presiona Enter para continuar...")
                     continue
-
+    
             if not os.path.exists(ruta_parquet):
                 print(f"   El archivo no existe: {ruta_parquet}")
                 input("\n⏎ Presiona Enter para continuar...")
@@ -454,7 +454,6 @@ async def main():
                 traceback.print_exc()    
 
         elif opcion == "11":
-            lista = []
             df = await fisicas.df_fisicas("grupo3/raw/incendios/incendios_2022.parquet", limit = None)
             print(df)
 
@@ -462,7 +461,6 @@ async def main():
         elif opcion == "0":
             print("\n   ¡Adios! Pasa un buen día ")
             break
-
         else:
             print("\n ERROR: Opción no válida o módulos no cargados.")
 

@@ -162,10 +162,11 @@ def juntar_incendios():
         minioFunctions.subir_fichero(cliente, path_destino, merged)
         print(f"Subidos a: {path_destino}")
 
-def concatenar_df_fisicas():
-    anyo = input('De que año quieres concatenar los archivos de fisicas? (2022-2025)')
+def concatenar_df():
+    anyo = input('De que año quieres concatenar los archivos? (2022-2025)')
+    variable = input("Que variable quieres concatenar: ")
     cliente = minioFunctions.crear_cliente()
-    carpeta_fisicas = 'grupo3/raw/Fisicas'
+    carpeta_fisicas = f"grupo3/raw/{variable}"
     elementos = cliente.list_objects('pd1', prefix = carpeta_fisicas, recursive = True)
 
     archs_anyo = [elem.object_name for elem in elementos if elem.object_name.endswith(f'{anyo}.parquet')]
@@ -176,5 +177,5 @@ def concatenar_df_fisicas():
     
     df = pd.concat(dfs)
 
-    minioFunctions.preguntar_subida(df, "grupo3/raw/Fisicas/")
+    minioFunctions.preguntar_subida(df, f"grupo3/raw/{variable}/")
 

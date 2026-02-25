@@ -168,7 +168,6 @@ async def mostrar_menu():
     print("  8. Cambiar ruta para la extracción de datos")
     print("  9. Incendios")
     print("  10. Generar puntos sintéticos (requiere archivo Parquet)")
-    print("  11. Concatenar características físicas (requiere archivos Parquet de características físicas)")
     print("  0. Salir")
     print(" "*60)
 
@@ -293,7 +292,7 @@ async def main():
 
     while True:
         await mostrar_menu()
-        opcion = input("\n🔷 Selecciona una opción (0-11): ").strip()
+        opcion = input("\n🔷 Selecciona una opción (0-9): ").strip()
 
         if pregunta and opcion != "0":
             resultado = pedirDatos()
@@ -404,7 +403,7 @@ async def main():
                     print("No se definió RUTA_PRUEBA en .env ni se proporcionó ruta.")
                     input("\n⏎ Presiona Enter para continuar...")
                     continue
-
+    
             if not os.path.exists(ruta_parquet):
                 print(f"   El archivo no existe: {ruta_parquet}")
                 input("\n⏎ Presiona Enter para continuar...")
@@ -455,14 +454,13 @@ async def main():
                 print(f"   Error durante la generación: {e}")
                 traceback.print_exc()    
 
-        elif opcion == "11" and MODULOS_CARGADOS:
-            construccion_df.concatenar_df_fisicas()
-            print('Archivo concatenado y en el minio')
-    
+        elif opcion == "11":
+            construccion_df.concatenar_df()
+
+
         elif opcion == "0":
             print("\n   ¡Adios! Pasa un buen día ")
             break
-
         else:
             print("\n ERROR: Opción no válida o módulos no cargados.")
 

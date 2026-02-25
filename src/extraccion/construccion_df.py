@@ -169,8 +169,9 @@ def juntar_incendios():
         print(f"Subidos a: {path_destino}")
 
 def concatenar_df():
-    anyo = input('De que año quieres concatenar los archivos? (2022-2025)')
     variable = input("Que variable quieres concatenar: ")
+
+    anyo = input(f'De que año quieres concatenar los archivos para {variable}? (2022-2025) ')
     cliente = minioFunctions.crear_cliente()
     carpeta_fisicas = f"grupo3/raw/{variable}"
     elementos = cliente.list_objects('pd1', prefix = carpeta_fisicas, recursive = True)

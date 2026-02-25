@@ -294,7 +294,7 @@ async def main():
         await mostrar_menu()
         opcion = input("\n🔷 Selecciona una opción (0-11): ").strip()
 
-        if pregunta and opcion != "0":
+        if pregunta and opcion not in ["0", "6", "7", '9','10','11']:
             resultado = pedirDatos()
             pregunta = False
 

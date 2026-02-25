@@ -168,6 +168,7 @@ async def mostrar_menu():
     print("  8. Cambiar ruta para la extracción de datos")
     print("  9. Incendios")
     print("  10. Generar puntos sintéticos (requiere archivo Parquet)")
+    print("  11. Concatenar características físicas (requiere archivos Parquet de características físicas)")
     print("  0. Salir")
     print(" "*60)
 
@@ -292,7 +293,7 @@ async def main():
 
     while True:
         await mostrar_menu()
-        opcion = input("\n🔷 Selecciona una opción (0-9): ").strip()
+        opcion = input("\n🔷 Selecciona una opción (0-11): ").strip()
 
         if pregunta and opcion != "0":
             resultado = pedirDatos()
@@ -454,11 +455,7 @@ async def main():
                 print(f"   Error durante la generación: {e}")
                 traceback.print_exc()    
 
-        elif opcion == "11":
-            df = await fisicas.df_fisicas("grupo3/raw/incendios/incendios_2022.parquet", limit = None)
-            print(df)
-
-        elif opcion == "12":
+        elif opcion == "11" and MODULOS_CARGADOS:
             construccion_df.concatenar_df_fisicas()
             print('Archivo concatenado y en el minio')
     

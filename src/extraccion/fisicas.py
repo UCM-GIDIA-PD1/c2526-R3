@@ -9,7 +9,7 @@ import aiohttp
 sem_global = asyncio.Semaphore(20)
 contador = 0
 limit = 5000
-sleep = 3600  #
+sleep = 3600  
 
 async def fetch_environment(session, lat, lon, date, indice=None, intentos=3, directo=False):
     '''

@@ -455,7 +455,7 @@ async def main():
                 traceback.print_exc()    
 
         elif opcion == "11":
-            construccion_df.concatenar_df()
+            construccion_df.prueba()
 
         elif opcion == "0":
             print("\n   ¡Adios! Pasa un buen día ")

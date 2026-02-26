@@ -69,6 +69,7 @@ def extraer_biogeografica_raw():
     Extracción automática de las máscaras de las biogeoregiones desde MinIO
     :return bio_mascaras: 12 máscaras con las bioregiones en Europa tipo GeoDataFrame
     '''
+    cliente = crear_cliente()
     minio_a_local(carpeta_local = "BiogeoRegiones_raw", path_minio = "grupo3/raw/Biogeoregiones")
     
     #Extracción de los archivos desde local

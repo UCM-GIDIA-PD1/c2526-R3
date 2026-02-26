@@ -119,12 +119,14 @@ def merge_parquets(path_list):
     cliente = minioFunctions.crear_cliente()
     
     result = minioFunctions.bajar_fichero(cliente, path_list[0], "df")
+    result['date'] = pd.to_datetime(result['date'], format='mixed').dt.normalize()
+    
     for path in path_list[1:]:
         df = minioFunctions.bajar_fichero(cliente, path, "df")
-        result['date'] = pd.to_datetime(result['date'])
-        df['date'] = pd.to_datetime(df['date'])
+        df['date'] = pd.to_datetime(df['date'], format='mixed').dt.normalize()
         result = pd.merge(result, df, on=["lat", "lon", "date"], how='left')
     
+    minioFunctions.subir_fichero(cliente, "grupo3/raw/Final/prueba.parquet", df)
     return result
 
 def juntar_incendios():
@@ -185,4 +187,3 @@ def concatenar_df():
     df = pd.concat(dfs)
 
     minioFunctions.preguntar_subida(df, f"grupo3/raw/{variable}/")
-

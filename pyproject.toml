@@ -10,6 +10,7 @@ dependencies = [
     "geemap>=0.37.1",
     "geodatasets>=2026.1.0",
     "geopandas>=1.1.2",
+    "ipykernel>=7.2.0",
     "minio>=7.2.20",
     "numpy>=2.4.2",
     "pandas>=3.0.0",

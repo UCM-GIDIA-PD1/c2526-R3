@@ -12,12 +12,12 @@ async def pendiente(lat, lon, date, indice = None): #Ignacio: añadido date
     Calcula la elevacion y pendiente (en grados y porcentaje) de un punto usando Google Earth Engine.
     
     Importante:
-    - Utiliza el modelo USGS/SRTMGL1_003.
-    - Asume que Earth Engine siempre devolvera un diccionario con las claves 'elevation' y 'slope'.
+    - Utiliza el modelo COPERNICUS/DEM/GLO30.
+    - Asume que Earth Engine siempre devolvera un diccionario con las claves 'DEM' y 'slope'.
     - Si el valor de 'slope' es vacio o 0, el calculo del porcentaje asume 0 por defecto.
     """
   async with sem_global:
-    dem = ee.Image('USGS/SRTMGL1_003')
+    dem = ee.ImageCollection('COPERNICUS/DEM/GLO30').select('DEM').mosaic()
     punto = ee.Geometry.Point([lon, lat])
 
     slope = ee.Terrain.slope(dem)
@@ -38,7 +38,7 @@ async def pendiente(lat, lon, date, indice = None): #Ignacio: añadido date
         "lat" : lat,
         "lon" : lon, 
         "date" : date,
-        "elevacion_centro": res['elevation'],
+        "elevacion_centro": res['DEM'],
         "grados": res['slope'],
         "porcentaje": (np.tan(np.radians(res['slope'])) * 100) if res['slope'] else 0
     }

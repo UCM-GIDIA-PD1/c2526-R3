@@ -4,7 +4,7 @@ una latitud y longitud'''
 
 import rasterio
 import pandas as pd
-import numpy as np # Importante para manejar los valores nulos (NaN)
+import numpy as np 
 from pyproj import Transformer
 
 import time
@@ -39,7 +39,7 @@ def obtenerValorSuelo(lat, lon, src, transformer):
     else:
         return np.nan
 
-def lista_entorno_suelo(lista_puntos, ruta_tif): 
+def lista_entorno_suelo(lista_puntos): 
 
     """
     Mapea una lista de coordenadas a sus respectivos valores del suelo.
@@ -62,18 +62,20 @@ def lista_entorno_suelo(lista_puntos, ruta_tif):
                       aws_secret_access_key=sk):
         
         # Leemos directamente la ruta pasada por parámetro
-        with rasterio.open(ruta_tif) as src:
+        with rasterio.open("/vsis3/pd1/grupo3/raw/SOC/Predicted SOC 2018.tif") as src:
             transformer = Transformer.from_crs("EPSG:4326", src.crs, always_xy=True)
             lista_suelo = []
             
             for i, (lon, lat) in enumerate(lista_puntos):
                 val = obtenerValorSuelo(lat, lon, src, transformer)
                 lista_suelo.append(val)
-                print(f"Dato de suelo {i} extraído")
+
+                if (i % 1000 == 0): #Para no relantizar la extracción
+                    print(f"Dato de suelo {i} extraído")
                 
             return lista_suelo
 
-async def df_suelo(fires, variable_name="water_capacity", ruta_tif="/vsis3/pd1/grupo3/mapa/suelo.tif", limit=20):
+async def df_suelo(fires, limit=20):
 
     """
     Se extraen los datos de una variable de suelo específica para una serie de incendios
@@ -86,42 +88,17 @@ async def df_suelo(fires, variable_name="water_capacity", ruta_tif="/vsis3/pd1/g
     
     lista_puntos = list(zip(fires['lon_mean'], fires['lat_mean']))
 
-    # Ya no llamamos a pd.read_csv para mapear, pasamos la ruta del TIF directamente
-    lista_res = await asyncio.to_thread(lista_entorno_suelo, lista_puntos, ruta_tif)
+    lista_res = await asyncio.to_thread(lista_entorno_suelo, lista_puntos)
     
     fires = fires[['lat_mean','lon_mean','date_first']].copy().reset_index(drop = True)
 
-    # Creamos la columna dinámicamente según la variable que estemos procesando
-    final_df = pd.DataFrame(lista_res, columns=[variable_name])
+    final_df = pd.DataFrame(lista_res, columns=["SOC"])
     final_df = pd.concat([final_df, fires], axis = 1)
     final_df = final_df.rename(columns={'lat_mean':'lat', 'lon_mean':'lon', 'date_first':'date'})
 
     print(f"Finalizado en {time.time() - ini:.2f}s")
     print(final_df.head(limit))
 
-    # Guardamos en una carpeta nueva dentro de nuestro bucket raw en MinIO
-    minioFunctions.preguntar_subida(final_df, f"grupo3/raw/Suelo_{variable_name}/")
+    minioFunctions.preguntar_subida(final_df, f"grupo3/raw/Soil_organic_carbon/")
 
     return final_df
-
-
-def info_tif():
-    ruta_tif = Path(__file__).resolve().parent.parent.parent / "data/NEW_RUSLE2016.tfw"
-
-    print(f"Inspeccionando archivo: {ruta_tif}\n" + "-"*40)
-
-    with rasterio.open(ruta_tif) as src:
-        print(f"Bandas: {src.count}")
-        print(f"Descripciones: {src.descriptions}")
-    
-        print("Metadatos globales del archivo:")
-        for clave, valor in src.tags().items():
-            print(f"   -> {clave}: {valor}")
-        
-        print("Metadatos específicos por banda:")
-        for i in range(1, src.count + 1):
-            tags_banda = src.tags(i)
-            if tags_banda:
-                print(f"Banda {i}: {tags_banda}")
-            else:
-                print(f"Banda {i}: (Sin metadatos adicionales)")

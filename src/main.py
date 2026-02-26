@@ -98,6 +98,9 @@ try:
     from extraccion import puntos_sinteticos
     print("   ✅ OK")
 
+    from extraccion import suelo
+    print("   ✅ OK")
+
     MODULOS_CARGADOS = True
     print("\n BIEN: Todos los módulos cargados correctamente.\n")
 
@@ -169,6 +172,7 @@ async def mostrar_menu():
     print("  9. Incendios")
     print("  10. Generar puntos sintéticos (requiere archivo Parquet)")
     print("  11. Concatenar características físicas (requiere archivos Parquet de características físicas)")
+    print("  12. Soil Organic Carbon (parámetros: limit, fechas)")
     print("  0. Salir")
     print(" "*60)
 
@@ -455,7 +459,15 @@ async def main():
                 traceback.print_exc()    
 
         elif opcion == "11":
-            construccion_df.prueba()
+            df = await fisicas.df_fisicas("grupo3/raw/incendios/incendios_2022.parquet", limit = None)
+            print(df)
+
+        elif opcion == "12" and MODULOS_CARGADOS:
+            limit, fecha_ini, fecha_fin = obtener_parametros()
+            if limit is None:
+                await ejecutar_funcion("Soil Organic Carbon (SOC)", suelo.df_suelo, df_incendios)
+            else:
+                await ejecutar_funcion("Soil Organic Carbon (SOC)", suelo.df_suelo, df_incendios, limit=limit)
 
         elif opcion == "0":
             print("\n   ¡Adios! Pasa un buen día ")

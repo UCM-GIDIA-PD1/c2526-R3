@@ -31,7 +31,7 @@ except Exception as e:
 
 def quitar_dias(fecha_str):
     '''
-    Resta 21 días a la fecha ingresada (en formato string)
+    Resta 30 días a la fecha ingresada (en formato string)
     '''
     # if isinstance(fecha_str, str):
     #     fecha_obj = datetime.strptime(fecha_str, '%Y-%m-%d')
@@ -41,9 +41,9 @@ def quitar_dias(fecha_str):
     fecha_str = str(fecha_str)[:10]
     fecha_obj = datetime.strptime(fecha_str, '%Y-%m-%d')
         
-    menos_21 = fecha_obj - timedelta(days=21)
+    menos_30 = fecha_obj - timedelta(days=30)
     
-    return menos_21.strftime('%Y-%m-%d')
+    return menos_30.strftime('%Y-%m-%d')
 
 
 def calcular_indices(img):
@@ -56,7 +56,7 @@ def calcular_indices(img):
 
 def imagen(punto, fecha):
   '''
-  Obtiene la imagen del satélite Copernicus en un rango de 21 dias ignorando los datos con nubes
+  Obtiene la imagen del satélite Copernicus en un rango de 30 dias ignorando los datos con nubes
 
   Parametros:
   - punto: ee.Geometry.Point con la ubicacion
@@ -100,11 +100,11 @@ def logica_vegetacion(lat, lon, fecha):
 
     datos = img_data.select(['NDVI', 'NDWI']).sample(region = punto, scale = 10).getInfo()
 
-    if datos is None or 'properties' not in datos:
+    if datos is None or len(datos.get('features', [])) == 0:
       print(f"Advertencia: No se encontraron datos para Lat: {lat}, Lon: {lon}")
       return{'NDVI':np.nan, 'NDWI':np.nan}
     else:
-      return datos['properties']
+      return {'NDVI':datos['features'][0]['properties']['NDVI'], 'NDWI':datos['features'][0]['properties']['NDWI']}
     
   except Exception as e:
     print(f"Error al obtener datos para Lat: {lat}, Lon: {lon}, Fecha: {fecha}. Detalles del error: {e}")

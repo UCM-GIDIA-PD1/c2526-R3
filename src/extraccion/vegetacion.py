@@ -70,9 +70,9 @@ def imagen(punto, fecha):
   fecha_ini = quitar_dias(fecha)
 
   cloud_score = ee.ImageCollection('GOOGLE/CLOUD_SCORE_PLUS/V1/S2_HARMONIZED')
-  umbral_nubes = 0.5
+  umbral_nubes = 0.3
 
-  img = (ee.ImageCollection('COPERNICUS/S2_HARMONIZED')
+  img = (ee.ImageCollection('COPERNICUS/S2_SR_HARMONIZED')
             .filterBounds(punto)
             .filterDate(fecha_ini, fecha_fin)
             .linkCollection(cloud_score, ['cs_cdf'])

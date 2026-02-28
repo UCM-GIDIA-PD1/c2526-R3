@@ -48,9 +48,8 @@ def obtenerValorSuelo(lat, lon, src, transformer):
 
         if len(data_vecinos) == 0:
             print("No hay vecinos")
-
-            #Se ha comprobado que todos los nulos no tienen vecinos, por lo que 
-            #no intentamos el siguiente paso de hacer la media entre vecinos
+        
+            
         
 
 def lista_entorno_suelo(lista_puntos): 
@@ -99,8 +98,6 @@ async def df_suelo(fires, limit=20):
 
     """
     Se extraen los datos de una variable de suelo específica para una serie de incendios
-    :param fires: lista con los puntos a comprobar
-    :param limit: limite de puntos a comprobar
     """
     
     ini = time.time()

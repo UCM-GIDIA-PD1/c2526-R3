@@ -36,26 +36,38 @@ def obtenerNumero(lat, lon, src, transformer):
         num = data[0, 0]
         if num < 0:
             #Window de 3x3 y restamos a col y row 1 para posicionarnos en medio
-            vecinos = Window(col - 1, row - 1, 3, 3)
+            vecinos = Window(col - 3, row - 3, 5, 5)
             #vecinos16 = Window(col - 2, row - 2, 4, 4)
-            #vecinos25 = Window(col - 3, row - 3, 5, 5)
         
             data_vecinos = src.read(1, window=vecinos)
             print(f"Datos vecinos: {data_vecinos}")
 
             if data_vecinos.size > 0:
-                vecinos_clean = np.where(data_vecinos < 0, np.nan, data_vecinos) #Establecemos a nulo los valores negativos
-    
-                if np.isnan(vecinos_clean).all():
-                    print("Ningún vecino válido")
-                    num = -1
-                
-                #Depurando se ha visto que no hay ningún vecino válido,
-                #por lo que no intentamos el siguiente paso de hacer la media con los vecinos
-
+                vecinos_clean = np.where((data_vecinos == src.nodata) | (data_vecinos < 0), np.nan, data_vecinos)
+            
+                # Comprobamos si hay al menos un vecino válido
+                if not np.isnan(vecinos_clean).all():
+                    # np.nanmean calcula la media ignorando los np.nan
+                    media_vecinos = np.nanmean(vecinos_clean)
+                    print(f"La media es: {media_vecinos}")
+                    return float(media_vecinos)
+        
             else:
                 print("Sin vecinos")
-    
+    else:
+        #Window de 3x3 y restamos a col y row 1 para posicionarnos en medio
+        vecinos = Window(col - 1, row - 1, 3, 3)
+        #vecinos16 = Window(col - 2, row - 2, 4, 4)
+        
+        data_vecinos = src.read(1, window=vecinos)
+        
+        print(f"Datos vecinos: {data_vecinos}")
+
+        if len(data_vecinos) == 0:
+            print("No hay vecinos")
+            num = -1
+        else:
+            print("Si hay vecinos")
     return num
 
 def lista_entorno(lista_puntos, df_vegetacion): 
@@ -87,6 +99,11 @@ def lista_entorno(lista_puntos, df_vegetacion):
                      aws_secret_access_key=sk):
         
         with rasterio.open("/vsis3/pd1/grupo3/mapa/mapa.tif") as src:
+            print(f"Número total de bandas: {src.count}")
+            print(f"Índices de las bandas: {src.indexes}")
+            print(f"Limites del mapa .tif: {src.bounds}")
+            print(f"Sistema de coordenadas usado: {src.crs}")
+
             transformer = Transformer.from_crs("EPSG:4326", src.crs, always_xy=True)
             lista_vegetacion = []
             

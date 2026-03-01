@@ -12,7 +12,7 @@ import os
 import fsspec
 from rasterio.windows import Window
 from dotenv import load_dotenv
-from . import incendios
+# from . import incendios
 import asyncio
 from extraccion import minioFunctions
 from pathlib import Path

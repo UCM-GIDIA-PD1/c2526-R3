@@ -91,14 +91,17 @@ try:
     print("   ✅ OK")
 
     print("   vegetacion2")
-    from extraccion import vegetacion2
+    #from extraccion import vegetacion2
+    from extraccion.descartadas import vegetacion2
     print("   ✅ OK")
 
     print("   puntos_sinteticos")
     from extraccion import puntos_sinteticos
     print("   ✅ OK")
 
-    from extraccion import suelo
+    print("   suelo")
+    # from extraccion import suelo
+    from extraccion.descartadas import suelo
     print("   ✅ OK")
 
     MODULOS_CARGADOS = True

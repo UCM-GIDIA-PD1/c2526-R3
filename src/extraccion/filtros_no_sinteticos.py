@@ -1,5 +1,6 @@
 import pandas as pd
-from . import vegetacion2
+from extraccion.descartadas import vegetacion2
+# from . import vegetacion2
 from . import minioFunctions
 import numpy as np
 import geopandas as gpd 

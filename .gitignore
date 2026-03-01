@@ -10,3 +10,4 @@ credenciales
 *.csv
 .vscode
 esc
+.keep

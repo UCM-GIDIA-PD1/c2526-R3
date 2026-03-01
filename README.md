@@ -11,41 +11,54 @@ IgnisAI es un sistema diseñado para predecir la probabilidad de ignición y est
 ## Estructura del repositorio
 ```text
 IgnisAI/
-├── src/
-│   ├── extracción/
-│   │   ├── construccion_df.py
-│   │   ├── filtros_no_sinteticos.py
-│   │   ├── fisicas.py
-│   │   ├── incendios.py
-│   │   ├── mascaras.py
-│   │   ├── minioFunctions.py
-│   │   ├── parquet.py
-│   │   ├── pendiente.py
-│   │   ├── puntos_sinteticos.py
-│   │   ├── vegetacion.py
-│   │   └── vegetacion2.py
-│   └── main.py
-├── .gitignore
-├── .python-version
-├── README.md
-├── pyproject.toml
-└── uv.lock
+    ├── src/
+    │   ├── extracción/
+    │   │   ├── descartadas/
+    │   │   │   ├── vegetacion2.py
+    │   │   │   └── suelo.py
+    │   │   ├── construccion_df.py
+    │   │   ├── filtros_no_sinteticos.py
+    │   │   ├── fisicas.py
+    │   │   ├── incendios.py
+    │   │   ├── mascaras.py
+    │   │   ├── minioFunctions.py
+    │   │   ├── parquet.py
+    │   │   ├── pendiente.py
+    │   │   ├── puntos_sinteticos.py
+    │   │   └── vegetacion.py
+    │   ├── limpieza.ipynb
+    │   ├── analisis.ipynb
+    │   └── main.py
+    ├── .gitignore
+    ├── .python-version
+    ├── README.md
+    ├── pyproject.toml
+    └── uv.lock
 ```
 
 ## Estructura de los datos en MinIO
 ```text
 pd1/
 └── grupo3/
-    └── raw/
-        ├── Biogeoregiones/
-        ├── Countries/
-        ├── Fisicas/
-        ├── incendios/ # nomenclatura incendios_{año}.parquet
-        ├── Incendios_y_no_incendios/ # nomenclatura incendios_y_no_incendios_{año}.parquet
-        ├── Pendiente/
-        ├── No_incendios/ # nomenclatura no_incendios_{año}.parquet
-        ├── Vegetacion/   
-        └── Vegetacion2/
+    ├── maps/
+    │   ├── Biogeoregiones/ ...        #.shp
+    │   ├── mapa/ ...                  #.tif
+    │   ├── Incendios_firms/ ...       #.csv
+    │   └── SOC/ ...                   #.tif
+    ├── raw/                     
+    │   ├── Biogeoregiones/ ...          
+    │   ├── Final/ ...                   
+    │   ├── Fisicas/ ...             
+    │   ├── Incendios_y_no_incendios/ ...
+    │   ├── incendios/ ...             
+    │   ├── No_incendios/ ...          
+    │   ├── Pendiente/ ...             
+    │   ├── Soil_organic_carbon/ ...   
+    │   ├── Vegetacion/ ...            
+    │   └── Vegetacion2/ ...    
+    ├── cleaned/             
+    ├── processed/
+    └── grupo.txt
 ```
 
 Para las características de Fisicas, Pendiente, Vegetación y Vegetación2 la nomenclatura de archivos dentro de sus respectivas carpetas es incendios_y_no_incendios_{característica}_{año}.parquet

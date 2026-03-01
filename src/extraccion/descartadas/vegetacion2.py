@@ -24,6 +24,9 @@ def obtenerNumero(lat, lon, src, transformer):
     Casos limite:
     - Si no hay nada que leer devuelve -1
     - Cualquier valor negativo se reasigna al indice 44
+
+    El código comentado corresponde a la búsqueda de puntos cercanos para sanear puntos nulos.
+    Como esta función también es usada para crear puntos sintéticos, queda comentado
     '''
      
     x, y = transformer.transform(lon, lat)
@@ -40,7 +43,7 @@ def obtenerNumero(lat, lon, src, transformer):
             #vecinos16 = Window(col - 2, row - 2, 4, 4)
         
             data_vecinos = src.read(1, window=vecinos)
-            print(f"Datos vecinos: {data_vecinos}")
+            # print(f"Datos vecinos: {data_vecinos}")
 
             if data_vecinos.size > 0:
                 vecinos_clean = np.where((data_vecinos == src.nodata) | (data_vecinos < 0), np.nan, data_vecinos)
@@ -49,11 +52,11 @@ def obtenerNumero(lat, lon, src, transformer):
                 if not np.isnan(vecinos_clean).all():
                     # np.nanmean calcula la media ignorando los np.nan
                     media_vecinos = np.nanmean(vecinos_clean)
-                    print(f"La media es: {media_vecinos}")
+                    # print(f"La media es: {media_vecinos}")
                     return float(media_vecinos)
         
-            else:
-                print("Sin vecinos")
+            # else:
+            #     print("Sin vecinos")
     else:
         #Window de 3x3 y restamos a col y row 1 para posicionarnos en medio
         vecinos = Window(col - 1, row - 1, 3, 3)
@@ -61,13 +64,13 @@ def obtenerNumero(lat, lon, src, transformer):
         
         data_vecinos = src.read(1, window=vecinos)
         
-        print(f"Datos vecinos: {data_vecinos}")
+        # print(f"Datos vecinos: {data_vecinos}")
 
-        if len(data_vecinos) == 0:
-            print("No hay vecinos")
-            num = -1
-        else:
-            print("Si hay vecinos")
+        # if len(data_vecinos) == 0:
+        #     print("No hay vecinos")
+        #     num = -1
+        # else:
+        #     print("Si hay vecinos")
     return num
 
 def lista_entorno(lista_puntos, df_vegetacion): 

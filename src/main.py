@@ -166,16 +166,15 @@ async def mostrar_menu():
         print("  2. Vegetación (parámetros: limit, fechas)")
         print("  3. Pendiente (parámetros: limit, fechas)")
         print("  4. Características Físicas (parámetros: limit, fechas)")
-        print("  5. Vegetación 2 (parámetros: limit, fechas)")
     else:
         print("  ->  Módulos no disponibles (ejecuta opción 7 para diagnosticar)")
-    print("  6. Información del Proyecto")
-    print("  7. Diagnosticar Sistema")
-    print("  8. Cambiar ruta para la extracción de datos")
-    print("  9. Incendios")
-    print("  10. Generar puntos sintéticos (requiere archivo Parquet)")
-    print("  11. Concatenar características físicas (requiere archivos Parquet de características físicas)")
-    print("  12. Soil Organic Carbon (parámetros: limit, fechas)")
+    print("  5. Información del Proyecto")
+    print("  6. Diagnosticar Sistema")
+    print("  7. Cambiar ruta para la extracción de datos")
+    print("  8. Incendios")
+    print("  9. Generar puntos sintéticos (requiere archivo Parquet)")
+    print("  10. Concatenar características físicas (requiere archivos Parquet de características físicas)")
+    print("  11. Juntar todas las variables por año (merge)")
     print("  0. Salir")
     print(" "*60)
 
@@ -301,7 +300,7 @@ async def main():
         await mostrar_menu()
         opcion = input("\n🔷 Selecciona una opción (0-11): ").strip()
 
-        if pregunta and opcion not in ["0", "6", "7", '9','10','11']:
+        if pregunta and opcion not in ["0", "5", "6", "8", '9','10', '11']:
             resultado = pedirDatos()
             pregunta = False
 
@@ -346,15 +345,7 @@ async def main():
                 await ejecutar_funcion("Características Físicas", fisicas.df_fisicas, 
                                        df_incendios, limit=limit, fecha_ini=fecha_ini, fecha_fin=fecha_fin)
 
-        elif opcion == "5" and MODULOS_CARGADOS:
-            limit, fecha_ini, fecha_fin = obtener_parametros()
-            if limit is None:
-                await ejecutar_funcion("Vegetación 2", vegetacion2.df_vegetacion2, df_incendios)
-            else:
-                await ejecutar_funcion("Vegetación 2", vegetacion2.df_vegetacion2, 
-                                       df_incendios, limit=limit, fecha_ini=fecha_ini, fecha_fin=fecha_fin)
-
-        elif opcion == "6":
+        elif opcion == "5":
             print("\n" + " "*60)
             print(" INFORMACIÓN DEL PROYECTO")
             print(" "*60)
@@ -383,10 +374,10 @@ async def main():
 
             print("="*60)
 
-        elif opcion == "7":
+        elif opcion == "6":
             await diagnosticar_sistema()
 
-        elif opcion == "8":
+        elif opcion == "7":
             resultado = pedirDatos()
             if resultado is not None:
                 df_incendios = resultado
@@ -395,13 +386,13 @@ async def main():
                 print(f"Fallo al guardar la ruta")
             continue
 
-        elif opcion == "9" and MODULOS_CARGADOS:
+        elif opcion == "8" and MODULOS_CARGADOS:
             limit, fecha_ini, fecha_fin = obtener_parametros()
         
             await ejecutar_funcion("Incendios", incendios.fetch_fires,
                                     df_incendios, fecha_ini=fecha_ini, fecha_fin=fecha_fin, question=True)
             
-        elif opcion == "10" and MODULOS_CARGADOS:
+        elif opcion == "9" and MODULOS_CARGADOS:
 
             ruta_parquet = input("Ruta del archivo Parquet con incendios (vacío para usar RUTA_PRUEBA de .env): ").strip()
             if not ruta_parquet:
@@ -461,16 +452,19 @@ async def main():
                 print(f"   Error durante la generación: {e}")
                 traceback.print_exc()    
 
-        elif opcion == "11":
+        elif opcion == "10":
             df = await fisicas.df_fisicas("grupo3/raw/incendios/incendios_2022.parquet", limit = None)
             print(df)
 
-        elif opcion == "12" and MODULOS_CARGADOS:
-            limit, fecha_ini, fecha_fin = obtener_parametros()
-            if limit is None:
-                await ejecutar_funcion("Soil Organic Carbon (SOC)", suelo.df_suelo, df_incendios)
-            else:
-                await ejecutar_funcion("Soil Organic Carbon (SOC)", suelo.df_suelo, df_incendios, limit=limit)
+        elif opcion == "11" and MODULOS_CARGADOS:
+            anios = [2022, 2023, 2024, 2025]
+            for anio in anios:
+                construccion_df.merge_parquets([
+                f"grupo3/raw/Incendios_y_no_incendios/incendios_y_no_incendios_{anio}.parquet",
+                f"grupo3/raw/Pendiente/incendios_y_no_incendios_Pendiente_{anio}.parquet",
+                f"grupo3/raw/Fisicas/fisicas_{anio}_concat.parquet",
+                f"grupo3/raw/Vegetacion/incendios_y_no_incendios_Vegetacion_{anio}.parquet"
+                ], anio = anio)
 
         elif opcion == "0":
             print("\n   ¡Adios! Pasa un buen día ")

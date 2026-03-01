@@ -106,29 +106,53 @@ async def build_environmental_df(file, limit=100, fecha_ini=None, fecha_fin=None
     
 #Ignacio: lo mejor es pasar como primer elemento de la lista el parquet de los
 #incendios/no incendios con los puntos para que el merge(how = 'left') sea más robusto
-def merge_parquets(path_list):
-    
+def merge_parquets(path_list, anio):
     """
-    Realiza un 'left join' iterativo sobre una lista de DataFrames alojados en MinIO
+    Realiza un 'outer join' iterativo sobre una lista de DataFrames. 
     
-    Reglas de negocio:
-    - Se necesitan como minimo dos rutas de archivo para poder operar
-    - Usa 'lat', 'lon' y 'date' como claves de cruce
+    Condiciones:
+    - El primer dataframe debe ser el de incendios y no incendios
+
+    :param path_list: lista con los paths de las variables a juntar
+    :param anio: año de las variables
+    :return incendios_y_no_incendios: dataframe final con todas las variables
     """
 
     assert len(path_list) >= 2, "Longitud de la lista pasada por parámetro no válida."
+    
+    #Trabajo con MinIO
     cliente = minioFunctions.crear_cliente()
-    
-    result = minioFunctions.bajar_fichero(cliente, path_list[0], "df")
-    result['date'] = pd.to_datetime(result['date'], format='mixed').dt.normalize()
-    
+    incendios_y_no_incendios = minioFunctions.bajar_fichero(cliente, path_list[0], "df")
+    incendios_y_no_incendios.rename(
+        columns={
+            "date_first" : "date",
+            "lat_mean" : "lat",
+            "lon_mean" : "lon"
+        }, inplace = True
+    )
+
+    #Las seleccionamos para posteriormente tratar los nulos
+    columns = incendios_y_no_incendios.columns
+    columns = [col for col in columns if col not in ['date', 'date_last', 'date_first']]
+
+    #Saneamos el problema con las fechas (distintos formatos en los distintos dataframes)
+    incendios_y_no_incendios['date'] = pd.to_datetime(incendios_y_no_incendios['date'], format='mixed').dt.normalize()
+
+    #Vamos haciendo merge
     for path in path_list[1:]:
         df = minioFunctions.bajar_fichero(cliente, path, "df")
         df['date'] = pd.to_datetime(df['date'], format='mixed').dt.normalize()
-        result = pd.merge(result, df, on=["lat", "lon", "date"], how='left')
+        incendios_y_no_incendios = pd.merge(incendios_y_no_incendios, df, on=["lat", "lon", "date"], how='outer')
     
-    minioFunctions.subir_fichero(cliente, "grupo3/raw/Final/prueba.parquet", df)
-    return result
+    #Tratamos nulos en no incendios (estableciéndolos a 0)
+    incendios_y_no_incendios[columns] = incendios_y_no_incendios[columns].fillna(0)
+
+    #Subimos a MinIO
+    print(f"Dataframe final:\n {incendios_y_no_incendios.head(5)}")
+    minioFunctions.subir_fichero(cliente, f"grupo3/raw/Final/final_{anio}.parquet", incendios_y_no_incendios)
+    print(f"Merge hecho correctamente sobre el año {anio}")
+    
+    return incendios_y_no_incendios
 
 def juntar_incendios():
     

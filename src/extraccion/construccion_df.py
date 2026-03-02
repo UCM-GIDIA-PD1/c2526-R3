@@ -185,12 +185,16 @@ def juntar_incendios():
 def concatenar_df():
     variable = input("Que variable quieres concatenar: ")
 
-    anyo = input(f'De que año quieres concatenar los archivos para {variable}? (2022-2025) ')
+    anyo = input(f'De que año quieres concatenar los archivos para {variable}? (2022-2025) (pon -1 para concatenar todo el bucket)')
     cliente = minioFunctions.crear_cliente()
     carpeta_fisicas = f"grupo3/raw/{variable}"
     elementos = cliente.list_objects('pd1', prefix = carpeta_fisicas, recursive = True)
 
-    archs_anyo = [elem.object_name for elem in elementos if elem.object_name.endswith(f'{anyo}.parquet')]
+    if anyo != '-1':
+        archs_anyo = [elem.object_name for elem in elementos if elem.object_name.endswith(f'{anyo}.parquet')]
+    else:
+        archs_anyo = [elem.object_name for elem in elementos if elem.object_name.endswith('.parquet')]
+        
     dfs = []
 
     for arch in archs_anyo:

@@ -83,7 +83,7 @@ async def build_environmental_df(file, limit=100, fecha_ini=None, fecha_fin=None
     merged = merged.reset_index(drop=True)
     env_df = env_df.reset_index(drop=True)
     env_df = pd.concat([merged, env_df], axis=1)
-    final_df = env_df
+    final_df = limpieza.limpieza(env_df)
 
     fin = time.time()
     print(f"Extraidos {limit} puntos en {fin - ini:.2f} segundos.")

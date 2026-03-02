@@ -78,7 +78,7 @@ async def build_environmental_df(file, limit=100, fecha_ini=None, fecha_fin=None
         env_rows = await asyncio.gather(*tareas_totales)
         env_df = pd.DataFrame(env_rows)
 
-    # df_aux = pd.read_csv("s3://pd1/grupo3/mapa/mapa_vegetacion.csv", 
+    # df_aux = pd.read_csv("s3://pd1/grupo3/maps/mapa/mapa_vegetacion.csv", 
     #                      storage_options={
     #                          "key": os.getenv("AWS_ACCESS_KEY_ID"),
     #                          "secret": os.getenv("AWS_SECRET_ACCESS_KEY"),

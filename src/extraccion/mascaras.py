@@ -70,7 +70,7 @@ def extraer_biogeografica_raw():
     :return bio_mascaras: 12 máscaras con las bioregiones en Europa tipo GeoDataFrame
     '''
     cliente = crear_cliente()
-    minio_a_local(carpeta_local = "BiogeoRegiones_raw", path_minio = "grupo3/raw/Biogeoregiones")
+    minio_a_local(carpeta_local = "BiogeoRegiones_raw", path_minio = "grupo3/maps/Biogeoregiones")
     
     #Extracción de los archivos desde local
     actual_p = Path(__file__).resolve()
@@ -114,8 +114,6 @@ def bioregions_to_parquet(mascaras: dict):
         to_parquet(valor["geometry"], nombre, "BiogeoRegiones") 
 
         
-
-
 def parse_parquet(path: str):
     '''
     Convierte parquet a geodataframe

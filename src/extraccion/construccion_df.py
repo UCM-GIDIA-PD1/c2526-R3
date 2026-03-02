@@ -1,4 +1,6 @@
 from . import incendios, pendiente, vegetacion, fisicas, minioFunctions, puntos_sinteticos
+from limpieza import limpieza
+from analisis import analisis
 import time
 import pandas as pd
 import asyncio

@@ -1,5 +1,7 @@
 
 def limpieza(df):
+    df = df.drop(['date_last'], axis = 1)
+
     df1 = df.copy()
     df2 = df.copy()
     df3 = df.copy()

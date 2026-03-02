@@ -84,6 +84,8 @@ async def build_environmental_df(file, limit=100, fecha_ini=None, fecha_fin=None
     env_df = env_df.reset_index(drop=True)
     final_df = pd.concat([merged, env_df], axis=1)
     
+    final_df = final_df.drop(['date_last'], axis = 1)
+    final_df = final_df.dropna()
 
     fin = time.time()
     print(f"Extraidos {limit} puntos en {fin - ini:.2f} segundos.")

@@ -171,10 +171,11 @@ async def mostrar_menu():
     print("  5. Información del Proyecto")
     print("  6. Diagnosticar Sistema")
     print("  7. Cambiar ruta para la extracción de datos")
-    print("  8. Incendios")
-    print("  9. Generar puntos sintéticos (requiere archivo Parquet)")
-    print("  10. Concatenar características físicas (requiere archivos Parquet de características físicas)")
-    print("  11. Juntar todas las variables por año (merge)")
+    if MODULOS_CARGADOS:
+        print("  8. Incendios")
+        print("  9. Generar puntos sintéticos (requiere archivo Parquet)")
+        print("  10. Concatenar características físicas (requiere archivos Parquet de características físicas)")
+        print("  11. Juntar todas las variables por año (merge)")
     print("  0. Salir")
     print(" "*60)
 
@@ -394,44 +395,6 @@ async def main():
             
         elif opcion == "9" and MODULOS_CARGADOS:
 
-            # ruta_parquet = input("Ruta del archivo Parquet con incendios (vacío para usar RUTA_PRUEBA de .env): ").strip()
-            # if not ruta_parquet:
-            #     ruta_parquet = os.getenv('RUTA_PRUEBA')
-            #     if not ruta_parquet:
-            #         print("No se definió RUTA_PRUEBA en .env ni se proporcionó ruta.")
-            #         input("\n⏎ Presiona Enter para continuar...")
-            #         continue
-    
-            # if not os.path.exists(ruta_parquet):
-            #     print(f"   El archivo no existe: {ruta_parquet}")
-            #     input("\n⏎ Presiona Enter para continuar...")
-            #     continue
-
-            # if ruta_parquet.lower().endswith('.csv'):
-            #     print("   El archivo proporcionado es CSV, pero se necesita Parquet.")
-            #     convertir = input("¿Convertir a Parquet temporalmente? (s/n): ").strip().lower()
-            #     if convertir == 's':
-            #         try:
-            #             print("Leyendo CSV...")
-            #             df_csv = pd.read_csv(ruta_parquet)
-            #             ruta_parquet_temp = "resumen_incendios.parquet"
-            #             df_csv.to_parquet(ruta_parquet_temp)
-            #             ruta_parquet = ruta_parquet_temp
-            #             print(f" BIEN: Convertido a {ruta_parquet_temp}")
-            #         except Exception as e:
-            #             print(f" Error al convertir: {e}")
-            #             input("\n⏎ Presiona Enter para continuar...")
-            #             continue
-            #     else:
-            #         print("   No se puede continuar sin un archivo Parquet.")
-            #         input("\n⏎ Presiona Enter para continuar...")
-            #         continue
-            # elif not ruta_parquet.lower().endswith('.parquet'):
-            #     print("   El archivo debe tener extensión .parquet")
-            #     input("\n⏎ Presiona Enter para continuar...")
-            #     continue
-
-            # print(f"\n📊 Generando puntos sintéticos a partir de: {ruta_parquet}")
             print(f"\n📊 Generando puntos sintéticos")
 
             try:

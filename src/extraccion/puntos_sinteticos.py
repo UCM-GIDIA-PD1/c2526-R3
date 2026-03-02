@@ -157,10 +157,8 @@ def crearSinteticos(df_incendios, subir = True):
     # Semilla para tener todos el mismo valor
     np.random.seed(42)
 
-    # 1.- Leer incendios del año (una sola vez)
-    #df_incendios = pd.read_parquet(df)  # df_incendios es el DataFrame completo
+    # 1.- Objetener límites de creación
 
-    #print(df_incendios)
     no_incendiosTotales = len(df_incendios) * 30
     incendiosTotales = len(df_incendios)
 

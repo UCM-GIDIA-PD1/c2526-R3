@@ -1,5 +1,4 @@
 from . import incendios, pendiente, vegetacion, fisicas, minioFunctions, puntos_sinteticos
-# from . import vegetacion2
 import time
 import pandas as pd
 import asyncio
@@ -78,22 +77,10 @@ async def build_environmental_df(file, limit=100, fecha_ini=None, fecha_fin=None
         env_rows = await asyncio.gather(*tareas_totales)
         env_df = pd.DataFrame(env_rows)
 
-    # df_aux = pd.read_csv("s3://pd1/grupo3/mapa/mapa_vegetacion.csv", 
-    #                      storage_options={
-    #                          "key": os.getenv("AWS_ACCESS_KEY_ID"),
-    #                          "secret": os.getenv("AWS_SECRET_ACCESS_KEY"),
-    #                          "client_kwargs": {"endpoint_url": "https://minio.fdi.ucm.es", "verify": False}
-    #                      })
     merged = merged.head(limit)
-    # lista_puntos = list(zip(merged['lon_mean'], merged['lat_mean']))
-    # veg2_resultados = await asyncio.to_thread(vegetacion2.lista_entorno, lista_puntos, df_aux)
-    # veg2_resultados = pd.DataFrame(veg2_resultados, columns=["vegetacion2"])
-
     merged = merged.reset_index(drop=True)
     env_df = env_df.reset_index(drop=True)
-    # veg2_resultados = veg2_resultados.reset_index(drop=True)
     env_df = pd.concat([merged, env_df], axis=1)
-    # env_df = pd.concat([veg2_resultados, env_df], axis=1)
     final_df = env_df
 
     fin = time.time()

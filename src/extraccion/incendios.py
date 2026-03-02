@@ -141,18 +141,6 @@ def separate_fire_events(df, dist_km=2.0, mes_inicial=1, mes_final=12):
 
     return df, resumen
 
-'''
-def crear_parquet(df, filename='resumen_incendios.parquet'):
-    """
-    Guarda el DataFrame en un archivo Parquet.
-    
-    Parámetros:
-    - df: DataFrame a guardar.
-    - filename: Nombre del archivo Parquet (con extensión .parquet).
-    """
-    df.to_parquet(filename, index=False)
-'''
-
 def fetch_fires(df, fecha_ini = None, fecha_fin = None, question=False):
 
     """
@@ -174,8 +162,6 @@ def fetch_fires(df, fecha_ini = None, fecha_fin = None, question=False):
     -   AREA_HA: el area del incendio en hectareas
     """
 
-    #cliente = minioFunctions.crear_cliente()
-    #df = minioFunctions.bajar_fichero(cliente, 'grupo3/raw/incendios/j1-viirs-22-26.parquet', type="df")
     df_clean = limpieza(df)
 
     if fecha_ini is not None:

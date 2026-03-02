@@ -55,12 +55,6 @@ async def df_pendiente(fires, limit = 20, fecha_ini = None, fecha_fin = None):
 
     print("Comenzando extracción...")
 
-    #fires = incendios.fetch_fires(filepath, limit, fecha_ini, fecha_fin)
-    
-    
-    #cliente = minioFunctions.crear_cliente()
-    #fires = minioFunctions.bajar_fichero(cliente, filepath, "df")
-
     if limit == -1:
         rows = fires.to_dict('records')
     else:

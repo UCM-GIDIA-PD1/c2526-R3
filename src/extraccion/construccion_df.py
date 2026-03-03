@@ -131,15 +131,27 @@ def merge_parquets(path_list, anio):
         df['date'] = pd.to_datetime(df['date'], format='mixed').dt.normalize()
         incendios_y_no_incendios = pd.merge(incendios_y_no_incendios, df, on=["lat", "lon", "date"], how='outer')
     
-    #Tratamos nulos en no incendios (estableciéndolos a 0)
-    incendios_y_no_incendios[columns] = incendios_y_no_incendios[columns].fillna(0)
+    columnas = ['frp_sum', 'frp_mean', 'area_ha', 'count', 'date_last', 'duration_days']
+    filtro = incendios_y_no_incendios['final'] == 0
+
+    noIncendios = incendios_y_no_incendios[filtro]
+    incendios = incendios_y_no_incendios[~filtro]
+
+    noIncendios[columnas] = noIncendios[columnas].fillna(0)
+    final = pd.concat([noIncendios, incendios], ignore_index=True)
+    final = final.dropna()
+
+    final = final.drop(columns=['frp_sum', 'frp_mean', 'area_ha', 'count', 'date_last', 'duration_days'])
+    final = final.dropna()
+    incendios = incendios.dropna()
 
     #Subimos a MinIO
-    print(f"Dataframe final:\n {incendios_y_no_incendios.head(5)}")
-    minioFunctions.subir_fichero(cliente, f"grupo3/raw/Final/final_{anio}.parquet", incendios_y_no_incendios)
+    print(f"Dataframe final:\n {final.head(5)}")
+    minioFunctions.subir_fichero(cliente, f"grupo3/raw/Final/final_limpio_{anio}_modeloGeneral.parquet", final)
+    minioFunctions.subir_fichero(cliente, f"grupo3/raw/Final/final_limpio_{anio}_modelosinIncendios.parquet", incendios)
     print(f"Merge hecho correctamente sobre el año {anio}")
     
-    return incendios_y_no_incendios
+    return final
 
 def juntar_incendios():
     

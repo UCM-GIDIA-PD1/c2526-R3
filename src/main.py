@@ -176,7 +176,7 @@ async def mostrar_menu():
         print("  8. Incendios")
         print("  9. Generar puntos sintéticos (requiere archivo Parquet)")
         print("  10. Concatenar un bucket de alguna característica (requiere archivos Parquet)")
-        print("  11. Juntar todas las variables por año (merge)")
+        print("  11. Juntar todas las variables por año (merge). Se sube automaticamente a MinIO con el nombre final_{año}.parquet en grupo3/raw/Final/")
     print("  0. Salir")
     print(" "*60)
 

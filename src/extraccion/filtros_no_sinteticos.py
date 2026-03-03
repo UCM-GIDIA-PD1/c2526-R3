@@ -1,4 +1,3 @@
-import pandas as pd
 from extraccion.descartadas import vegetacion2
 from . import minioFunctions
 import numpy as np

@@ -1,6 +1,5 @@
 from pathlib import Path
 import geopandas as gpd
-import geodatasets
 
 def to_parquet(mascara: gpd.GeoDataFrame, nombre: str, carpeta = None):
     '''

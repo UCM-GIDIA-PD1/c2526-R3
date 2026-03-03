@@ -1,9 +1,10 @@
 import sys
 import os
 from pathlib import Path
+import pandas as pd
+import numpy as np
 import asyncio
 from dotenv import load_dotenv
-import pandas as pd
 import traceback
 from extraccion import minioFunctions
 
@@ -91,7 +92,7 @@ try:
     print("   ✅ OK")
 
     print("   vegetacion2")
-    #from extraccion import vegetacion2
+
     from extraccion.descartadas import vegetacion2
     print("   ✅ OK")
 
@@ -100,7 +101,7 @@ try:
     print("   ✅ OK")
 
     print("   suelo")
-    # from extraccion import suelo
+
     from extraccion.descartadas import suelo
     print("   ✅ OK")
 
@@ -167,14 +168,14 @@ async def mostrar_menu():
         print("  3. Pendiente (parámetros: limit, fechas)")
         print("  4. Características Físicas (parámetros: limit, fechas)")
     else:
-        print("  ->  Módulos no disponibles (ejecuta opción 7 para diagnosticar)")
+        print("  ->  Módulos no disponibles (ejecuta opción 6 para diagnosticar)")
     print("  5. Información del Proyecto")
     print("  6. Diagnosticar Sistema")
     print("  7. Cambiar ruta para la extracción de datos")
     if MODULOS_CARGADOS:
         print("  8. Incendios")
         print("  9. Generar puntos sintéticos (requiere archivo Parquet)")
-        print("  10. Concatenar características físicas (requiere archivos Parquet de características físicas)")
+        print("  10. Concatenar un bucket de alguna característica (requiere archivos Parquet)")
         print("  11. Juntar todas las variables por año (merge)")
     print("  0. Salir")
     print(" "*60)
@@ -418,7 +419,7 @@ async def main():
                 traceback.print_exc()    
 
         elif opcion == "10":
-            df = await fisicas.df_fisicas("grupo3/raw/incendios/incendios_2022.parquet", limit = None)
+            df = await construccion_df.concatenar_df()
             print(df)
 
         elif opcion == "11" and MODULOS_CARGADOS:

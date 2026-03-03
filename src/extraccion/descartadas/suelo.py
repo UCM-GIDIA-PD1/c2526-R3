@@ -8,8 +8,6 @@ import numpy as np
 from pyproj import Transformer
 
 import time
-import os
-import fsspec
 from rasterio.windows import Window
 from dotenv import load_dotenv
 # from . import incendios

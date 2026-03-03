@@ -1,12 +1,8 @@
 from . import incendios, pendiente, vegetacion, fisicas, minioFunctions, puntos_sinteticos
-from limpieza import limpieza
-from analisis import analisis
 import time
 import pandas as pd
 import asyncio
 import aiohttp
-import os
-import numpy as np
 
 sem_global = asyncio.Semaphore(20)
 

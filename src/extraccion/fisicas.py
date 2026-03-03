@@ -1,6 +1,6 @@
 import asyncio
 import time
-from .  import incendios, minioFunctions
+from .  import minioFunctions
 import pandas as pd
 import aiohttp
 

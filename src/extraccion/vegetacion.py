@@ -3,9 +3,8 @@ from datetime import datetime, timedelta
 import numpy as np
 import os
 from dotenv import load_dotenv
-from google.oauth2.service_account import Credentials
 import asyncio
-from . import incendios, minioFunctions
+from . import minioFunctions
 import pandas as pd
 import time
 

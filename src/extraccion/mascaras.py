@@ -1,11 +1,6 @@
-import io
 import geopandas as gpd
-import geodatasets
-import pandas as pd
-import matplotlib.pyplot as plt
 from pathlib import Path
 from shapely.geometry import Point
-from shapely.prepared import prep
 from minioFunctions import *
 
 from parquet import to_parquet

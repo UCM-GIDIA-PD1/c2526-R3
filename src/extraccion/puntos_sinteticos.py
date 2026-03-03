@@ -1,6 +1,4 @@
-import geopandas as gpd # Para GeoDataFrame y GeoSeries
 import pandas as pd
-from shapely.geometry import Point # Para crear puntos
 from pyproj import Transformer
 import numpy as np
 import rasterio

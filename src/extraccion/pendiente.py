@@ -2,7 +2,7 @@ import numpy as np
 import ee
 import asyncio
 import time
-from . import incendios, minioFunctions
+from . import minioFunctions
 import pandas as pd
 
 sem_global = asyncio.Semaphore(10)

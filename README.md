@@ -76,6 +76,8 @@ pd1/
     │   ├── Vegetacion/ ...
     │   └── Vegetacion2/ ...
     ├── cleaned/
+    |   ├── modeloGeneral.parquet
+    |   └── modeloIncendios.parquet
     ├── processed/
     └── grupo.txt
 ```
@@ -195,3 +197,4 @@ Proyecto desarrollado en el marco de la asignatura *Proyecto de Datos I* — Uni
 ## Licencia
 
 Proyecto académico — uso interno UCM. Todos los derechos reservados.
+

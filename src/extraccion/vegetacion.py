@@ -5,6 +5,7 @@ import os
 from dotenv import load_dotenv
 import asyncio
 from . import minioFunctions
+from . import interrupcion
 import pandas as pd
 import time
 
@@ -32,11 +33,6 @@ def quitar_dias(fecha_str):
     '''
     Resta 30 días a la fecha ingresada (en formato string)
     '''
-    # if isinstance(fecha_str, str):
-    #     fecha_obj = datetime.strptime(fecha_str, '%Y-%m-%d')
-    # else:
-    #     fecha_obj = fecha_str
-
     fecha_str = str(fecha_str)[:10]
     fecha_obj = datetime.strptime(fecha_str, '%Y-%m-%d')
         
@@ -147,20 +143,15 @@ async def df_vegetacion(fires, limit = 20, fecha_ini = None, fecha_fin = None):
   Devuelve:
   - final_df: DataFrame con los índices de vegetación para los incendios procesados
   '''
-  
+    
   ini = time.time()
-
   print("Comenzando extracción...")
 
-  #fires = incendios.fetch_fires(filepath, limit, fecha_ini, fecha_fin)
-  
-  #cliente = minioFunctions.crear_cliente()
-  #fires = minioFunctions.bajar_fichero(cliente, filepath, "df")
-
   if limit == -1:
-    rows = fires.to_dict('records')
+      rows = fires.to_dict('records')
   else:
-    rows = fires.head(limit).to_dict('records')
+      rows = fires.head(limit).to_dict('records')
+  
   tareas = [
       vegetacion(
           row['lat_mean'],
@@ -170,15 +161,37 @@ async def df_vegetacion(fires, limit = 20, fecha_ini = None, fecha_fin = None):
       )
       for i, row in enumerate(rows)
   ]
-  resultados = await asyncio.gather(*tareas)
+
+  resultados = []
+  try:
+      for tarea in asyncio.as_completed(tareas):
+          try:
+              resultados.append(await tarea)
+          except asyncio.CancelledError:
+              print("\n Interrupción detectada. Guardando resultados parciales...")
+              if resultados:
+                  final_df = pd.DataFrame(resultados)
+                  interrupcion.guardar_parcial(final_df, prefijo="vegetacion_parcial")
+              else:
+                  print("No hay datos parciales para guardar.")
+              for t in tareas:
+                  if not t.done():
+                      t.cancel()
+              raise
+  except KeyboardInterrupt:
+      print("\n Interrupción detectada. Guardando resultados parciales...")
+      if resultados:
+          final_df = pd.DataFrame(resultados)
+          interrupcion.guardar_parcial(final_df, prefijo="vegetacion_parcial")
+      else:
+          print("No hay datos parciales para guardar.")
+      raise
+
   final_df = pd.DataFrame(resultados)
 
   fin = time.time()
-
-  
   print(f"Extraídas {len(final_df)} filas de vegetación en {fin - ini:.2f} segundos.")
   print(final_df.head(limit))
 
   minioFunctions.preguntar_subida(final_df, "grupo3/raw/Vegetacion/")
-
   return final_df

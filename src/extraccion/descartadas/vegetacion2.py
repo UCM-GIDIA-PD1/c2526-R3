@@ -12,6 +12,7 @@ from dotenv import load_dotenv
 # from . import incendios
 import asyncio
 from extraccion import minioFunctions
+from extraccion import interrupcion
 import numpy as np
 
 def obtenerNumero(lat, lon, src, transformer):
@@ -38,37 +39,21 @@ def obtenerNumero(lat, lon, src, transformer):
         if num < 0:
             #Window de 3x3 y restamos a col y row 1 para posicionarnos en medio
             vecinos = Window(col - 3, row - 3, 5, 5)
-            #vecinos16 = Window(col - 2, row - 2, 4, 4)
         
             data_vecinos = src.read(1, window=vecinos)
-            # print(f"Datos vecinos: {data_vecinos}")
 
             if data_vecinos.size > 0:
                 vecinos_clean = np.where((data_vecinos == src.nodata) | (data_vecinos < 0), np.nan, data_vecinos)
             
                 # Comprobamos si hay al menos un vecino válido
                 if not np.isnan(vecinos_clean).all():
-                    # np.nanmean calcula la media ignorando los np.nan
                     media_vecinos = np.nanmean(vecinos_clean)
-                    # print(f"La media es: {media_vecinos}")
                     return float(media_vecinos)
         
-            # else:
-            #     print("Sin vecinos")
     else:
-        #Window de 3x3 y restamos a col y row 1 para posicionarnos en medio
         vecinos = Window(col - 1, row - 1, 3, 3)
-        #vecinos16 = Window(col - 2, row - 2, 4, 4)
-        
         data_vecinos = src.read(1, window=vecinos)
-        
-        # print(f"Datos vecinos: {data_vecinos}")
-
-        # if len(data_vecinos) == 0:
-        #     print("No hay vecinos")
-        #     num = -1
-        # else:
-        #     print("Si hay vecinos")
+      
     return num
 
 def lista_entorno(lista_puntos, df_vegetacion): 
@@ -132,20 +117,23 @@ async def df_vegetacion2(fires, limit=20, fecha_ini=None, fecha_fin=None):
     ak, sk = minioFunctions.importar_keys()
 
     df_aux = pd.read_csv("s3://pd1/grupo3/mapa/mapa_vegetacion.csv", 
-                         storage_options={
-                             "key": ak,
-                             "secret": sk,
-                             "client_kwargs": {"endpoint_url": "https://minio.fdi.ucm.es", "verify": False}
-                         })
+                            storage_options={
+                                "key": ak,
+                                "secret": sk,
+                                "client_kwargs": {"endpoint_url": "https://minio.fdi.ucm.es", "verify": False}
+                            })
 
-    #fires = incendios.fetch_fires(filepath, limit, fecha_ini, fecha_fin)
     if limit != -1:
         fires = fires.head(limit)   
     
     lista_puntos = list(zip(fires['lon_mean'], fires['lat_mean']))
 
-
-    lista_res = await asyncio.to_thread(lista_entorno, lista_puntos, df_aux)
+    try:
+        lista_res = await asyncio.to_thread(lista_entorno, lista_puntos, df_aux)
+    except KeyboardInterrupt:
+        print("\n Interrupción detectada. No hay datos parciales para guardar en vegetacion2 (proceso síncrono).")
+        raise
+    
     fires = fires[['lat_mean','lon_mean','date_first']].copy().reset_index(drop = True)
 
     final_df = pd.DataFrame(lista_res, columns=["vegetacion2"])

@@ -10,9 +10,9 @@ from pyproj import Transformer
 import time
 from rasterio.windows import Window
 from dotenv import load_dotenv
-# from . import incendios
 import asyncio
 from extraccion import minioFunctions
+from extraccion import interrupcion
 from pathlib import Path
 
 def obtenerValorSuelo(lat, lon, src, transformer):
@@ -36,9 +36,7 @@ def obtenerValorSuelo(lat, lon, src, transformer):
             return float(val) 
     #Si el valor es nulo, tomamos los 8 vecinos y hacemos la media
     else:
-        #Window de 3x3 y restamos a col y row 1 para posicionarnos en medio
         vecinos = Window(col - 1, row - 1, 3, 3)
-        #vecinos16 = Window(col - 2, row - 2, 4, 4)
         
         data_vecinos = src.read(1, window=vecinos)
         
@@ -105,7 +103,11 @@ async def df_suelo(fires, limit=20):
     
     lista_puntos = list(zip(fires['lon_mean'], fires['lat_mean']))
 
-    lista_res = await asyncio.to_thread(lista_entorno_suelo, lista_puntos)
+    try:
+        lista_res = await asyncio.to_thread(lista_entorno_suelo, lista_puntos)
+    except KeyboardInterrupt:
+        print("\n Interrupción detectada. No hay datos parciales para guardar en suelo (proceso síncrono).")
+        raise
     
     fires = fires[['lat_mean','lon_mean','date_first']].copy().reset_index(drop = True)
 

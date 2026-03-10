@@ -3,6 +3,7 @@ import ee
 import asyncio
 import time
 from . import minioFunctions
+from . import interrupcion
 import pandas as pd
 
 sem_global = asyncio.Semaphore(10)
@@ -15,7 +16,7 @@ async def pendiente(lat, lon, date, indice = None): #Ignacio: añadido date
     - Utiliza el dataset MERIT/DEM/v1_0_3.
     - Asume que Earth Engine siempre devolvera un diccionario con las claves 'dem' y 'slope'.
     - Si el valor de 'slope' es vacio o 0, el calculo del porcentaje asume 0 por defecto.
-    """
+  """
   async with sem_global:
     elev = ee.Image('MERIT/DEM/v1_0_3').select('dem')
     punto = ee.Geometry.Point([lon, lat])
@@ -69,7 +70,36 @@ async def df_pendiente(fires, limit = 20, fecha_ini = None, fecha_fin = None):
         )
         for i, row in enumerate(rows)
     ]
-    resultados = await asyncio.gather(*tareas)
+
+    resultados = []
+    try:
+        for tarea in asyncio.as_completed(tareas):
+            try:
+                resultados.append(await tarea)
+            except asyncio.CancelledError:
+                print("\n Interrupción detectada. Guardando resultados parciales...")
+                if resultados:
+                    final_df = pd.DataFrame(resultados)
+                    interrupcion.guardar_parcial(final_df, prefijo="pendiente_parcial")
+                else:
+                    print("No hay datos parciales para guardar.")
+                # Cancelar tareas pendientes
+                for t in tareas:
+                    if not t.done():
+                        t.cancel()
+                raise
+    except KeyboardInterrupt:
+        print("\n Interrupción detectada. Guardando resultados parciales...")
+        if resultados:
+            final_df = pd.DataFrame(resultados)
+            interrupcion.guardar_parcial(final_df, prefijo="pendiente_parcial")
+        else:
+            print("No hay datos parciales para guardar.")
+        raise
+    except Exception as e:
+        print(f"Error durante la extracción: {e}")
+        raise
+
     final_df = pd.DataFrame(resultados)
 
     fin = time.time()
@@ -80,5 +110,3 @@ async def df_pendiente(fires, limit = 20, fecha_ini = None, fecha_fin = None):
     minioFunctions.preguntar_subida(final_df, "grupo3/raw/Pendiente/")
 
     return final_df
-  
-

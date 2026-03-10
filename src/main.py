@@ -105,6 +105,11 @@ try:
     from extraccion.descartadas import suelo
     print("   ✅ OK")
 
+    print("   suelo2")
+    from extraccion.futuro import suelo2
+    print("   ✅ OK")
+
+
     MODULOS_CARGADOS = True
     print("\n BIEN: Todos los módulos cargados correctamente.\n")
 
@@ -176,7 +181,8 @@ async def mostrar_menu():
         print("  8. Incendios")
         print("  9. Generar puntos sintéticos (requiere archivo Parquet)")
         print("  10. Concatenar un bucket de alguna característica (requiere archivos Parquet)")
-        print("  11. Juntar todas las variables por año (merge). Se sube automaticamente a MinIO con el nombre final_{año}.parquet en grupo3/raw/Final/")
+        print("  11. Juntar todas las variables por año (merge)")
+        print("  12. Nueva variable suelo2")
     print("  0. Salir")
     print(" "*60)
 
@@ -300,7 +306,7 @@ async def main():
 
     while True:
         await mostrar_menu()
-        opcion = input("\n🔷 Selecciona una opción (0-11): ").strip()
+        opcion = input("\n🔷 Selecciona una opción (0-12): ").strip()
 
         if pregunta and opcion not in ["0", "5", "6", "8",'10', '11']:
             resultado = pedirDatos()
@@ -431,6 +437,10 @@ async def main():
                 f"grupo3/raw/Fisicas/fisicas_{anio}_concat.parquet",
                 f"grupo3/raw/Vegetacion/incendios_y_no_incendios_Vegetacion_{anio}.parquet"
                 ], anio = anio)
+        elif opcion == "12":
+            limit, fecha_ini, fecha_fin = obtener_parametros()
+        
+            await ejecutar_funcion("Suelo", suelo2.df_soil_temp, df_incendios, limit=limit, fecha_ini=fecha_ini, fecha_fin=fecha_fin)
 
         elif opcion == "0":
             print("\n   ¡Adios! Pasa un buen día ")

@@ -1,5 +1,5 @@
 import wandb
-from sklearn.tree import DecisionTreeClassifier
+from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split
 from extraccion import minioFunctions as mf
 import pandas as pd
@@ -18,9 +18,10 @@ def wandb_init():
         
         # Track hyperparameters and run metadata.
         config={
-            "max_depth": 3,
+            "max_depth": 7,
             "criterion": "gini",
-            "test_size": 0.2
+            "test_size": 0.2,
+            "n_estimators": 100
         },
     )
 
@@ -40,14 +41,15 @@ def arboles_decision_sin_filtrado():
 
     data = coger_dfs()
 
-    target = np.array(data['final'])
-    x = np.array(data.drop(columns=['final', 'date']))
+    target = data['final']
+    x = data.drop(columns=['final', 'date'])
 
     X_train, X_test, y_train, y_test = train_test_split(
-    x, target, test_size=config.test_size
+    x, target, test_size=config.test_size, random_state=42
     )
 
-    model = DecisionTreeClassifier(max_depth=config.max_depth, criterion=config.criterion)
+    model = RandomForestClassifier(max_depth=config.max_depth, criterion=config.criterion, n_estimators=config.n_estimators
+    , class_weight='balanced', random_state=42)
     model.fit(X_train, y_train)
 
     y_pred = model.predict(X_test)
@@ -57,7 +59,7 @@ def arboles_decision_sin_filtrado():
 
     wandb.sklearn.plot_classifier(
         model, X_train, X_test, y_train, y_test, y_pred, y_probas, 
-        labels=nombres_clases, model_name='DecisionTree'
+        labels=nombres_clases, model_name='RandomForest'
     )
 
     wandb.finish()

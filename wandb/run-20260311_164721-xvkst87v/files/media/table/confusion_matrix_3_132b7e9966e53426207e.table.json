@@ -1,0 +1,1 @@
+{"columns": ["Predicted", "Actual", "Count"], "data": [["no_incendio", "no_incendio", 6873], ["no_incendio", "incendio", 17], ["incendio", "no_incendio", 236], ["incendio", "incendio", 19]]}

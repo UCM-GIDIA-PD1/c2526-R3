@@ -1,0 +1,31 @@
+2026-03-11 16:47:21,832 INFO    MainThread:23936 [wandb_setup.py:_flush():81] Current SDK version is 0.25.1
+2026-03-11 16:47:21,832 INFO    MainThread:23936 [wandb_setup.py:_flush():81] Configure stats pid to 23936
+2026-03-11 16:47:21,833 INFO    MainThread:23936 [wandb_setup.py:_flush():81] Loading settings from environment variables
+2026-03-11 16:47:21,834 INFO    MainThread:23936 [wandb_init.py:setup_run_log_directory():717] Logging user logs to C:\hlocal_port\PDI\c2526-R3\wandb\run-20260311_164721-xvkst87v\logs\debug.log
+2026-03-11 16:47:21,834 INFO    MainThread:23936 [wandb_init.py:setup_run_log_directory():718] Logging internal logs to C:\hlocal_port\PDI\c2526-R3\wandb\run-20260311_164721-xvkst87v\logs\debug-internal.log
+2026-03-11 16:47:21,835 INFO    MainThread:23936 [wandb_init.py:init():844] calling init triggers
+2026-03-11 16:47:21,836 INFO    MainThread:23936 [wandb_init.py:init():849] wandb.init called with sweep_config: {}
+config: {'modelo': 'regresion_logistica', 'solver': 'lbfgs', 'max_iter': 1000, 'class_weight': 'None', 'split': 'simple', 'n_features': 17, 'eliminar_correladas': False, 'seed': 42, '_wandb': {}}
+2026-03-11 16:47:21,837 INFO    MainThread:23936 [wandb_init.py:init():892] starting backend
+2026-03-11 16:47:26,756 INFO    MainThread:23936 [wandb_init.py:init():895] sending inform_init request
+2026-03-11 16:47:26,978 INFO    MainThread:23936 [wandb_init.py:init():903] backend started and connected
+2026-03-11 16:47:27,165 INFO    MainThread:23936 [wandb_init.py:init():973] updated telemetry
+2026-03-11 16:47:27,280 INFO    MainThread:23936 [wandb_init.py:init():997] communicating run to backend with 90.0 second timeout
+2026-03-11 16:47:30,310 INFO    MainThread:23936 [wandb_init.py:init():1042] starting run threads in backend
+2026-03-11 16:47:37,306 INFO    MainThread:23936 [wandb_run.py:_console_start():2524] atexit reg
+2026-03-11 16:47:37,307 INFO    MainThread:23936 [wandb_run.py:_redirect():2373] redirect: wrap_raw
+2026-03-11 16:47:37,307 INFO    MainThread:23936 [wandb_run.py:_redirect():2442] Wrapping output streams.
+2026-03-11 16:47:37,308 INFO    MainThread:23936 [wandb_run.py:_redirect():2465] Redirects installed.
+2026-03-11 16:47:37,430 INFO    MainThread:23936 [wandb_init.py:init():1082] run started, returning control to user process
+2026-03-11 16:47:38,530 INFO    MainThread:23936 [wandb_run.py:_config_callback():1403] config_cb ('_wandb', 'viz', 'feature_importances') {'id': 'wandb/feature_importances/v1', 'historyFieldSettings': {'x-axis': '_step', 'key': 'feature_importances'}} None
+2026-03-11 16:47:45,567 INFO    MainThread:23936 [wandb_run.py:_config_callback():1403] config_cb ('_wandb', 'viz', 'confusion_matrix') {'id': 'wandb/confusion_matrix/v1', 'historyFieldSettings': {'x-axis': '_step', 'key': 'confusion_matrix'}} None
+2026-03-11 16:47:46,200 INFO    MainThread:23936 [wandb_run.py:_config_callback():1403] config_cb ('_wandb', 'viz', 'summary_metrics') {'id': 'wandb/metrics/v1', 'historyFieldSettings': {'x-axis': '_step', 'key': 'summary_metrics'}} None
+2026-03-11 16:47:46,511 INFO    MainThread:23936 [wandb_run.py:_config_callback():1403] config_cb ('_wandb', 'viz', 'class_proportions') {'id': 'wandb/class_proportions/v1', 'historyFieldSettings': {'x-axis': '_step', 'key': 'class_proportions'}} None
+2026-03-11 16:47:47,348 INFO    MainThread:23936 [wandb_run.py:_config_callback():1403] config_cb ('_wandb', 'viz', 'calibration_curve') {'id': 'wandb/calibration/v1', 'historyFieldSettings': {'x-axis': '_step', 'key': 'calibration_curve'}} None
+2026-03-11 16:47:47,851 INFO    MainThread:23936 [wandb_run.py:_config_callback():1403] config_cb ('_wandb', 'visualize', 'roc') {'panel_type': 'Vega2', 'panel_config': {'panelDefId': 'wandb/area-under-curve/v0', 'fieldSettings': {'x': 'fpr', 'y': 'tpr', 'class': 'class'}, 'stringSettings': {'title': 'ROC Curve', 'x-axis-title': 'False positive rate', 'y-axis-title': 'True positive rate'}, 'transform': {'name': 'tableWithLeafColNames'}, 'userQuery': {'queryFields': [{'name': 'runSets', 'args': [{'name': 'runSets', 'value': '${runSets}'}], 'fields': [{'name': 'id', 'fields': []}, {'name': 'name', 'fields': []}, {'name': '_defaultColorIndex', 'fields': []}, {'name': 'summaryTable', 'args': [{'name': 'tableKey', 'value': 'roc_table'}], 'fields': []}]}]}}} None
+2026-03-11 16:47:48,263 INFO    MainThread:23936 [wandb_run.py:_config_callback():1403] config_cb ('_wandb', 'visualize', 'precision_recall') {'panel_type': 'Vega2', 'panel_config': {'panelDefId': 'wandb/area-under-curve/v0', 'fieldSettings': {'x': 'recall', 'y': 'precision', 'class': 'class'}, 'stringSettings': {'title': 'Precision-Recall Curve', 'x-axis-title': 'Recall', 'y-axis-title': 'Precision'}, 'transform': {'name': 'tableWithLeafColNames'}, 'userQuery': {'queryFields': [{'name': 'runSets', 'args': [{'name': 'runSets', 'value': '${runSets}'}], 'fields': [{'name': 'id', 'fields': []}, {'name': 'name', 'fields': []}, {'name': '_defaultColorIndex', 'fields': []}, {'name': 'summaryTable', 'args': [{'name': 'tableKey', 'value': 'precision_recall_table'}], 'fields': []}]}]}}} None
+2026-03-11 16:47:48,535 INFO    MainThread:23936 [wandb_run.py:_finish():2291] finishing run pd1-c2526-team3/clasificacion/xvkst87v
+2026-03-11 16:47:48,536 INFO    MainThread:23936 [wandb_run.py:_atexit_cleanup():2490] got exitcode: 0
+2026-03-11 16:47:48,537 INFO    MainThread:23936 [wandb_run.py:_restore():2472] restore
+2026-03-11 16:47:48,538 INFO    MainThread:23936 [wandb_run.py:_restore():2478] restore done
+2026-03-11 16:47:53,268 INFO    MainThread:23936 [wandb_run.py:_footer_sync_info():3868] logging synced files

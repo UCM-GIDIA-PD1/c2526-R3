@@ -29,4 +29,5 @@ dependencies = [
     "seaborn>=0.13.2",
     "shapely>=2.1.2",
     "utm>=0.8.1",
+    "wandb>=0.25.1",
 ]

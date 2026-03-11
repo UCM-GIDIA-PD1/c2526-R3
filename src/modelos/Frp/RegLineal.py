@@ -70,7 +70,7 @@ p_bp = test_bp[1]
 wandb.run.summary["p_valor_shapiro"] = p_shapiro
 wandb.run.summary["p_valor_breusch_pagan"] = p_bp
 
-# 7. GRÁFICOS
+# 7. GRÁFICOS (no se suben correctamente)
 
 # QQ-Plot
 # fig_qq = plt.figure(figsize=(6, 6))

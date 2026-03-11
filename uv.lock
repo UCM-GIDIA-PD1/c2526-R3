@@ -340,6 +340,7 @@ dependencies = [
     { name = "geopandas" },
     { name = "ipykernel" },
     { name = "minio" },
+    { name = "mlxtend" },
     { name = "nbformat" },
     { name = "numpy" },
     { name = "pandas" },
@@ -375,6 +376,7 @@ requires-dist = [
     { name = "geopandas", specifier = ">=1.1.2" },
     { name = "ipykernel", specifier = ">=7.2.0" },
     { name = "minio", specifier = ">=7.2.20" },
+    { name = "mlxtend", specifier = ">=0.24.0" },
     { name = "nbformat", specifier = ">=4.2.0" },
     { name = "numpy", specifier = ">=2.4.2" },
     { name = "pandas", specifier = ">=3.0.0" },
@@ -1797,6 +1799,23 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/40/df/6dfc6540f96a74125a11653cce717603fd5b7d0001a8e847b3e54e72d238/minio-7.2.20.tar.gz", hash = "sha256:95898b7a023fbbfde375985aa77e2cd6a0762268db79cf886f002a9ea8e68598", size = 136113, upload-time = "2025-11-27T00:37:15.569Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/3e/9a/b697530a882588a84db616580f2ba5d1d515c815e11c30d219145afeec87/minio-7.2.20-py3-none-any.whl", hash = "sha256:eb33dd2fb80e04c3726a76b13241c6be3c4c46f8d81e1d58e757786f6501897e", size = 93751, upload-time = "2025-11-27T00:37:13.993Z" },
+]
+
+[[package]]
+name = "mlxtend"
+version = "0.24.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "joblib" },
+    { name = "matplotlib" },
+    { name = "numpy" },
+    { name = "pandas" },
+    { name = "scikit-learn" },
+    { name = "scipy" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/5d/70/e46748def930f1797c27b6670d36f5d1e044cd8961508960acb303cf730f/mlxtend-0.24.0.tar.gz", hash = "sha256:594f124539d84c3a86951715e16656abfc3005f5da7d3a56b53c77d28d5263f8", size = 1284845, upload-time = "2025-12-13T22:33:16.784Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/a9/f9/f62b6c3bd08e1269d9bca9aabe0d990a7c3ffbfbcc495135ad0b59ce860b/mlxtend-0.24.0-py3-none-any.whl", hash = "sha256:2cd15e94360f0c693c8c042a98698d18b03557ab47a7549524c2b354dd8e17d1", size = 1353329, upload-time = "2025-12-13T22:33:15.279Z" },
 ]
 
 [[package]]

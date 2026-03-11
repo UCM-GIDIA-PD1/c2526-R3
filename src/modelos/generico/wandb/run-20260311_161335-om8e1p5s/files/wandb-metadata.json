@@ -1,0 +1,28 @@
+{
+  "os":  "Windows-11-10.0.26200-SP0",
+  "python":  "CPython 3.12.12",
+  "startedAt":  "2026-03-11T15:13:35.604221Z",
+  "program":  "c:\\Users\\Juanan\\IgnisAI\\c2526-R3\\src\\modelos\\generico\\xgboost.ipynb",
+  "codePath":  "c:\\Users\\Juanan\\IgnisAI\\c2526-R3\\src\\modelos\\generico\\xgboost.ipynb",
+  "codePathLocal":  "xgboost.ipynb",
+  "git":  {
+    "remote":  "https://github.com/UCM-GIDIA-PD1/c2526-R3.git",
+    "commit":  "d6f9ca9d2df5cf114a18a7e6be7b9846e9a8c732"
+  },
+  "email":  "juananal@ucm.es",
+  "root":  "c:\\Users\\Juanan\\IgnisAI\\c2526-R3\\src\\modelos\\generico",
+  "host":  "DESKTOP-422488J",
+  "executable":  "c:\\Users\\Juanan\\IgnisAI\\c2526-R3\\.venv\\Scripts\\python.exe",
+  "cpu_count":  10,
+  "cpu_count_logical":  12,
+  "disk":  {
+    "/":  {
+      "total":  "426516983808",
+      "used":  "304883585024"
+    }
+  },
+  "memory":  {
+    "total":  "16855949312"
+  },
+  "writerId":  "wrg2odrjq25gnddijvcuflkach4seclb"
+}

@@ -185,7 +185,7 @@ def main():
     args = parser.parse_args()
 
     # ── 1. Cargar datos ────────────────────────────────────────────────────────
-    X, y = cargar_dataset_general()
+    X, y = cargar_dataset_general(eliminar_correladas=False)
     feature_names = X.columns.tolist()
 
     resultados  = {}

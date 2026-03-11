@@ -62,7 +62,7 @@ def _cargar_parquets(prefix: str, years: list) -> pd.DataFrame:
 
 # ── API pública ────────────────────────────────────────────────────────────────
 
-def cargar_dataset_general(years: list = YEARS) -> tuple:
+def cargar_dataset_general(years=YEARS, eliminar_correladas=True):
     """
     Carga el dataset de clasificación (incendios + no incendios).
 
@@ -78,7 +78,8 @@ def cargar_dataset_general(years: list = YEARS) -> tuple:
     df = _cargar_parquets(PREFIX_GENERAL, years)
 
     # Eliminar columnas con multicolinealidad
-    df = df.drop(columns=COLS_ELIMINAR, errors="ignore")
+    if eliminar_correladas:
+        df = df.drop(columns=COLS_ELIMINAR, errors="ignore")
 
     # Separar features y target
     cols_no_features = [TARGET_CLASIFICACION, "lat", "lon", "date", "_year"]

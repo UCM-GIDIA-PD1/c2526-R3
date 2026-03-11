@@ -1,1 +1,0 @@
-{"columns": ["class", "dataset", "count"], "data": [["no_incendio", "train", 54994], ["no_incendio", "test", 6890], ["incendio", "train", 2160], ["incendio", "test", 255]]}

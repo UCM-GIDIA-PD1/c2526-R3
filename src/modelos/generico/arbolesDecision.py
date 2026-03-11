@@ -10,6 +10,7 @@ mf.load_dotenv()
 os.environ['WANDB_API_KEY'] = os.getenv('WANDB_KEY')
 
 def wandb_init():
+    nombre = input("Introduce el nombre del experimento: ")
     run = wandb.init(
         # Set the wandb entity where your project will be logged (generally your team name).
         entity="pd1-c2526-team3",
@@ -19,10 +20,11 @@ def wandb_init():
         # Track hyperparameters and run metadata.
         config={
             "max_depth": 7,
-            "criterion": "gini",
+            "criterion": "entropy",
             "test_size": 0.2,
             "n_estimators": 100
         },
+        name=nombre
     )
 
 def coger_dfs():
@@ -42,7 +44,7 @@ def arboles_decision_sin_filtrado():
     data = coger_dfs()
 
     target = data['final']
-    x = data.drop(columns=['final', 'date'])
+    x = data.drop(columns=['final', 'date', 'lat', 'lon'])
 
     X_train, X_test, y_train, y_test = train_test_split(
     x, target, test_size=config.test_size, random_state=42
@@ -59,12 +61,12 @@ def arboles_decision_sin_filtrado():
 
     wandb.sklearn.plot_classifier(
         model, X_train, X_test, y_train, y_test, y_pred, y_probas, 
-        labels=nombres_clases, model_name='RandomForest'
+        labels=nombres_clases, model_name='RandomForest', feature_names=X_train.columns.tolist()
     )
 
     wandb.finish()
 
 if __name__ == '__main__':
-    # print(coger_dfs())
+    # print(coger_dfs().iloc[:, [8, 15, 16, 1, 6]])
     arboles_decision_sin_filtrado()
     

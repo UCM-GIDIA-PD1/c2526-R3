@@ -1,0 +1,128 @@
+_wandb:
+    value:
+        cli_version: 0.25.0
+        e:
+            01eckca50zcadxfbut97p5l0gu187lk5:
+                codePath: c:\Users\Juanan\IgnisAI\c2526-R3\src\modelos\generico\xgboost.ipynb
+                codePathLocal: xgboost.ipynb
+                cpu_count: 10
+                cpu_count_logical: 12
+                disk:
+                    /:
+                        total: "426516983808"
+                        used: "304918650880"
+                email: juananal@ucm.es
+                executable: c:\Users\Juanan\IgnisAI\c2526-R3\.venv\Scripts\python.exe
+                git:
+                    commit: d6f9ca9d2df5cf114a18a7e6be7b9846e9a8c732
+                    remote: https://github.com/UCM-GIDIA-PD1/c2526-R3.git
+                host: DESKTOP-422488J
+                memory:
+                    total: "16855949312"
+                os: Windows-11-10.0.26200-SP0
+                program: c:\Users\Juanan\IgnisAI\c2526-R3\src\modelos\generico\xgboost.ipynb
+                python: CPython 3.12.12
+                root: c:\Users\Juanan\IgnisAI\c2526-R3\src\modelos\generico
+                startedAt: "2026-03-11T15:12:37.612740Z"
+                writerId: 01eckca50zcadxfbut97p5l0gu187lk5
+        m: []
+        python_version: 3.12.12
+        t:
+            "1":
+                - 5
+                - 6
+                - 53
+            "2":
+                - 5
+                - 6
+                - 53
+            "3":
+                - 2
+                - 16
+            "4": 3.12.12
+            "5": 0.25.0
+            "8":
+                - 1
+                - 3
+            "12": 0.25.0
+            "13": windows-amd64
+base_score:
+    value: null
+booster:
+    value: null
+callbacks:
+    value: null
+colsample_bylevel:
+    value: null
+colsample_bynode:
+    value: null
+colsample_bytree:
+    value: null
+device:
+    value: null
+early_stopping_rounds:
+    value: null
+enable_categorical:
+    value: false
+eval_metric:
+    value: null
+feature_types:
+    value: null
+feature_weights:
+    value: null
+gamma:
+    value: null
+grow_policy:
+    value: null
+importance_type:
+    value: null
+interaction_constraints:
+    value: null
+learning_rate:
+    value: 0.1
+max_bin:
+    value: null
+max_cat_threshold:
+    value: null
+max_cat_to_onehot:
+    value: null
+max_delta_step:
+    value: null
+max_depth:
+    value: null
+max_leaves:
+    value: null
+min_child_weight:
+    value: null
+missing:
+    value: null
+monotone_constraints:
+    value: null
+multi_strategy:
+    value: null
+n_estimators:
+    value: 100
+n_jobs:
+    value: null
+num_parallel_tree:
+    value: null
+objective:
+    value: binary:logistic
+random_state:
+    value: null
+reg_alpha:
+    value: null
+reg_lambda:
+    value: null
+sampling_method:
+    value: null
+scale_pos_weight:
+    value: null
+subsample:
+    value: null
+tree_method:
+    value: null
+validate_parameters:
+    value: null
+verbosity:
+    value: null

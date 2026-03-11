@@ -1,0 +1,33 @@
+2026-03-11 16:13:35,625 INFO    MainThread:17160 [wandb_init.py:setup_run_log_directory():717] Logging user logs to c:\Users\Juanan\IgnisAI\c2526-R3\src\modelos\generico\wandb\run-20260311_161335-om8e1p5s\logs\debug.log
+2026-03-11 16:13:35,625 INFO    MainThread:17160 [wandb_init.py:setup_run_log_directory():718] Logging internal logs to c:\Users\Juanan\IgnisAI\c2526-R3\src\modelos\generico\wandb\run-20260311_161335-om8e1p5s\logs\debug-internal.log
+2026-03-11 16:13:35,625 INFO    MainThread:17160 [wandb_init.py:monkeypatch_ipython():636] configuring jupyter hooks <wandb.sdk.wandb_init._WandbInit object at 0x000001A3590D6AE0>
+2026-03-11 16:13:35,627 INFO    MainThread:17160 [wandb_init.py:init():844] calling init triggers
+2026-03-11 16:13:35,627 INFO    MainThread:17160 [wandb_init.py:init():849] wandb.init called with sweep_config: {}
+config: {'objective': 'binary:logistic', 'base_score': None, 'booster': None, 'callbacks': None, 'colsample_bylevel': None, 'colsample_bynode': None, 'colsample_bytree': None, 'device': None, 'early_stopping_rounds': None, 'enable_categorical': False, 'eval_metric': None, 'feature_types': None, 'feature_weights': None, 'gamma': None, 'grow_policy': None, 'importance_type': None, 'interaction_constraints': None, 'learning_rate': 0.1, 'max_bin': None, 'max_cat_threshold': None, 'max_cat_to_onehot': None, 'max_delta_step': None, 'max_depth': None, 'max_leaves': None, 'min_child_weight': None, 'missing': nan, 'monotone_constraints': None, 'multi_strategy': None, 'n_estimators': 100, 'n_jobs': None, 'num_parallel_tree': None, 'random_state': None, 'reg_alpha': None, 'reg_lambda': None, 'sampling_method': None, 'scale_pos_weight': None, 'subsample': None, 'tree_method': None, 'validate_parameters': None, 'verbosity': None, '_wandb': {}}
+2026-03-11 16:13:37,071 INFO    MainThread:17160 [wandb_init.py:init():892] starting backend
+2026-03-11 16:13:37,071 INFO    MainThread:17160 [wandb_init.py:init():895] sending inform_init request
+2026-03-11 16:13:37,073 INFO    MainThread:17160 [wandb_init.py:init():903] backend started and connected
+2026-03-11 16:13:37,077 INFO    MainThread:17160 [wandb_run.py:_label_probe_notebook():1333] probe notebook
+2026-03-11 16:13:37,077 INFO    MainThread:17160 [wandb_init.py:init():973] updated telemetry
+2026-03-11 16:13:37,137 INFO    MainThread:17160 [wandb_init.py:init():997] communicating run to backend with 90.0 second timeout
+2026-03-11 16:13:38,111 INFO    MainThread:17160 [wandb_init.py:init():1042] starting run threads in backend
+2026-03-11 16:13:38,266 INFO    MainThread:17160 [wandb_run.py:_console_start():2524] atexit reg
+2026-03-11 16:13:38,266 INFO    MainThread:17160 [wandb_run.py:_redirect():2373] redirect: wrap_raw
+2026-03-11 16:13:38,266 INFO    MainThread:17160 [wandb_run.py:_redirect():2442] Wrapping output streams.
+2026-03-11 16:13:38,266 INFO    MainThread:17160 [wandb_run.py:_redirect():2465] Redirects installed.
+2026-03-11 16:13:38,270 INFO    MainThread:17160 [wandb_init.py:init():1082] run started, returning control to user process
+2026-03-11 16:13:39,743 INFO    MainThread:17160 [wandb_run.py:_config_callback():1403] config_cb ('_wandb', 'viz', 'feature_importances') {'id': 'wandb/feature_importances/v1', 'historyFieldSettings': {'x-axis': '_step', 'key': 'feature_importances'}} None
+2026-03-11 16:13:42,861 INFO    MainThread:17160 [wandb_run.py:_config_callback():1403] config_cb ('_wandb', 'viz', 'confusion_matrix') {'id': 'wandb/confusion_matrix/v1', 'historyFieldSettings': {'x-axis': '_step', 'key': 'confusion_matrix'}} None
+2026-03-11 16:13:43,442 INFO    MainThread:17160 [wandb_run.py:_config_callback():1403] config_cb ('_wandb', 'viz', 'summary_metrics') {'id': 'wandb/metrics/v1', 'historyFieldSettings': {'x-axis': '_step', 'key': 'summary_metrics'}} None
+2026-03-11 16:13:43,861 INFO    MainThread:17160 [wandb_run.py:_config_callback():1403] config_cb ('_wandb', 'viz', 'class_proportions') {'id': 'wandb/class_proportions/v1', 'historyFieldSettings': {'x-axis': '_step', 'key': 'class_proportions'}} None
+2026-03-11 16:13:44,819 INFO    MainThread:17160 [wandb_run.py:_config_callback():1403] config_cb ('_wandb', 'viz', 'calibration_curve') {'id': 'wandb/calibration/v1', 'historyFieldSettings': {'x-axis': '_step', 'key': 'calibration_curve'}} None
+2026-03-11 16:13:45,358 INFO    MainThread:17160 [wandb_run.py:_config_callback():1403] config_cb ('_wandb', 'visualize', 'roc') {'panel_type': 'Vega2', 'panel_config': {'panelDefId': 'wandb/area-under-curve/v0', 'fieldSettings': {'x': 'fpr', 'y': 'tpr', 'class': 'class'}, 'stringSettings': {'title': 'ROC Curve', 'x-axis-title': 'False positive rate', 'y-axis-title': 'True positive rate'}, 'transform': {'name': 'tableWithLeafColNames'}, 'userQuery': {'queryFields': [{'name': 'runSets', 'args': [{'name': 'runSets', 'value': '${runSets}'}], 'fields': [{'name': 'id', 'fields': []}, {'name': 'name', 'fields': []}, {'name': '_defaultColorIndex', 'fields': []}, {'name': 'summaryTable', 'args': [{'name': 'tableKey', 'value': 'roc_table'}], 'fields': []}]}]}}} None
+2026-03-11 16:13:46,266 INFO    MainThread:17160 [wandb_run.py:_config_callback():1403] config_cb ('_wandb', 'visualize', 'precision_recall') {'panel_type': 'Vega2', 'panel_config': {'panelDefId': 'wandb/area-under-curve/v0', 'fieldSettings': {'x': 'recall', 'y': 'precision', 'class': 'class'}, 'stringSettings': {'title': 'Precision-Recall Curve', 'x-axis-title': 'Recall', 'y-axis-title': 'Precision'}, 'transform': {'name': 'tableWithLeafColNames'}, 'userQuery': {'queryFields': [{'name': 'runSets', 'args': [{'name': 'runSets', 'value': '${runSets}'}], 'fields': [{'name': 'id', 'fields': []}, {'name': 'name', 'fields': []}, {'name': '_defaultColorIndex', 'fields': []}, {'name': 'summaryTable', 'args': [{'name': 'tableKey', 'value': 'precision_recall_table'}], 'fields': []}]}]}}} None
+2026-03-11 16:13:46,537 INFO    MainThread:17160 [wandb_run.py:_finish():2291] finishing run pd1-c2526-team3/XGboost/om8e1p5s
+2026-03-11 16:13:46,538 INFO    MainThread:17160 [jupyter.py:save_history():435] not saving jupyter history
+2026-03-11 16:13:46,538 INFO    MainThread:17160 [jupyter.py:save_ipynb():362] not saving jupyter notebook
+2026-03-11 16:13:46,538 INFO    MainThread:17160 [wandb_init.py:_jupyter_teardown():621] cleaning up jupyter logic
+2026-03-11 16:13:46,538 INFO    MainThread:17160 [wandb_run.py:_atexit_cleanup():2490] got exitcode: 0
+2026-03-11 16:13:46,539 INFO    MainThread:17160 [wandb_run.py:_restore():2472] restore
+2026-03-11 16:13:46,539 INFO    MainThread:17160 [wandb_run.py:_restore():2478] restore done
+2026-03-11 16:13:51,298 INFO    MainThread:17160 [wandb_run.py:_footer_sync_info():3868] logging synced files

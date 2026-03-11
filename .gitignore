@@ -11,3 +11,4 @@ credenciales
 .vscode
 esc
 .keep
+wandb/

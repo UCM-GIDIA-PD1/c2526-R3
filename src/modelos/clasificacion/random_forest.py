@@ -1,28 +1,58 @@
 import os
+import sys
+from pathlib import Path
+
 import wandb
-import numpy as np
 import yaml
+from dotenv import load_dotenv
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import fbeta_score
-from sklearn.model_selection import train_test_split
 
-import sys
 sys.path.append(os.path.join(os.path.dirname(__file__), "..", ".."))
 from modelos.utils.carga_datos import cargar_dataset_general
+from modelos.utils.particiones import split_estratificado
+from modelos.utils.metricas import evaluar_clasificacion
 
-# Clave W&B — Esteban usa WANDB_KEY en el .env
+load_dotenv()
 os.environ["WANDB_API_KEY"] = os.getenv("WANDB_KEY", "")
+
+WANDB_ENTITY = "pd1-c2526-team3"
+WANDB_PROJECT = "arboles-decision-sweeps"
+SWEEP_PATH = Path(__file__).with_name("randomforest_sweep.yaml")
+SEED = 42
+
+
+def cargar_configuracion(ruta_yaml: Path = SWEEP_PATH):
+    """Carga la configuración del sweep desde el YAML."""
+    with open(ruta_yaml, "r", encoding="utf-8") as f:
+        return yaml.safe_load(f)
+
+
+def obtener_sweep_id():
+    """
+    Usa un sweep ya creado si existe en variables de entorno.
+    Si no existe, crea uno nuevo a partir del YAML.
+    """
+    sweep_id = os.getenv("WANDB_SWEEP_ID") or os.getenv("SWEEP_ID")
+    if sweep_id:
+        print(f"Usando sweep existente: {sweep_id}")
+        return sweep_id
+
+    config_sweep = cargar_configuracion()
+    sweep_id = wandb.sweep(config_sweep, entity=WANDB_ENTITY, project=WANDB_PROJECT)
+    print(f"Sweep creado desde YAML: {sweep_id}")
+    return sweep_id
 
 
 def wandb_init():
-    wandb.init(
-        entity="pd1-c2526-team3",
-        project="arboles-decision-sweeps",
+    return wandb.init(
+        entity=WANDB_ENTITY,
+        project=WANDB_PROJECT,
     )
 
 
-def arboles_decision(X_train, X_test, y_train, y_test):
-    wandb_init()
+def arboles_decision(X_train, X_val, X_test, y_train, y_val, y_test):
+    run = wandb_init()
     config = wandb.config
 
     model = RandomForestClassifier(
@@ -32,48 +62,76 @@ def arboles_decision(X_train, X_test, y_train, y_test):
         class_weight=config.class_weight,
         min_samples_leaf=config.min_samples_leaf,
         min_samples_split=config.min_samples_split,
-        random_state=42
+        random_state=SEED,
+        n_jobs=-1,
     )
 
     model.fit(X_train, y_train)
 
-    y_pred   = model.predict(X_test)
-    y_probas = model.predict_proba(X_test)
+    y_pred_val = model.predict(X_val)
+    y_prob_val = model.predict_proba(X_val)[:, 1]
+    metricas_val = evaluar_clasificacion(
+        y_val, y_pred_val, y_prob_val, "Validación — Random Forest"
+    )
+    f1_5_val = fbeta_score(y_val, y_pred_val, beta=1.5, zero_division=0)
 
-    nombres_clases = [str(c) for c in model.classes_]
+    y_pred_test = model.predict(X_test)
+    y_prob_test = model.predict_proba(X_test)[:, 1]
+    metricas_test = evaluar_clasificacion(
+        y_test, y_pred_test, y_prob_test, "Test — Random Forest"
+    )
+    f1_5_test = fbeta_score(y_test, y_pred_test, beta=1.5, zero_division=0)
 
-    f1_5 = fbeta_score(y_test, y_pred, beta=1.5)
-    wandb.log({"f1_5_score": f1_5})
+    wandb.log({
+        "f1_5_score": f1_5_val,
+        "val/f1_5": f1_5_val,
+        "val/f1": metricas_val["f1"],
+        "val/precision": metricas_val["precision"],
+        "val/recall": metricas_val["recall"],
+        "val/accuracy": metricas_val["accuracy"],
+        "val/roc_auc": metricas_val.get("roc_auc", 0),
+        "test/f1_5": f1_5_test,
+        "test/f1": metricas_test["f1"],
+        "test/precision": metricas_test["precision"],
+        "test/recall": metricas_test["recall"],
+        "test/accuracy": metricas_test["accuracy"],
+        "test/roc_auc": metricas_test.get("roc_auc", 0),
+        "split": "estratificado",
+        "eliminar_correladas": False,
+        "n_features": X_train.shape[1],
+    })
 
     wandb.sklearn.plot_classifier(
-        model, X_train, X_test, y_train, y_test, y_pred, y_probas,
-        labels=nombres_clases,
+        model,
+        X_train,
+        X_val,
+        y_train,
+        y_val,
+        y_pred_val,
+        model.predict_proba(X_val),
+        labels=["no_incendio", "incendio"],
         model_name="RandomForest",
-        feature_names=X_train.columns.tolist()
+        feature_names=X_train.columns.tolist(),
     )
 
-    wandb.finish()
+    run.finish()
 
 
 def main():
-    # Carga datos usando el pipeline compartido del proyecto
-    # eliminar_correladas=False para mantener el comportamiento original de Esteban
+    # Todas las variables: no eliminar correladas por ahora
     X, y = cargar_dataset_general(eliminar_correladas=False)
-
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.2, random_state=42
-    )
+    X_train, X_val, X_test, y_train, y_val, y_test = split_estratificado(X, y)
 
     def entrenamiento():
-        arboles_decision(X_train, X_test, y_train, y_test)
+        arboles_decision(X_train, X_val, X_test, y_train, y_val, y_test)
 
-    # Sweep — count=25 ejecuciones con búsqueda bayesiana de hiperparámetros
+    sweep_id = obtener_sweep_id()
     wandb.agent(
-        sweep_id="l241peqb",
+        sweep_id=sweep_id,
         function=entrenamiento,
         count=25,
-        entity="pd1-c2526-team3",
-        project="arboles-decision-sweeps"
+        entity=WANDB_ENTITY,
+        project=WANDB_PROJECT,
     )
 
 

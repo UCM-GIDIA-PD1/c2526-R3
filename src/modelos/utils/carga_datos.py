@@ -51,7 +51,7 @@ def _cargar_parquets(prefix: str, years: list) -> pd.DataFrame:
             df["_year"] = year
             dfs.append(df)
         else:
-            print(f"  ⚠️  No se pudo descargar {key}")
+            print(f"No se pudo descargar {key}")
 
     if not dfs:
         raise RuntimeError(
@@ -86,7 +86,7 @@ def cargar_dataset_general(years=YEARS, eliminar_correladas=True):
     X = df.drop(columns=[c for c in cols_no_features if c in df.columns])
     y = df[TARGET_CLASIFICACION]
 
-    print(f"  ✅ Dataset cargado: {X.shape[0]:,} filas, {X.shape[1]} features")
+    print(f"  Dataset cargado: {X.shape[0]:,} filas, {X.shape[1]} features")
     print(f"  Incendios:     {y.sum():,} ({y.mean()*100:.1f}%)")
     print(f"  No incendios:  {(y==0).sum():,} ({(y==0).mean()*100:.1f}%)")
 
@@ -125,7 +125,7 @@ def cargar_dataset_incendios(years: list = YEARS, eliminar_correladas=True) -> t
     X = df.drop(columns=[c for c in cols_no_features if c in df.columns])
     y = df[TARGET_REGRESION]
 
-    print(f"  ✅ Dataset cargado: {X.shape[0]:,} filas, {X.shape[1]} features")
+    print(f"  Dataset cargado: {X.shape[0]:,} filas, {X.shape[1]} features")
     print(f"  log_frp  — media: {y.mean():.2f}, std: {y.std():.2f}")
     print(f"  frp_mean — media: {df[frp_col].mean():.1f} MW, max: {df[frp_col].max():.1f} MW")
     print(f"  Nota: para convertir predicciones a MW usa np.expm1(y_pred)")

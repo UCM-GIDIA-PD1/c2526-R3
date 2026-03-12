@@ -48,7 +48,7 @@ def evaluar_clasificacion(y_true, y_pred, y_prob=None, nombre="Modelo"):
     print(f"  F1-score  (principal): {f1:.4f}")
     print(f"  Precision            : {precision:.4f}")
     print(f"  Recall               : {recall:.4f}")
-    print(f"  Accuracy             : {accuracy:.4f}  ⚠️  no usar como métrica principal")
+    print(f"  Accuracy             : {accuracy:.4f}  no usar como métrica principal")
     if roc_auc is not None:
         print(f"  ROC-AUC              : {roc_auc:.4f}")
     print(f"\n{classification_report(y_true, y_pred, target_names=['No incendio', 'Incendio'], zero_division=0)}")

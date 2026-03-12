@@ -14,3 +14,6 @@ esc
 wandb/
 **/wandb/
 
+
+wandb/
+outputs/

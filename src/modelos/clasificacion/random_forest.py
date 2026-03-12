@@ -10,6 +10,7 @@ import sys
 sys.path.append(os.path.join(os.path.dirname(__file__), "..", ".."))
 from modelos.utils.carga_datos import cargar_dataset_general
 
+# Clave W&B — Esteban usa WANDB_KEY en el .env
 os.environ["WANDB_API_KEY"] = os.getenv("WANDB_KEY", "")
 
 

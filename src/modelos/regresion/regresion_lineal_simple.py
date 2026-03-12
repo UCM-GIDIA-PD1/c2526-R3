@@ -20,7 +20,7 @@ os.environ["WANDB_API_KEY"] = os.getenv("WANDB_KEY", "")
 def main():
     # Carga datos usando el pipeline compartido del proyecto
     # eliminar_correladas=False para mantener el comportamiento original
-    X, y_log = cargar_dataset_incendios()
+    X, y_log = cargar_dataset_incendios(eliminar_correladas=False)
 
     # Sofía trabaja con frp_mean directamente (sin log), recuperamos la escala original
     import numpy as np

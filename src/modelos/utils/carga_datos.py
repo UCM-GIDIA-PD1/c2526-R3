@@ -93,7 +93,7 @@ def cargar_dataset_general(years=YEARS, eliminar_correladas=True):
     return X, y
 
 
-def cargar_dataset_incendios(years: list = YEARS) -> tuple:
+def cargar_dataset_incendios(years: list = YEARS, eliminar_correladas=True) -> tuple:
     """
     Carga el dataset de regresión (solo incendios, variable objetivo FRP).
 
@@ -110,7 +110,8 @@ def cargar_dataset_incendios(years: list = YEARS) -> tuple:
     df = _cargar_parquets(PREFIX_INCENDIOS, years)
 
     # Eliminar columnas con multicolinealidad
-    df = df.drop(columns=COLS_ELIMINAR, errors="ignore")
+    if eliminar_correladas:
+        df = df.drop(columns=COLS_ELIMINAR, errors="ignore")
 
     # Transformación log del FRP (skewness original = 3.39)
     frp_col = next((c for c in ["frp_mean", "frp_sum", "frp", "FRP"] if c in df.columns), None)

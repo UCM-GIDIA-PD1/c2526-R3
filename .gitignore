@@ -11,5 +11,8 @@ credenciales
 .vscode
 esc
 .keep
+test_carga.py
+wandb_test.py
+exploracion_inicial.py
 wandb/
 outputs/

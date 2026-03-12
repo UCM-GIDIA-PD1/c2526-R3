@@ -5,6 +5,7 @@ import geopandas as gpd
 import pandas as pd
 from shapely.geometry import MultiPoint
 from extraccion import minioFunctions
+from extraccion import interrupcion
 import datetime
 
 # Funciones encargadas transformar y limpiar los diferentes .csv de incendios en DataFrames utilizables y útiles
@@ -162,26 +163,35 @@ def fetch_fires(df, fecha_ini = None, fecha_fin = None, question=False):
     -   AREA_HA: el area del incendio en hectareas
     """
 
-    df_clean = limpieza(df)
+    try:
+        df_clean = limpieza(df)
 
-    if fecha_ini is not None:
-        fecha_ini = pd.to_datetime(fecha_ini)
-        df_clean = df_clean[df_clean['date'] >= fecha_ini]
-    
-    if fecha_fin is not None:
-        fecha_fin = pd.to_datetime(fecha_fin)
-        df_clean = df_clean[df_clean['date'] <= fecha_fin]
+        if fecha_ini is not None:
+            fecha_ini = pd.to_datetime(fecha_ini)
+            df_clean = df_clean[df_clean['date'] >= fecha_ini]
+        
+        if fecha_fin is not None:
+            fecha_fin = pd.to_datetime(fecha_fin)
+            df_clean = df_clean[df_clean['date'] <= fecha_fin]
 
-    if df_clean.empty:
-        print("No hay incendios en el rango de fechas seleccionado.")
-        return pd.DataFrame()
-    print("Df separado")
-    df_clean, resumen = separate_fire_events(df_clean, 5.0)
-    
-    areas_df = calcular_area_incendios(df_clean, pixel_res_meters=375) 
+        if df_clean.empty:
+            print("No hay incendios en el rango de fechas seleccionado.")
+            return pd.DataFrame()
+        print("Df separado")
+        df_clean, resumen = separate_fire_events(df_clean, 5.0)
+        
+        areas_df = calcular_area_incendios(df_clean, pixel_res_meters=375) 
 
-    resumen = resumen.merge(areas_df, on='fire_id', how='left')
-    print("Hectáreas calculadas")
+        resumen = resumen.merge(areas_df, on='fire_id', how='left')
+        print("Hectáreas calculadas")
+
+    except KeyboardInterrupt:
+        print("\n Interrupción detectada. Guardando resultados parciales...")
+        if 'resumen' in locals() and not resumen.empty:
+            interrupcion.guardar_parcial(resumen, prefijo="incendios_parcial")
+        else:
+            print("No hay datos parciales para guardar.")
+        raise
 
     if question:
         minioFunctions.preguntar_subida(resumen.sort_values(by='count', ascending=False), "grupo3/raw/incendios/")

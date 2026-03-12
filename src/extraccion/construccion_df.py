@@ -1,4 +1,4 @@
-from . import incendios, pendiente, vegetacion, fisicas, minioFunctions, puntos_sinteticos
+from . import incendios, pendiente, vegetacion, fisicas, minioFunctions, puntos_sinteticos, interrupcion
 import time
 import pandas as pd
 import asyncio
@@ -26,11 +26,14 @@ async def procesar_fila_completa(session, row, index, directo):
             pendiente.pendiente(row.lat_mean, row.lon_mean, fecha_str),
         ]
 
-        resultados = await asyncio.gather(*tareas)
-
-        env_datos = {**resultados[0], **resultados[1], **resultados[2]}
-        print("Fila extraida")
-        return env_datos
+        try:
+            resultados = await asyncio.gather(*tareas)
+            env_datos = {**resultados[0], **resultados[1], **resultados[2]}
+            print("Fila extraida")
+            return env_datos
+        except asyncio.CancelledError:
+            print(f"\n Fila {index} cancelada por interrupción")
+            raise
     
 async def build_environmental_df(file, limit=100, fecha_ini=None, fecha_fin=None, directo = False):
     
@@ -72,7 +75,39 @@ async def build_environmental_df(file, limit=100, fecha_ini=None, fecha_fin=None
         ]
 
         print(f"Iniciando extracción: {limit} puntos...")
-        env_rows = await asyncio.gather(*tareas_totales)
+        
+        env_rows = []
+        try:
+            for tarea in asyncio.as_completed(tareas_totales):
+                try:
+                    env_rows.append(await tarea)
+                except asyncio.CancelledError:
+                    print("\n Interrupción detectada durante la extracción. Guardando resultados parciales...")
+                    if env_rows:
+                        env_df_parcial = pd.DataFrame(env_rows)
+                        merged_parcial = merged.head(len(env_rows)).reset_index(drop=True)
+                        final_parcial = pd.concat([merged_parcial, env_df_parcial], axis=1)
+                        final_parcial = final_parcial.drop(['date_last'], axis=1, errors='ignore')
+                        interrupcion.guardar_parcial(final_parcial, prefijo="ambiental_parcial")
+                    else:
+                        print("No hay datos parciales para guardar.")
+                    # Cancelar tareas pendientes
+                    for t in tareas_totales:
+                        if not t.done():
+                            t.cancel()
+                    raise
+        except KeyboardInterrupt:
+            print("\n Interrupción detectada. Guardando resultados parciales...")
+            if env_rows:
+                env_df_parcial = pd.DataFrame(env_rows)
+                merged_parcial = merged.head(len(env_rows)).reset_index(drop=True)
+                final_parcial = pd.concat([merged_parcial, env_df_parcial], axis=1)
+                final_parcial = final_parcial.drop(['date_last'], axis=1, errors='ignore')
+                interrupcion.guardar_parcial(final_parcial, prefijo="ambiental_parcial")
+            else:
+                print("No hay datos parciales para guardar.")
+            raise
+
         env_df = pd.DataFrame(env_rows)
 
     merged = merged.head(limit)
@@ -90,7 +125,7 @@ async def build_environmental_df(file, limit=100, fecha_ini=None, fecha_fin=None
     minioFunctions.preguntar_subida(final_df, "grupo3/raw/Incendios_environmental/")
 
     return final_df
-    
+
 #Ignacio: lo mejor es pasar como primer elemento de la lista el parquet de los
 #incendios/no incendios con los puntos para que el merge(how = 'left') sea más robusto
 def merge_parquets(path_list, anio):

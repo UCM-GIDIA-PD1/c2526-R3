@@ -1,10 +1,9 @@
 import asyncio
 import time
-from .  import minioFunctions
+from . import minioFunctions
 import pandas as pd
 import aiohttp
-
-# Funciones encargadas de utilizar la Api de open-meteo para adquirir datos meteorológicos de cada punto
+from . import interrupcion
 
 sem_global = asyncio.Semaphore(20)
 contador = 0
@@ -12,12 +11,7 @@ limit = 5000
 sleep = 3600  
 
 async def fetch_environment(session, lat, lon, date, indice=None, intentos=3, directo=False):
-    '''
-    Consulta la API de Open-Meteo para obtener datos meteorológicos diarios
-    '''
-    
     global contador
-    
     async with sem_global:
         if directo:
             contador += 1
@@ -46,13 +40,10 @@ async def fetch_environment(session, lat, lon, date, indice=None, intentos=3, di
             try:
                 async with session.get(url, params=params) as response:
                     r = await response.json()
-
                     if "daily" in r:
                         d = r["daily"]
                         print(f"Características físicas {indice} extraidas. Request #{contador}")
-                        
                         await asyncio.sleep(3)
-
                         return {
                             "lat": lat,
                             "lon": lon,
@@ -74,7 +65,6 @@ async def fetch_environment(session, lat, lon, date, indice=None, intentos=3, di
                         error_msg = r.get('reason') or r.get('error') or "Error desconocido"
                         print(f"Intento {i+1} fallido en ({indice}, {lat:.2f}, {lon:.2f}): {error_msg}")
                         await asyncio.sleep(1 * (i + 1))
-
             except Exception as e:
                 print(f"Error de conexión: {e}")
                 await asyncio.sleep(1)
@@ -86,21 +76,18 @@ async def fetch_environment(session, lat, lon, date, indice=None, intentos=3, di
         return error
 
 async def df_fisicas(fires, limit=20, fecha_ini=None, fecha_fin=None, directo=False):
-    '''
-    Obtiene características físicas de cada incendio
-    '''
     global contador
     contador = 0 
     
-    fin_none = fecha_fin == None
-    ini_none = fecha_ini == None
+    fin_none = fecha_fin is None
+    ini_none = fecha_ini is None
 
     if not fin_none and not ini_none: 
         fires = fires[fires.date_first.between(fecha_ini, fecha_fin)]
 
-    async with aiohttp.ClientSession() as session:
+    session = aiohttp.ClientSession()
+    try:
         ini = time.time()
-
         print("Comenzando extracción...")
 
         if limit == -1:
@@ -119,68 +106,42 @@ async def df_fisicas(fires, limit=20, fecha_ini=None, fecha_fin=None, directo=Fa
             )
             for i, row in enumerate(rows)
         ]
-        resultados = await asyncio.gather(*tareas)
-        final_df = pd.DataFrame(resultados)
 
-        fin = time.time()
-
-        print(f"Extraidas {len(final_df)} filas de características físicas en {fin - ini:.2f} segundos.")
-        print(f"Total de requests realizados: {contador}")
-        print(final_df.head(limit))
-
-        minioFunctions.preguntar_subida(final_df, "grupo3/raw/Fisicas/")
-
-        return final_df
-
-async def df_fisicas(fires, limit = 20, fecha_ini = None, fecha_fin = None, directo = False):
-    '''
-    Obtiene características físicas de cada incendio utilizando la función fetch_environment.
-
-    Parámetros:
-    - fires: DataFrame que contiene información sobre los incendios, incluyendo lat_mean, lon_mean y date_first.
-    - limit: número máximo de filas a procesar del DataFrame (por defecto es 20).
-    - fecha_ini: fecha de inicio para filtrar los incendios (opcional).
-    - fecha_fin: fecha de fin para filtrar los incendios (opcional).
-    
-    Devuelve:
-    - DataFrame con las características físicas obtenidas para cada incendio.
-    '''
-
-    fin_none = fecha_fin == None
-    ini_none = fecha_ini == None
-
-    if not fin_none and not ini_none: 
-        fires = fires[fires.date_first.between(fecha_ini, fecha_fin)]
-
-    async with aiohttp.ClientSession() as session:
-        ini = time.time()
-
-        print("Comenzando extracción...")
-
-        if limit == -1:
-            rows = fires.to_dict('records')
+        resultados = []
+        try:
+            for tarea in asyncio.as_completed(tareas):
+                try:
+                    resultados.append(await tarea)
+                except asyncio.CancelledError:
+                    print("\n⚠️ Interrupción detectada. Guardando resultados parciales...")
+                    final_df = pd.DataFrame(resultados)
+                    interrupcion.guardar_parcial(final_df)
+                    for t in tareas:
+                        if not t.done():
+                            t.cancel()
+                    await asyncio.sleep(0.1)
+                    raise 
+        except KeyboardInterrupt:
+            print("\n Interrupción detectada. Guardando resultados parciales...")
+            final_df = pd.DataFrame(resultados)
+            interrupcion.guardar_parcial(final_df)
+            for t in tareas:
+                if not t.done():
+                    t.cancel()
+            await asyncio.sleep(0.1)
+            raise
+        except Exception as e:
+            print(f"Error durante la extracción: {e}")
+            raise
         else:
-            rows = fires.head(limit).to_dict('records')
+            final_df = pd.DataFrame(resultados)
+    finally:
+        await session.close()
 
-        tareas = [
-            fetch_environment(
-                session=session,
-                lat=row['lat_mean'],
-                lon=row['lon_mean'],
-                date=row['date_first'].split()[0],
-                indice=i,
-                directo = directo,
-            )
-            for i, row in enumerate(rows)
-        ]
-        resultados = await asyncio.gather(*tareas)
-        final_df = pd.DataFrame(resultados)
+    fin = time.time()
+    print(f"Extraídas {len(final_df)} filas de características físicas en {fin - ini:.2f} segundos.")
+    print(f"Total de requests realizados: {contador}")
+    print(final_df.head(limit))
 
-        fin = time.time()
-
-        print(f"Extraidas {len(final_df)} filas de características físicas en {fin - ini:.2f} segundos.")
-        print(final_df.head(limit))
-
-        minioFunctions.preguntar_subida(final_df, "grupo3/raw/Fisicas/")
-
-        return final_df
+    minioFunctions.preguntar_subida(final_df, "grupo3/raw/Fisicas/")
+    return final_df

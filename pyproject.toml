@@ -11,6 +11,7 @@ dependencies = [
     "geemap>=0.37.1",
     "geodatasets>=2026.1.0",
     "geopandas>=1.1.2",
+    "imblearn>=0.0",
     "ipykernel>=7.2.0",
     "matplotlib>=3.10.8",
     "minio>=7.2.20",

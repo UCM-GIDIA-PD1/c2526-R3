@@ -10,18 +10,15 @@ sys.path.append(str(ruta_extraccion))
 
 try:
     import minioFunctions
-    print("minioFunctions cargado correctamente desde src/extraccion")
+    print("minioFunctions cargado")
 except ImportError as e:
-    print(f"Error: No se pudo encontrar minioFunctions en {ruta_extraccion}")
     sys.exit(1)
 
 import wandb
 import xgboost as xgb
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import f1_score
-from wandb.sklearn import (
-    plot_roc, plot_precision_recall, plot_feature_importances
-)
+from wandb.sklearn import plot_roc, plot_precision_recall, plot_feature_importances
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
@@ -33,7 +30,7 @@ minioFunctions.load_dotenv()
 os.environ['WANDB_API_KEY'] = os.getenv('WANDB_KEY')
 
 cliente = minioFunctions.crear_cliente()
-df = minioFunctions.bajar_fichero(cliente, "grupo3/cleaned/final.parquet", "df")
+df = minioFunctions.cargar_dataset_incendios(eliminar_correladas = False)
 
 X = df.drop(["final", "date"], axis=1)
 y = df["final"]
@@ -44,27 +41,24 @@ X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_
 
 def train():
     with wandb.init(settings=wandb.Settings(start_method="thread")) as run:
-        config = wandb.config
+        config_dict = dict(wandb.config)
         
-        ratio = len(y_train[y_train == 0]) / len(y_train[y_train == 1])
-
-        clf = xgb.XGBClassifier(
-            n_estimators=config.n_estimators,
-            learning_rate=config.learning_rate,
-            max_depth=config.max_depth,
-            subsample=config.subsample,
-            scale_pos_weight=ratio,
-            random_state=42,
-            use_label_encoder=False 
-        )
+        umbral = config_dict.pop('umbral_decision', 0.5)
+        
+        params_xgb = {
+            'random_state': 42,
+            'use_label_encoder': False,
+            'eval_metric': 'logloss'
+        }
+        params_xgb.update(config_dict)
+        
+        clf = xgb.XGBClassifier(**params_xgb)
 
         clf.fit(
             X_train, y_train,
             eval_set=[(X_test, y_test)],
             verbose=False
         )
-
-        umbral = config.umbral_decision 
         
         y_probas = clf.predict_proba(X_test)
         y_pred = (y_probas[:, 1] >= umbral).astype(int) 
@@ -102,24 +96,50 @@ def train():
 
 if __name__ == "__main__":
     wandb.login(key=os.getenv('WANDB_KEY'))
+    proyecto = "XGboost"
+    entidad = "pd1-c2526-team3"
 
-    sweep_config = {
-    'method': 'random', 
-    'metric': {'name': 'f1_score', 'goal': 'maximize'}, 
-    'parameters': {
-        'learning_rate': {'distribution': 'uniform', 'min': 0.01, 'max': 0.3},
-        
-        'max_depth': {'values': [3, 5, 7, 9, 12]},
-        
-        'n_estimators': {'values': [100, 300, 500, 800]},
-        
-        'subsample': {'distribution': 'uniform', 'min': 0.6, 'max': 1.0},
-        
-        'umbral_decision': {'distribution': 'uniform', 'min': 0.1, 'max': 0.4},
-
-        'scale_pos_weight': {'values': [1, 3, 5, 10]} 
+    configuraciones = {
+        "1_bayesiano_conservador": {
+            'method': 'bayes',
+            'metric': {'name': 'f1_score', 'goal': 'maximize'},
+            'parameters': {
+                'learning_rate': {'distribution': 'uniform', 'min': 0.05, 'max': 0.15},
+                'max_depth': {'values': [4, 5, 6, 7]},
+                'n_estimators': {'values': [200, 300, 400]},
+                'scale_pos_weight': {'distribution': 'uniform', 'min': 1.0, 'max': 3.0},
+                'umbral_decision': {'distribution': 'uniform', 'min': 0.35, 'max': 0.55}
+            }
+        },
+        "2_random_exploratorio_pesos": {
+            'method': 'random',
+            'metric': {'name': 'f1_score', 'goal': 'maximize'},
+            'parameters': {
+                'learning_rate': {'distribution': 'uniform', 'min': 0.01, 'max': 0.2},
+                'max_depth': {'values': [3, 5, 8]},
+                'n_estimators': {'values': [100, 500]},
+                'scale_pos_weight': {'values': [2, 4, 6]},
+                'umbral_decision': {'values': [0.4, 0.45, 0.5, 0.6]}
+            }
+        },
+        "3_bayesiano_penalizado": {
+            'method': 'bayes',
+            'metric': {'name': 'f1_score', 'goal': 'maximize'},
+            'parameters': {
+                'learning_rate': {'values': [0.1]},
+                'max_depth': {'values': [6, 8, 10]},
+                'n_estimators': {'values': [300]},
+                'reg_alpha': {'values': [0.1, 1, 5]},
+                'reg_lambda': {'values': [1, 10]},
+                'scale_pos_weight': {'values': [2, 3]},
+                'umbral_decision': {'distribution': 'uniform', 'min': 0.4, 'max': 0.5}
+            }
+        }
     }
-}
-    sweep_id = wandb.sweep(sweep_config, project="XGboost", entity="pd1-c2526-team3")
-    print("\nIniciando el Sweep de W&B...")
-    wandb.agent(sweep_id, function=train, count=10)
+
+    runs_por_configuracion = 15
+
+    for nombre_config, config in configuraciones.items():
+        print(f"\nIniciando Sweep: {nombre_config}")
+        sweep_id = wandb.sweep(config, project=proyecto, entity=entidad)
+        wandb.agent(sweep_id, function=train, count=runs_por_configuracion)

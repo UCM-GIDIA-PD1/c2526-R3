@@ -5,11 +5,11 @@ from pathlib import Path
 import wandb
 import yaml
 from dotenv import load_dotenv
-from sklearn.ensemble import RandomForestClassifier
+from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 from sklearn.metrics import fbeta_score
 
 sys.path.append(os.path.join(os.path.dirname(__file__), "..", ".."))
-from modelos.utils.carga_datos import cargar_dataset_general
+import modelos.utils.carga_datos as cg
 from modelos.utils.particiones import split_estratificado
 from modelos.utils.metricas import evaluar_clasificacion
 
@@ -17,7 +17,7 @@ load_dotenv()
 os.environ["WANDB_API_KEY"] = os.getenv("WANDB_KEY", "")
 
 WANDB_ENTITY = "pd1-c2526-team3"
-WANDB_PROJECT = "arboles-decision-sweeps"
+WANDB_PROJECT = "rdForest-frp-sweeps"
 SWEEP_PATH = Path(__file__).with_name("randomforest_sweep.yaml")
 SEED = 42
 
@@ -51,7 +51,7 @@ def wandb_init():
     )
 
 
-def arboles_decision(X_train, X_val, X_test, y_train, y_val, y_test):
+def arboles_decision_clasificacion(X_train, X_val, X_test, y_train, y_val, y_test):
     run = wandb_init()
     config = wandb.config
 
@@ -67,6 +67,13 @@ def arboles_decision(X_train, X_val, X_test, y_train, y_val, y_test):
     )
 
     model.fit(X_train, y_train)
+
+    y_pred_train = model.predict(X_train)
+    y_prob_train = model.predict_proba(X_train)[:, 1]
+    metricas_train = evaluar_clasificacion(
+        y_train, y_pred_train, y_prob_train, "Entrenamiento — Random Forest"
+    )
+    f1_5_train = fbeta_score(y_train, y_pred_train, beta=1.5, zero_division=0)
 
     y_pred_val = model.predict(X_val)
     y_prob_val = model.predict_proba(X_val)[:, 1]
@@ -84,18 +91,30 @@ def arboles_decision(X_train, X_val, X_test, y_train, y_val, y_test):
 
     wandb.log({
         "f1_5_score": f1_5_val,
+        
+        "overfitting_gap_f1_5": f1_5_train - f1_5_val,
+
+        "train/f1_5": f1_5_train,
+        "train/f1": metricas_train["f1"],
+        "train/precision": metricas_train["precision"],
+        "train/recall": metricas_train["recall"],
+        "train/accuracy": metricas_train["accuracy"],
+        "train/roc_auc": metricas_train.get("roc_auc", 0),
+
         "val/f1_5": f1_5_val,
         "val/f1": metricas_val["f1"],
         "val/precision": metricas_val["precision"],
         "val/recall": metricas_val["recall"],
         "val/accuracy": metricas_val["accuracy"],
         "val/roc_auc": metricas_val.get("roc_auc", 0),
+        
         "test/f1_5": f1_5_test,
         "test/f1": metricas_test["f1"],
         "test/precision": metricas_test["precision"],
         "test/recall": metricas_test["recall"],
         "test/accuracy": metricas_test["accuracy"],
         "test/roc_auc": metricas_test.get("roc_auc", 0),
+        
         "split": "estratificado",
         "eliminar_correladas": False,
         "n_features": X_train.shape[1],
@@ -117,13 +136,12 @@ def arboles_decision(X_train, X_val, X_test, y_train, y_val, y_test):
     run.finish()
 
 
-def main():
-    # Todas las variables: no eliminar correladas por ahora
-    X, y = cargar_dataset_general(eliminar_correladas=False)
+def clasificacion():
+    X, y = cg.cargar_dataset_general(eliminar_correladas=False)
     X_train, X_val, X_test, y_train, y_val, y_test = split_estratificado(X, y)
 
     def entrenamiento():
-        arboles_decision(X_train, X_val, X_test, y_train, y_val, y_test)
+        arboles_decision_clasificacion(X_train, X_val, X_test, y_train, y_val, y_test)
 
     sweep_id = obtener_sweep_id()
     wandb.agent(
@@ -136,4 +154,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    clasificacion()

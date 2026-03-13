@@ -12,3 +12,8 @@ credenciales
 esc
 .keep
 wandb/
+**/wandb/
+
+
+wandb/
+outputs/

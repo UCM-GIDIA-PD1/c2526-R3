@@ -46,11 +46,14 @@ def train():
     with wandb.init(settings=wandb.Settings(start_method="thread")) as run:
         config = wandb.config
         
+        ratio = len(y_train[y_train == 0]) / len(y_train[y_train == 1])
+
         clf = xgb.XGBClassifier(
             n_estimators=config.n_estimators,
             learning_rate=config.learning_rate,
             max_depth=config.max_depth,
             subsample=config.subsample,
+            scale_pos_weight=ratio,
             random_state=42,
             use_label_encoder=False 
         )
@@ -101,17 +104,22 @@ if __name__ == "__main__":
     wandb.login(key=os.getenv('WANDB_KEY'))
 
     sweep_config = {
-        'method': 'random', 
-        'metric': {'name': 'f1_score', 'goal': 'maximize'}, 
-        'parameters': {
-            'learning_rate': {'values': [0.01, 0.1, 0.3]},
-            'max_depth': {'values': [3, 6, 9]},
-            'n_estimators': {'values': [100, 200, 500]},
-            'subsample': {'distribution': 'uniform', 'min': 0.5, 'max': 1.0},
-            'umbral_decision': {'values': [0.10]} 
-        }
-    }
+    'method': 'random', 
+    'metric': {'name': 'f1_score', 'goal': 'maximize'}, 
+    'parameters': {
+        'learning_rate': {'distribution': 'uniform', 'min': 0.01, 'max': 0.3},
+        
+        'max_depth': {'values': [3, 5, 7, 9, 12]},
+        
+        'n_estimators': {'values': [100, 300, 500, 800]},
+        
+        'subsample': {'distribution': 'uniform', 'min': 0.6, 'max': 1.0},
+        
+        'umbral_decision': {'distribution': 'uniform', 'min': 0.1, 'max': 0.4},
 
+        'scale_pos_weight': {'values': [1, 3, 5, 10]} 
+    }
+}
     sweep_id = wandb.sweep(sweep_config, project="XGboost", entity="pd1-c2526-team3")
     print("\nIniciando el Sweep de W&B...")
     wandb.agent(sweep_id, function=train, count=10)

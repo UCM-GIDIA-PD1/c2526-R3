@@ -4,9 +4,10 @@ import wandb
 import numpy as np
 import pandas as pd
 from datetime import timedelta
-import xgboost as xgb
 from xgboost import XGBClassifier
 from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import confusion_matrix
+import matplotlib.pyplot as plt
 from wandb.sklearn import (
     plot_class_proportions,
     plot_learning_curve,
@@ -20,12 +21,11 @@ from modelos.utils.carga_datos import cargar_dataset_general_con_tiempos
 from modelos.utils.metricas import evaluar_clasificacion
 
 os.environ["WANDB_API_KEY"] = os.getenv("WANDB_KEY", "")
-os.environ["WANDB_MODE"] = "offline"
+os.environ["WANDB_MODE"] = "online"
 
 WANDB_ENTITY = "pd1-c2526-team3"
 WANDB_PROJECT = "ModelosTemporales"
 SEED = 42
-
 
 def crear_features_temporales(df, radio_km=5, ventana_dias=7):
     df = df.sort_values('date').reset_index(drop=True)
@@ -63,7 +63,6 @@ def crear_features_temporales(df, radio_km=5, ventana_dias=7):
     df = df.drop(['lat_rad', 'lon_rad'], axis=1)
     return df
 
-
 def split_temporal(X, y, test_size=0.2, val_size=0.1):
     n_total = len(X)
     n_test = int(n_total * test_size)
@@ -76,14 +75,14 @@ def split_temporal(X, y, test_size=0.2, val_size=0.1):
     
     return X_train, X_val, X_test, y_train, y_val, y_test
 
-
 def seleccionar_modelo(y_train):
     print("\n--- Menú de Selección de Modelo ---")
     print("1. XGBoost (Estándar)")
     print("2. XGBoost (Con scale_pos_weight)")
     print("3. Random Forest (Balanceado)")
+    print("4. Búsqueda Grid Mixta (60 modelos)")
     
-    opcion = input("Elige el modelo a entrenar (1/2/3): ")
+    opcion = input("Elige el modelo a entrenar (1/2/3/4): ")
     
     if opcion == '2':
         negativos = (y_train == 0).sum()
@@ -97,7 +96,7 @@ def seleccionar_modelo(y_train):
             random_state=SEED,
             eval_metric="logloss",
         )
-        return clf, "XGBoost_Balanceado"
+        return [(clf, "XGBoost_Balanceado")]
         
     elif opcion == '3':
         clf = RandomForestClassifier(
@@ -106,7 +105,49 @@ def seleccionar_modelo(y_train):
             random_state=SEED,
             n_jobs=-1
         )
-        return clf, "RandomForest_Balanceado"
+        return [(clf, "RandomForest_Balanceado")]
+        
+    elif opcion == '4':
+        modelos = []
+        negativos = (y_train == 0).sum()
+        positivos = (y_train == 1).sum()
+        ratio = negativos / positivos
+
+        for depth in [3, 5, 7, 9]:
+            for lr in [0.01, 0.05, 0.1]:
+                for n_est in [100, 300]:
+                    clf_est = XGBClassifier(
+                        n_estimators=n_est,
+                        learning_rate=lr,
+                        max_depth=depth,
+                        random_state=SEED,
+                        eval_metric="logloss",
+                    )
+                    modelos.append((clf_est, f"XGBoost_Est_d{depth}_lr{lr}_n{n_est}"))
+
+                    clf_bal = XGBClassifier(
+                        n_estimators=n_est,
+                        learning_rate=lr,
+                        max_depth=depth,
+                        scale_pos_weight=ratio,
+                        random_state=SEED,
+                        eval_metric="logloss",
+                    )
+                    modelos.append((clf_bal, f"XGBoost_Bal_d{depth}_lr{lr}_n{n_est}"))
+
+        for depth in [None, 5, 10, 15]:
+            for n_est in [100, 300, 500]:
+                clf_rf = RandomForestClassifier(
+                    n_estimators=n_est,
+                    max_depth=depth,
+                    class_weight="balanced",
+                    random_state=SEED,
+                    n_jobs=-1
+                )
+                depth_str = depth if depth is not None else "None"
+                modelos.append((clf_rf, f"RandomForest_Bal_d{depth_str}_n{n_est}"))
+                
+        return modelos
         
     else:
         clf = XGBClassifier(
@@ -115,8 +156,7 @@ def seleccionar_modelo(y_train):
             random_state=SEED,
             eval_metric="logloss",
         )
-        return clf, "XGBoost_Estandar"
-
+        return [(clf, "XGBoost_Estandar")]
 
 def main():
     X, y = cargar_dataset_general_con_tiempos(eliminar_correladas=False)
@@ -133,70 +173,89 @@ def main():
 
     X_train, X_val, X_test, y_train, y_val, y_test = split_temporal(X_features, y_features)
 
-    clf, model_name = seleccionar_modelo(y_train)
-    print(f"\nEntrenando {model_name}...")
+    modelos_a_entrenar = seleccionar_modelo(y_train)
     
-    clf.fit(X_train, y_train)
-    model_params = clf.get_params()
+    for clf, model_name in modelos_a_entrenar:
+        print(f"\nEntrenando {model_name}...")
+        
+        clf.fit(X_train, y_train)
+        model_params = clf.get_params()
 
-    y_pred_val = clf.predict(X_val)
-    y_prob_val = clf.predict_proba(X_val)[:, 1]
-    metricas_val = evaluar_clasificacion(y_val, y_pred_val, y_prob_val, f"Validación — {model_name}")
+        y_pred_val = clf.predict(X_val)
+        y_prob_val = clf.predict_proba(X_val)[:, 1]
+        metricas_val = evaluar_clasificacion(y_val, y_pred_val, y_prob_val, f"Validación — {model_name}")
 
-    y_pred_test = clf.predict(X_test)
-    y_prob_test = clf.predict_proba(X_test)[:, 1]
-    metricas_test = evaluar_clasificacion(y_test, y_pred_test, y_prob_test, f"Test — {model_name}")
+        y_pred_test = clf.predict(X_test)
+        y_prob_test = clf.predict_proba(X_test)[:, 1]
+        metricas_test = evaluar_clasificacion(y_test, y_pred_test, y_prob_test, f"Test — {model_name}")
 
-    run = wandb.init(
-        entity=WANDB_ENTITY,
-        name=f"{model_name} Experimento Temporal",
-        project=WANDB_PROJECT,
-        config={
-            **model_params,
-            "split": "temporal",
-            "eliminar_correladas": False,
-            "n_features": X_features.shape[1],
-            "arquitectura": model_name,
-            "radio_km": 10,
-            "ventana_dias": 7
-        },
-    )
-
-    wandb.log({
-        "val/f1": metricas_val["f1"],
-        "val/precision": metricas_val["precision"],
-        "val/recall": metricas_val["recall"],
-        "val/accuracy": metricas_val["accuracy"],
-        "val/roc_auc": metricas_val.get("roc_auc", 0),
-        "test/f1": metricas_test["f1"],
-        "test/precision": metricas_test["precision"],
-        "test/recall": metricas_test["recall"],
-        "test/accuracy": metricas_test["accuracy"],
-        "test/roc_auc": metricas_test.get("roc_auc", 0),
-    })
-
-    if "XGBoost" in model_name:
-        wandb.sklearn.plot_classifier(
-            clf,
-            X_train,
-            X_val,
-            y_train,
-            y_val,
-            y_pred_val,
-            clf.predict_proba(X_val),
-            labels=["no_incendio", "incendio"],
-            model_name=model_name,
-            feature_names=X_features.columns.tolist(),
+        run = wandb.init(
+            entity=WANDB_ENTITY,
+            name=f"{model_name} Experimento Temporal",
+            project=WANDB_PROJECT,
+            config={
+                **model_params,
+                "split": "temporal",
+                "eliminar_correladas": False,
+                "n_features": X_features.shape[1],
+                "arquitectura": model_name,
+                "radio_km": 10,
+                "ventana_dias": 7
+            },
         )
 
-        plot_class_proportions(y_train, y_val, ["no_incendio", "incendio"])
-        plot_learning_curve(clf, X_train, y_train)
-        plot_roc(y_val, clf.predict_proba(X_val), ["no_incendio", "incendio"])
-        plot_precision_recall(y_val, clf.predict_proba(X_val), ["no_incendio", "incendio"])
-        plot_feature_importances(clf)
+        wandb.log({
+            "val/f1": metricas_val["f1"],
+            "val/precision": metricas_val["precision"],
+            "val/recall": metricas_val["recall"],
+            "val/accuracy": metricas_val["accuracy"],
+            "val/roc_auc": metricas_val.get("roc_auc", 0),
+            "test/f1": metricas_test["f1"],
+            "test/precision": metricas_test["precision"],
+            "test/recall": metricas_test["recall"],
+            "test/accuracy": metricas_test["accuracy"],
+            "test/roc_auc": metricas_test.get("roc_auc", 0),
+        })
 
-    run.finish()
+        cm = confusion_matrix(y_test, y_pred_test, normalize='true')  
+        fig, ax = plt.subplots(figsize=(6,5))
+        im = ax.imshow(cm, interpolation='nearest', cmap=plt.cm.Blues)
+        ax.figure.colorbar(im, ax=ax)
+        ax.set(xticks=np.arange(cm.shape[1]), yticks=np.arange(cm.shape[0]),
+               xticklabels=["no incendio", "incendio"], yticklabels=["no incendio", "incendio"],
+               ylabel='Actual', xlabel='Predicho')
+        plt.setp(ax.get_xticklabels(), rotation=45, ha="right", rotation_mode="anchor")
 
+        thresh = cm.max() / 2.
+        for i in range(cm.shape[0]):
+            for j in range(cm.shape[1]):
+                ax.text(j, i, f"{cm[i, j]:.2%}", ha="center", va="center",
+                        color="white" if cm[i, j] > thresh else "black")
+        ax.set_title(f'Matriz de Confusión Normalizada (Test) - {model_name}')
+        wandb.log({"test/confusion_matrix_normalized": wandb.Image(fig)})
+        plt.close(fig)
+
+        if "XGBoost" in model_name:
+            wandb.sklearn.plot_classifier(
+                clf,
+                X_train,
+                X_val,
+                y_train,
+                y_val,
+                y_pred_val,
+                clf.predict_proba(X_val),
+                labels=["no_incendio", "incendio"],
+                model_name=model_name,
+                feature_names=X_features.columns.tolist(),
+            )
+
+            plot_class_proportions(y_train, y_val, ["no_incendio", "incendio"])
+            plot_learning_curve(clf, X_train, y_train)
+            plot_roc(y_val, clf.predict_proba(X_val), ["no_incendio", "incendio"])
+            plot_precision_recall(y_val, clf.predict_proba(X_val), ["no_incendio", "incendio"])
+            plot_feature_importances(clf)
+
+        run.finish()
 
 if __name__ == "__main__":
     main()

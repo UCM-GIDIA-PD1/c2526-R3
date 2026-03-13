@@ -93,7 +93,7 @@ def cargar_dataset_general(years=YEARS, eliminar_correladas=True):
     return X, y
 
 
-def cargar_dataset_incendios(years: list = YEARS, eliminar_correladas=True) -> tuple:
+def cargar_dataset_incendios(years: list = YEARS, eliminar_correladas=True, logs = True) -> tuple:
     """
     Carga el dataset de regresión (solo incendios, variable objetivo FRP).
 
@@ -108,22 +108,29 @@ def cargar_dataset_incendios(years: list = YEARS, eliminar_correladas=True) -> t
     """
     print("Cargando dataset incendios (regresión FRP)...")
     df = _cargar_parquets(PREFIX_INCENDIOS, years)
+    df = df.drop(columns=['date_last', 'count', 'lat', 'lon', 'frp_sum', 'final', 'duration_days', 'date'])
 
     # Eliminar columnas con multicolinealidad
     if eliminar_correladas:
         df = df.drop(columns=COLS_ELIMINAR, errors="ignore")
 
     # Transformación log del FRP (skewness original = 3.39)
-    frp_col = next((c for c in ["frp_mean", "frp_sum", "frp", "FRP"] if c in df.columns), None)
-    if frp_col is None:
-        raise ValueError(f"No se encontró columna FRP. Columnas: {list(df.columns)}")
 
-    df[TARGET_REGRESION] = np.log1p(df[frp_col])
+    if logs:
+        frp_col = next((c for c in ["frp_mean", "frp_sum", "frp", "FRP"] if c in df.columns), None)
+        if frp_col is None:
+            raise ValueError(f"No se encontró columna FRP. Columnas: {list(df.columns)}")
 
-    # Separar features y target
-    cols_no_features = [TARGET_REGRESION, frp_col, "lat", "lon", "date", "_year", "final"]
-    X = df.drop(columns=[c for c in cols_no_features if c in df.columns])
-    y = df[TARGET_REGRESION]
+        df[TARGET_REGRESION] = np.log1p(df[frp_col])
+
+        # Separar features y target
+        cols_no_features = [TARGET_REGRESION, frp_col]
+        y = df[TARGET_REGRESION]
+        X = df.drop(columns=[c for c in cols_no_features if c in df.columns])
+    else:
+        frp_col = 'frp_mean'
+        y = df['frp_mean']
+        X = df.drop(columns=['frp_mean'])
 
     print(f"  Dataset cargado: {X.shape[0]:,} filas, {X.shape[1]} features")
     print(f"  log_frp  — media: {y.mean():.2f}, std: {y.std():.2f}")

@@ -113,3 +113,21 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+#Conclusiones:
+#Como ya veíamos con regresión lineal sin selección de variables, el coeficiente de determinación
+#era de tan solo 0.024 para los datos de validación. 
+#Además, las conclusiones de linealidad, homocedasticidad y normalidad no se cumplían.
+
+#Con este nuevo, el R^2 ha bajado a 0.021, y las variables seleccionadas han sido NDVI, temp_max, porcentaje,
+#area_ha y wind_gusts_max.
+
+#Esto coincide exactamente con el análisis que hicimos de correlaciones. Ha eliminado las variables
+#de temperatura, quedándose solo con una de ellas, se ha seleccionado únicamente uno de los índices 
+#de vegetación, dado que ambos representaban lo mismo. También ha seleccionado tan solo una de las variables
+#que expresan la pendiente, puesto que las tres que tenemos en el conjunto de datos están altamente correlacionadas,
+#las hectáreas quemadas y una de las variables que expresan el viento. 
+
+#Con este nuevo modelo con menos variables siguen sin cumplirse las hipótesis de linealidad y normalidad,
+#lo que supone la necesidad de descartar el modelo, aunque ahora cumpla la hipótesis de homocedasticidad,
+#con un valor de 0.037 aproximadamente.

@@ -14,7 +14,7 @@ import pandas as pd
 
 # Añadir extraccion/ al path para usar minioFunctions del proyecto
 sys.path.append(os.path.join(os.path.dirname(__file__), "..", "..", "extraccion"))
-from minioFunctions import crear_cliente, bajar_fichero
+from extraccion.minioFunctions import crear_cliente, bajar_fichero
 
 # ── Configuración ──────────────────────────────────────────────────────────────
 

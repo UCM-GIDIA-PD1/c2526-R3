@@ -17,30 +17,41 @@ except ImportError as e:
 import wandb
 import xgboost as xgb
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import f1_score
+from sklearn.metrics import f1_score, recall_score, precision_score, roc_auc_score
 from wandb.sklearn import plot_roc, plot_precision_recall, plot_feature_importances
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
+from modelos import parser
 
+#Conexion con WANDB
 wandb.require("core") 
 os.environ["WANDB_START_METHOD"] = "thread"
-
 minioFunctions.load_dotenv()
 os.environ['WANDB_API_KEY'] = os.getenv('WANDB_KEY')
 
-cliente = minioFunctions.crear_cliente()
-df = minioFunctions.cargar_dataset_incendios(eliminar_correladas = False)
+#Inicializamos parser para pasar las características de nuestro modelo por consola
+args = parser.initialite_parser()
 
+#Conexión con MinIO
+cliente = minioFunctions.crear_cliente()
+df = minioFunctions.bajar_fichero(cliente, "grupo3/cleaned/final.parquet", "df")
+
+#Creación de nuestras variables explicativas y respuesta
 X = df.drop(["final", "date"], axis=1)
 y = df["final"]
-class_names = [str(c) for c in sorted(y.unique())]
+class_names = ["No Incendio", "Incendio"]
 feature_names = X.columns
 
+#División de los datos en entrenamiento y validación
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
 def train():
-    with wandb.init(settings=wandb.Settings(start_method="thread")) as run:
+    #Creamos nuevo WANDB con las características de nuestro modelo entrenado (tags)
+    todas_tags = [args.modelo] + args.tags + [f"correladas_{args.eliminar_correladas}"]
+    with wandb.init(settings=wandb.Settings(start_method="thread"),
+                    tags=todas_tags) as run:
+        
         config_dict = dict(wandb.config)
         
         umbral = config_dict.pop('umbral_decision', 0.5)
@@ -50,6 +61,7 @@ def train():
             'use_label_encoder': False,
             'eval_metric': 'logloss'
         }
+
         params_xgb.update(config_dict)
         
         clf = xgb.XGBClassifier(**params_xgb)
@@ -62,18 +74,25 @@ def train():
         
         y_probas = clf.predict_proba(X_test)
         y_pred = (y_probas[:, 1] >= umbral).astype(int) 
-        
+
         y_test_array = y_test.to_numpy()
 
+        #Métricas
         accuracy = (y_pred == y_test_array).mean()
         f1 = f1_score(y_test_array, y_pred)
-
+        recall = recall_score(y_test_array, y_pred)
+        precision = precision_score(y_test_array, y_pred)
+        
+        #Mostramos en WANDB
         wandb.log({
-            "accuracy": accuracy,
-            "f1_score": f1,
-            "roc_nativa": wandb.plot.roc_curve(y_test_array, y_probas, labels=class_names),
-            "pr_nativa": wandb.plot.pr_curve(y_test_array, y_probas, labels=class_names),
-            "matriz_confusion": wandb.plot.confusion_matrix(
+            "metricas/accuracy": accuracy,
+            "metricas/f1_score": f1,
+            "metricas/recall": recall,
+            "metricas/precision": precision,
+
+            "graficas/roc_nativa": wandb.plot.roc_curve(y_test_array, y_probas, labels=class_names),
+            "graficas/pr_nativa": wandb.plot.pr_curve(y_test_array, y_probas, labels=class_names),
+            "graficas/matriz_confusion": wandb.plot.confusion_matrix(
                 preds=y_pred, 
                 y_true=y_test_array, 
                 class_names=class_names

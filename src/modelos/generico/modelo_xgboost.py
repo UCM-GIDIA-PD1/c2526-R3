@@ -35,7 +35,7 @@ args = parser.initialite_parser()
 
 #Conexión con MinIO
 cliente = minioFunctions.crear_cliente()
-df = minioFunctions.bajar_fichero(cliente, "grupo3/cleaned/final.parquet", "df")
+df = minioFunctions.bajar_fichero(cliente, "grupo3/cleaned/final_lat_lon.parquet", "df")
 
 #Creación de nuestras variables explicativas y respuesta
 X = df.drop(["final", "date"], axis=1)
@@ -48,7 +48,10 @@ X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_
 
 def train():
     #Creamos nuevo WANDB con las características de nuestro modelo entrenado (tags)
-    todas_tags = [args.modelo] + args.tags + [f"correladas_{args.eliminar_correladas}"]
+    todas_tags = []
+    if args.modelo: 
+        todas_tags.append(args.modelo)
+    todas_tags = args.tags + [f"correladas_{args.eliminar_correladas}"]
     with wandb.init(settings=wandb.Settings(start_method="thread"),
                     tags=todas_tags) as run:
         

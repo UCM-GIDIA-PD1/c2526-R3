@@ -62,13 +62,17 @@ def analizar_coeficientes(modelo, feature_names):
     return coefs
 
 
-def registrar_wandb(modelo, scaler, metricas, coefs,
+def registrar_wandb(modelo, scaler, metricas_val, metricas_test, coefs,
                     X_train, X_val, y_train, y_val):
     wandb.log({
-        "f1":        metricas["f1"],
-        "precision": metricas["precision"],
-        "recall":    metricas["recall"],
-        "roc_auc":   metricas.get("roc_auc", 0),
+        "val/f1":        metricas_val["f1"],
+        "val/precision": metricas_val["precision"],
+        "val/recall":    metricas_val["recall"],
+        "val/roc_auc":   metricas_val.get("roc_auc", 0),
+        "test/f1":        metricas_test["f1"],
+        "test/precision": metricas_test["precision"],
+        "test/recall":    metricas_test["recall"],
+        "test/roc_auc":   metricas_test.get("roc_auc", 0),
     })
 
     wandb.log({f"coef/{var}": val for var, val in coefs.items()})
@@ -104,9 +108,16 @@ def run_experimento(nombre, X, y, eliminar_correladas):
         X_train, X_val, X_test, y_train, y_val, y_test = split_estratificado(X, y)
         class_weight = get_pesos_clase(y_train)
 
+    # Entrenamiento y evaluación en validación
     modelo, scaler = entrenar(X_train, y_train, class_weight)
-    metricas = evaluar(modelo, scaler, X_val, y_val, f"Validación — {nombre}")
+    metricas_val = evaluar(modelo, scaler, X_val, y_val, f"Validación — {nombre}")
     coefs = analizar_coeficientes(modelo, X.columns.tolist())
+
+    # Reentrenamiento con train+val para evaluación final en test
+    X_trainval = pd.concat([X_train, X_val])
+    y_trainval = pd.concat([y_train, y_val])
+    modelo_final, scaler_final = entrenar(X_trainval, y_trainval, class_weight)
+    metricas_test = evaluar(modelo_final, scaler_final, X_test, y_test, f"Test — {nombre}")
 
     config = {
         "modelo":              "regresion_logistica",
@@ -125,10 +136,11 @@ def run_experimento(nombre, X, y, eliminar_correladas):
         config=config,
         reinit=True
     )
-    registrar_wandb(modelo, scaler, metricas, coefs, X_train, X_val, y_train, y_val)
+    registrar_wandb(modelo, scaler, metricas_val, metricas_test, coefs,
+                    X_train, X_val, y_train, y_val)
     run.finish()
 
-    return metricas, coefs
+    return metricas_val, coefs
 
 
 def generar_graficas(resultados, coefs_dict):
@@ -223,7 +235,7 @@ def main():
             print(f"  {s:<20} {m['f1']:>8.4f} {m['precision']:>10.4f} "
                   f"{m['recall']:>8.4f} {m.get('roc_auc', 0):>9.4f}")
         mejor = max(resultados, key=lambda s: resultados[s]["f1"])
-        print(f"\n  ✅ Mejor F1: {mejor}  ({resultados[mejor]['f1']:.4f})")
+        print(f"\n  Mejor F1: {mejor}  ({resultados[mejor]['f1']:.4f})")
 
     if not args.no_graficas:
         generar_graficas(resultados, coefs_dict)

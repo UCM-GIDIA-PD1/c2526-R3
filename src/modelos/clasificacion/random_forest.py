@@ -12,12 +12,13 @@ sys.path.append(os.path.join(os.path.dirname(__file__), "..", ".."))
 import modelos.utils.carga_datos as cg
 from modelos.utils.particiones import split_estratificado
 from modelos.utils.metricas import evaluar_clasificacion
+import numpy as np
 
 load_dotenv()
 os.environ["WANDB_API_KEY"] = os.getenv("WANDB_KEY", "")
 
 WANDB_ENTITY = "pd1-c2526-team3"
-WANDB_PROJECT = "rdForest-frp-sweeps"
+WANDB_PROJECT = "rdForest-sweeps"
 SWEEP_PATH = Path(__file__).with_name("randomforest_sweep.yaml")
 SEED = 42
 
@@ -51,10 +52,15 @@ def wandb_init():
     )
 
 
-def arboles_decision_clasificacion(X_train, X_val, X_test, y_train, y_val, y_test):
+def arboles_decision_clasificacion(X_train, X_val, X_test, y_train, y_val, y_test, detallados=False):
     run = wandb_init()
     config = wandb.config
 
+    if config.max_features == "None": # Daba error sino porque el YAML devuelve un string
+        max_f = None
+    else:
+        max_f = config.max_features
+    
     model = RandomForestClassifier(
         max_depth=config.max_depth,
         criterion=config.criterion,
@@ -62,12 +68,15 @@ def arboles_decision_clasificacion(X_train, X_val, X_test, y_train, y_val, y_tes
         class_weight=config.class_weight,
         min_samples_leaf=config.min_samples_leaf,
         min_samples_split=config.min_samples_split,
+        max_features=max_f,
         random_state=SEED,
         n_jobs=-1,
     )
 
     model.fit(X_train, y_train)
 
+
+    # ---------------- Entrenamientos por split y evaluaciones -----------------
     y_pred_train = model.predict(X_train)
     y_prob_train = model.predict_proba(X_train)[:, 1]
     metricas_train = evaluar_clasificacion(
@@ -89,7 +98,8 @@ def arboles_decision_clasificacion(X_train, X_val, X_test, y_train, y_val, y_tes
     )
     f1_5_test = fbeta_score(y_test, y_pred_test, beta=1.5, zero_division=0)
 
-    wandb.log({
+    if detallados:
+        wandb.log({
         "f1_5_score": f1_5_val,
         
         "overfitting_gap_f1_5": f1_5_train - f1_5_val,
@@ -118,9 +128,9 @@ def arboles_decision_clasificacion(X_train, X_val, X_test, y_train, y_val, y_tes
         "split": "estratificado",
         "eliminar_correladas": False,
         "n_features": X_train.shape[1],
-    })
+        })
 
-    wandb.sklearn.plot_classifier(
+        wandb.sklearn.plot_classifier(
         model,
         X_train,
         X_val,
@@ -131,7 +141,28 @@ def arboles_decision_clasificacion(X_train, X_val, X_test, y_train, y_val, y_tes
         labels=["no_incendio", "incendio"],
         model_name="RandomForest",
         feature_names=X_train.columns.tolist(),
-    )
+        )
+
+    else: # Muestra solo las métricas principales sin curvas ni gráficos
+        
+        wandb.log({
+        "train/f1_5": f1_5_train,
+        "train/f1": metricas_train["f1"],
+        "train/precision": metricas_train["precision"],
+        "train/recall": metricas_train["recall"],
+        "train/accuracy": metricas_train["accuracy"],
+
+        "val/f1_5": f1_5_val,
+        "val/f1": metricas_val["f1"],
+        "val/precision": metricas_val["precision"],
+        "val/recall": metricas_val["recall"],
+        "val/accuracy": metricas_val["accuracy"],
+
+        })
+
+        wandb.sklearn.plot_confusion_matrix(y_val, y_pred_val, labels=["no_incendio", "incendio"])
+        
+        wandb.sklearn.plot_feature_importances(model, feature_names=X_train.columns.tolist())
 
     run.finish()
 
@@ -140,17 +171,32 @@ def clasificacion():
     X, y = cg.cargar_dataset_general(eliminar_correladas=False)
     X_train, X_val, X_test, y_train, y_val, y_test = split_estratificado(X, y)
 
+    detallados = False
+    iters = int(input("¿Cuántas iteraciones quieres ejecutar? : "))
+    detallado = input("¿Quieres ver los resultados detallados de cada iteración (curvas AUC, ROC, etc.)? (s/n) : ")
+
+    if detallado.lower() == "s":
+        detallados = True
+        print("Se mostrarán los resultados detallados de cada iteración.")
+    else:
+        print("No se mostrarán los resultados detallados de cada iteración.")
+
     def entrenamiento():
-        arboles_decision_clasificacion(X_train, X_val, X_test, y_train, y_val, y_test)
+        arboles_decision_clasificacion(X_train, X_val, X_test, y_train, y_val, y_test, detallados)
 
     sweep_id = obtener_sweep_id()
+
+    
+
     wandb.agent(
         sweep_id=sweep_id,
         function=entrenamiento,
-        count=25,
+        count=iters,
         entity=WANDB_ENTITY,
         project=WANDB_PROJECT,
     )
+
+    print(f"Listo!! Ejecutadas {iters} iteraciones")
 
 
 if __name__ == "__main__":

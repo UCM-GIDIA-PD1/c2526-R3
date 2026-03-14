@@ -13,7 +13,7 @@ import numpy as np
 import pandas as pd
 
 sys.path.append(os.path.join(os.path.dirname(__file__), "..", "..", "extraccion"))
-from minioFunctions import crear_cliente, bajar_fichero
+from extraccion.minioFunctions import crear_cliente, bajar_fichero
 
 # ── Configuración ──────────────────────────────────────────────────────────────
 
@@ -74,7 +74,7 @@ def cargar_dataset_general(years=YEARS, eliminar_correladas=True):
     X = df.drop(columns=[c for c in cols_no_features if c in df.columns])
     y = df[TARGET_CLASIFICACION]
 
-    print(f"  ✅ Dataset cargado: {X.shape[0]:,} filas, {X.shape[1]} features")
+    print(f"  Dataset cargado: {X.shape[0]:,} filas, {X.shape[1]} features")
     print(f"  Incendios:     {y.sum():,} ({y.mean()*100:.1f}%)")
     print(f"  No incendios:  {(y==0).sum():,} ({(y==0).mean()*100:.1f}%)")
 
@@ -122,6 +122,7 @@ def cargar_dataset_incendios(years=YEARS, eliminar_correladas=True, logs=True):
     """
     print("Cargando dataset incendios (regresión FRP)...")
     df = _cargar_parquets(PREFIX_INCENDIOS, years)
+    df = df.drop(columns=['date_last', 'count', 'lat', 'lon', 'frp_sum', 'final', 'duration_days', 'date'])
 
     # Eliminar columnas de metadatos que no son features
     cols_metadatos = ["date_last", "count", "lat", "lon", "frp_sum",

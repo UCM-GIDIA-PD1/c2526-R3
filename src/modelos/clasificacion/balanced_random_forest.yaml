@@ -1,0 +1,25 @@
+program: balanced_random_forest.py
+entity: pd1-c2526-team3
+project: balancedRandomForestClassifier
+name: sweep_balanced_rf_f2
+method: bayes # Bayes para encontrar el equilibrio entre precisión y recall
+metric:
+  name: test/f1 #test/f2 Cambiamos a f2 para priorizar la detección de incendios reales
+  goal: maximize
+parameters:
+  n_estimators:
+    values: [100, 300, 500, 800] 
+  max_depth:
+    distribution: int_uniform
+    min: 5 
+    max: 25
+  min_samples_split:
+    distribution: int_uniform
+    min: 2
+    max: 20
+  min_samples_leaf:
+    distribution: int_uniform
+    min: 1
+    max: 15
+  criterion:
+    values: ['gini', 'entropy']

@@ -1,92 +1,97 @@
 import os
+import sys
+import numpy as np
+import pandas as pd # Importante para concatenar correctamente
+
 import wandb
-import pandas as pd
 import statsmodels.api as sm
 import statsmodels.stats.api as sms
 from scipy import stats
 from sklearn.linear_model import LinearRegression
-from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
-from sklearn.metrics import r2_score, mean_squared_error, mean_absolute_error
 
-import sys
 sys.path.append(os.path.join(os.path.dirname(__file__), "..", ".."))
 from modelos.utils.carga_datos import cargar_dataset_incendios
+from modelos.utils.particiones import split_regresion
+from modelos.utils.metricas import evaluar_regresion
 
-# Clave W&B — Sofía usa WANDB_KEY en su .env
+# Clave W&B
 os.environ["WANDB_API_KEY"] = os.getenv("WANDB_KEY", "")
 
+WANDB_ENTITY = "pd1-c2526-team3"
+WANDB_PROJECT = "regLinealMultiple"
 
 def main():
-    # Carga datos usando el pipeline compartido del proyecto
-    # eliminar_correladas=False para mantener el comportamiento original
+    # 1. Cargar dataset
     X, y_log = cargar_dataset_incendios(eliminar_correladas=False)
 
-    # Sofía trabaja con frp_mean directamente (sin log), recuperamos la escala original
-    import numpy as np
-    y = np.expm1(y_log)
+    # 2. Particiones
+    X_train, X_val, X_test, y_train, y_val, y_test = split_regresion(X, y_log)
 
-    # Split
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.2, random_state=42
-    )
+    # VALIDACIÓN
+    scaler_init = StandardScaler()
+    X_train_scaled = scaler_init.fit_transform(X_train)
+    X_val_scaled = scaler_init.transform(X_val)
 
-    # Escalado
-    scaler = StandardScaler()
-    X_train_scaled = scaler.fit_transform(X_train)
-    X_test_scaled  = scaler.transform(X_test)
+    modelo_val = LinearRegression()
+    modelo_val.fit(X_train_scaled, y_train)
+    y_pred_val = modelo_val.predict(X_val_scaled)
 
-    # Entrenamiento sklearn
-    modelo = LinearRegression()
-    modelo.fit(X_train_scaled, y_train)
-    y_pred = modelo.predict(X_test_scaled)
+    # REENTRENAMIENTO (Refit con Train + Val)
+    X_trainval = pd.concat([X_train, X_val])
+    y_trainval = pd.concat([y_train, y_val])
 
-    # Ajuste statsmodels para tests de hipótesis
-    X_train_sm = sm.add_constant(X_train_scaled)
-    modelo_sm  = sm.OLS(y_train, X_train_sm).fit()
-    residuos   = modelo_sm.resid
+    # ESCALADO NUEVO
+    scaler_final = StandardScaler()
+    X_trainval_scaled = scaler_final.fit_transform(X_trainval)
+    X_test_scaled = scaler_final.transform(X_test)
 
-    # W&B
+    modelo_final = LinearRegression()
+    modelo_final.fit(X_trainval_scaled, y_trainval)
+
+    # Predicción final en TEST
+    y_pred_test = modelo_final.predict(X_test_scaled)
+
+    X_trainval_sm = sm.add_constant(X_trainval_scaled)
+    modelo_sm = sm.OLS(y_trainval.values, X_trainval_sm).fit()
+    residuos = modelo_sm.resid
+
     run = wandb.init(
-        entity="pd1-c2526-team3",
-        project="regLinealMultiple",
+        entity=WANDB_ENTITY,
+        project=WANDB_PROJECT,
         config={
-            "model":     "LinearRegression",
-            "features":  list(X.columns),
-            "test_size": 0.2
-        }
+            "model": "LinearRegression_Refit_Corrected",
+            "features": list(X.columns),
+            "split": "regresion_80_10_10",
+            "eliminar_correladas": False,
+        },
     )
 
-    # Tests de hipótesis
-    stat_shapiro, p_shapiro = stats.shapiro(residuos)
-    test_bp = sms.het_breuschpagan(residuos, X_train_sm)
-    p_bp    = test_bp[1]
+    # Tests estadísticos
+    _, p_shapiro = stats.shapiro(residuos)
+    test_bp = sms.het_breuschpagan(residuos, X_trainval_sm)
+    p_bp = test_bp[1]
 
-    wandb.run.summary["p_valor_shapiro"]       = p_shapiro
+    wandb.run.summary["p_valor_shapiro"] = p_shapiro
     wandb.run.summary["p_valor_breusch_pagan"] = p_bp
+    wandb.run.summary["r2_trainval"] = modelo_sm.rsquared
 
     # Métricas
-    r2_test  = r2_score(y_test, y_pred)
-    r2_train = modelo_sm.rsquared
+    metricas_val = evaluar_regresion(y_val, y_pred_val, "Validación — Regresión lineal", en_log=True)
+    metricas_test = evaluar_regresion(y_test, y_pred_test, "Test — Regresión lineal (Post-Refit)", en_log=True)
 
     wandb.log({
-        "r2_test":  r2_test,
-        "r2_train": r2_train,
-        "mse":      mean_squared_error(y_test, y_pred),
-        "mae":      mean_absolute_error(y_test, y_pred)
+        **{f"val/{k}": v for k, v in metricas_val.items()},
+        **{f"test/{k}": v for k, v in metricas_test.items()}
     })
 
-    wandb.run.summary["final_r2_test"] = r2_test
-
-    # Importancia de variables
-    coef_data = [[f, c] for f, c in zip(X.columns, modelo.coef_)]
+    # Importancia de variables (Coeficientes del modelo final)
+    coef_data = [[f, c] for f, c in zip(X.columns, modelo_final.coef_)]
     table = wandb.Table(data=coef_data, columns=["Feature", "Coefficient"])
-    wandb.log({"feature_importance": wandb.plot.bar(
-        table, "Feature", "Coefficient", title="Pesos del Modelo"
-    )})
+    wandb.log({"feature_importance": wandb.plot.bar(table, "Feature", "Coefficient", title="Pesos del Modelo Final")})
 
     run.finish()
 
-
 if __name__ == "__main__":
     main()
+

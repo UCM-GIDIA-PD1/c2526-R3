@@ -1,4 +1,4 @@
-program: arbolesDecision.py
+program: random_forest.py
 entity: pd1-c2526-team3
 project: arboles-decision-sweeps
 name : sweep_random_forest

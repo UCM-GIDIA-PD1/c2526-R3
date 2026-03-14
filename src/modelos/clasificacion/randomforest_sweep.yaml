@@ -12,7 +12,7 @@ parameters:
   max_depth:
     distribution: int_uniform
     min: 3
-    max: 20
+    max: 30
   min_samples_split:
     distribution: int_uniform
     min: 2
@@ -25,3 +25,5 @@ parameters:
     values: ['balanced_subsample', 'balanced']
   criterion:
     values: ['gini', 'entropy']
+  max_features:
+    values: ['sqrt', 'log2', None]

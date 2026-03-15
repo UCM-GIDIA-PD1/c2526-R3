@@ -1,4 +1,7 @@
 from extraccion import minioFunctions as mf
+import pandas as pd
+from sklearn.decomposition import PCA
+from sklearn.preprocessing import StandardScaler 
 
 def bajar_df_final():
     cliente = mf.crear_cliente()
@@ -29,10 +32,50 @@ def limpieza_coordenadas():
     '''
     df = bajar_df_final()
     
-    df_return = df.drop(columns=['lat', 'lon'], errors='ignore')
+    df_return = df.drop(columns=["lat", "lon"], errors="ignore")
     
     # Subimos a MinIO
     cliente = mf.crear_cliente()
     mf.subir_fichero(cliente, "grupo3/cleaned/final_lat_lon.parquet", df_return)
-    print("¡Archivo subido con éxito a MinIO!")
+
+def pca():
+    '''
+    Aplicamos PCA a nuestro dataset final para reducir la dimensionalidad
+
+    :return df_pca: dataframe con las componentes principales y la variable objetivo
+    :return df_metricas: dataframe con las métricas (de momento solo he incluído la varianza).
+    '''
+    df = bajar_df_final()
     
+    # Separamos las características y variable objetivo
+    X = df.drop(columns=["final", "date"])
+    y = df["final"]
+    
+    #Estandarizamos los datos
+    scaler = StandardScaler()
+    X_scaled = scaler.fit_transform(X)
+
+    # Aplicamos PCA
+    pca = PCA(n_components=None) 
+    X_pca = pca.fit_transform(X_scaled)
+    
+    # Creamos un nuevo dataframe con las componentes principales
+    componentes = [f"PC{i+1}" for i in range(X_pca.shape[1])]
+    df_pca = pd.DataFrame(X_pca, columns=componentes)
+    df_pca["final"] = y.values
+    
+    # Subimos el nuevo dataframe a minio
+    cliente = mf.crear_cliente()
+    mf.subir_fichero(cliente, "grupo3/cleaned/pca/final_pca.parquet", df_pca)
+
+    #Obtenemos las métricas del pca para su posterior análisis y las subimos a minio como parquet
+    varianza = pca.explained_variance_ratio_
+    
+    df_metricas = pd.DataFrame({
+        'Componente': [f'PC{i+1}' for i in range(len(varianza))],
+        'Varianza_Explicada': varianza,
+    })
+
+    mf.subir_fichero(cliente, "grupo3/cleaned/pca/metricas_pca.parquet", df_metricas)
+
+    return df_pca, df_metricas

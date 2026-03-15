@@ -129,7 +129,7 @@ if __name__ == "__main__":
                 'learning_rate': {'distribution': 'uniform', 'min': 0.05, 'max': 0.15},
                 'max_depth': {'values': [4, 5, 6, 7]},
                 'n_estimators': {'values': [200, 300, 400]},
-                'scale_pos_weight': {'distribution': 'uniform', 'min': 1.0, 'max': 3.0},
+                'scale_pos_weight': {'values':[4]},
                 'umbral_decision': {'distribution': 'uniform', 'min': 0.35, 'max': 0.55}
             }
         },

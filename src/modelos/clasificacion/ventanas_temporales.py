@@ -3,6 +3,7 @@ import sys
 import wandb
 import numpy as np
 import pandas as pd
+import matplotlib
 from datetime import timedelta
 from xgboost import XGBClassifier
 from sklearn.ensemble import RandomForestClassifier
@@ -15,6 +16,9 @@ from wandb.sklearn import (
     plot_precision_recall,
     plot_feature_importances,
 )
+
+# Para que haga todo en memoria y no se sincronicen (si lo hace colapsa)
+matplotlib.use('Agg')
 
 sys.path.append(os.path.join(os.path.dirname(__file__), "..", ".."))
 from modelos.utils.carga_datos import cargar_dataset_general_con_tiempos

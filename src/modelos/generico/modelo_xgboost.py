@@ -121,6 +121,7 @@ if __name__ == "__main__":
     proyecto = "XGboost"
     entidad = "pd1-c2526-team3"
 
+    #'max_delta_step': {'values': [1, 5, 10]},
     configuraciones = {
         "1_bayesiano_conservador": {
             'method': 'bayes',
@@ -156,6 +157,30 @@ if __name__ == "__main__":
                 'scale_pos_weight': {'values': [2, 3]},
                 'umbral_decision': {'distribution': 'uniform', 'min': 0.4, 'max': 0.5}
             }
+        },
+
+        "4_bayesiano_robusto_estocastico": {
+            'method': 'bayes',
+            'metric': {'name': 'metricas/roc_auc', 'goal': 'maximize'}, 
+            'parameters': {
+                'learning_rate': {'distribution': 'uniform', 'min': 0.01, 'max': 0.1},
+                'max_depth': {'values': [4, 5, 6]}, # Mantenemos árboles poco profundos
+                'n_estimators': {'values': [300, 500]},
+                'scale_pos_weight': {'distribution': 'uniform', 'min': 2.0, 'max': 5.0},
+                'max_delta_step': {'values': [1, 5, 10]}, # Tu estabilizador estrella
+                
+                # --- EL ESCUDO CONTRA EL SOBREAJUSTE (ESTOCÁSTICOS) ---
+                # subsample: Entrena cada árbol con solo el 70-90% de las filas aleatoriamente.
+                'subsample': {'distribution': 'uniform', 'min': 0.7, 'max': 0.9},
+                # colsample_bytree: Oculta variables aleatorias en cada árbol para forzarle a aprender del resto.
+                'colsample_bytree': {'distribution': 'uniform', 'min': 0.6, 'max': 0.9},
+                
+                # --- GAMMA: EL CORTAFUEGOS ---
+                # gamma: Exige una ganancia mínima de pérdida para dividir una rama. Evita ramas inútiles.
+                'gamma': {'values': [0, 1, 5]},
+                
+                'umbral_decision': {'distribution': 'uniform', 'min': 0.35, 'max': 0.55}
+            }
         }
     }
 
@@ -163,5 +188,6 @@ if __name__ == "__main__":
 
     for nombre_config, config in configuraciones.items():
         print(f"\nIniciando Sweep: {nombre_config}")
+        config['name'] = nombre_config         
         sweep_id = wandb.sweep(config, project=proyecto, entity=entidad)
         wandb.agent(sweep_id, function=train, count=runs_por_configuracion)

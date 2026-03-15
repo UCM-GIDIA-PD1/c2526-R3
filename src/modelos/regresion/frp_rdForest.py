@@ -68,26 +68,28 @@ def arboles_decision_regresion(X_train, X_val, X_test, y_train, y_val, y_test):
         n_jobs=-1,
     )
 
-    scores_anomalia = X_train['anomaly_ISOL_FOR'].values
-    pesos_train = (scores_anomalia.max() - scores_anomalia) + 1
+    # scores_anomalia = X_train['anomaly_ISOL_FOR'].values
+    # pesos_train = (scores_anomalia.max() - scores_anomalia) + 1
 
-    X_train_fit = X_train.drop(columns=['anomaly_ISOL_FOR'])
-    X_val_fit = X_val.drop(columns=['anomaly_ISOL_FOR'])
-    X_test_fit = X_test.drop(columns=['anomaly_ISOL_FOR'])
+    # X_train_fit = X_train.drop(columns=['anomaly_ISOL_FOR'])
+    # X_val_fit = X_val.drop(columns=['anomaly_ISOL_FOR'])
+    # X_test_fit = X_test.drop(columns=['anomaly_ISOL_FOR'])
 
-    model.fit(X_train_fit, y_train, sample_weight=pesos_train)
+    # model.fit(X_train_fit, y_train, sample_weight=pesos_train)
 
-    y_pred_train = model.predict(X_train_fit)
+    model.fit(X_train, y_train)
+
+    y_pred_train = model.predict(X_train)
     metricas_train = evaluar_regresion(
         y_train, y_pred_train, "Entrenamiento — Random Forest", en_log=True
     )
 
-    y_pred_val = model.predict(X_val_fit)
+    y_pred_val = model.predict(X_val)
     metricas_val = evaluar_regresion(
         y_val, y_pred_val, "Validación — Random Forest", en_log=True
     )
 
-    y_pred_test = model.predict(X_test_fit)
+    y_pred_test = model.predict(X_test)
     metricas_test = evaluar_regresion(
         y_test, y_pred_test, "Test — Random Forest", en_log=True
     )
@@ -107,17 +109,19 @@ def arboles_decision_regresion(X_train, X_val, X_test, y_train, y_val, y_test):
         "test/mae": metricas_test["mae"],
         "test/r2": metricas_test["r2"],
         "test/rmse_mw": metricas_test.get("rmse_mw", 0),
-        "n_features": X_train_fit.shape[1],
+        "n_features": X_train.shape[1],
     })
 
     wandb.sklearn.plot_regressor(
         model,
-        X_train_fit,
-        X_val_fit,
+        X_train,
+        X_val,
         y_train,
         y_val,
         model_name="RandomForestRegressor"
     )
+
+    wandb.sklearn.plot_residuals(model, X_val.values, y_val.values)
 
     run.finish()
 

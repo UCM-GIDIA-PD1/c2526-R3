@@ -58,7 +58,7 @@ def LOF(X_train, X_val, X_test):
 
     X_train_esc, X_val_esc, X_test_esc = escalado(X_train,X_val,X_test)
 
-    lof = LocalOutlierFactor(contamination=0.05, n_neighbors=25, n_jobs = -1)
+    lof = LocalOutlierFactor(contamination=0.05, n_neighbors=25, n_jobs = -1, novelty= True)
 
     lof.fit(X_train_esc)
 

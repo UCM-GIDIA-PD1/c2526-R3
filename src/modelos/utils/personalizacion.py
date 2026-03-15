@@ -10,7 +10,7 @@ def pregunta_PCA():
     while True:
          pca = input("¿Quieres aplicar PCA a los datos? (s/n) : ")
          if pca.lower() == 's':
-            comps = int(input('Cuantos componentes quieres usar?'))
+            comps = int(input('Cuantos componentes quieres usar? '))
             df = clean.obtener_df_pca(comps)
             X = df.drop(columns = ['final'])
             y = df['final']
@@ -54,12 +54,15 @@ def anomalias(X_train, X_val, X_test):
     if '1' in opciones:
         print("Aplicando Isolation Forest...")
         X_train, X_val, X_test = anom.isolationForest(X_train, X_val, X_test)
+        print("Aplicado Isolation Forest!")
     if '2' in opciones:
         print("Aplicando One Class SVM...")
         X_train, X_val, X_test = anom.oneClassSVM(X_train, X_val, X_test)
+        print("Aplicado One Class SVM!")
     if '3' in opciones:
         print("Aplicando Local Outlier Factor (LOF)...")
         X_train, X_val, X_test = anom.LOF(X_train, X_val, X_test)
+        print("Aplicado Local Outlier Factor (LOF)!")
 
     return X_train, X_val, X_test
         

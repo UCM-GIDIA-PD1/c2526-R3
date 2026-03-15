@@ -21,12 +21,14 @@ PREFIX_GENERAL   = "grupo3/cleaned/modelo_General"
 PREFIX_INCENDIOS = "grupo3/cleaned/Modelo_Incendios"
 YEARS            = [2022, 2023, 2024, 2025]
 
-# Variables eliminadas por multicolinealidad alta (r > 0.95)
+# Variables eliminadas correlación alta (r > 0.90)
 # - porcentaje:    duplicado casi exacto de grados (r=0.996)
 # - temp_max:      casi idéntica a temp_mean (r=0.984)
 # - temp_min:      casi idéntica a temp_mean (r=0.977)
 # - pressure_mean: casi idéntica a elevacion_centro (r=0.985)
-COLS_ELIMINAR = ["porcentaje", "temp_max", "temp_min", "pressure_mean"]
+# - NDVI: casi idéntica a NDWI (r=-0.94) --> quitamos NDVI porque tiene menor correlación con la variable objetivo
+
+COLS_ELIMINAR = ["porcentaje", "temp_max", "temp_min", "NDVI", "pressure_mean"]
 
 TARGET_CLASIFICACION = "final"
 TARGET_REGRESION     = "log_frp"

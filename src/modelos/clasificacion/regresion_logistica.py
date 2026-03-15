@@ -1,6 +1,7 @@
 import sys
 import os
 import argparse
+from modelos import parser
 import numpy as np
 import pandas as pd
 import matplotlib
@@ -191,17 +192,7 @@ def generar_graficas(resultados, coefs_dict):
 # ──────────────────────────────────────────────────────────────────────────────
 
 def main():
-    parser = argparse.ArgumentParser(
-        description="Regresión logística — clasificación binaria de incendios"
-    )
-    parser.add_argument(
-        "--split",
-        choices=["simple", "estratificado", "pesos", "todos"],
-        default="todos"
-    )
-    parser.add_argument("--eliminar-correladas", action="store_true")
-    parser.add_argument("--no-graficas", action="store_true")
-    args = parser.parse_args()
+    args = parser.initialite_parser()
 
     api_key = os.getenv("WANDB_ACCESS_KEY")
     if not api_key:

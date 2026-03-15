@@ -35,10 +35,10 @@ args = parser.initialite_parser()
 
 #Conexión con MinIO
 cliente = minioFunctions.crear_cliente()
-df = minioFunctions.bajar_fichero(cliente, "grupo3/cleaned/final_lat_lon.parquet", "df")
+df = minioFunctions.bajar_fichero(cliente, "grupo3/cleaned/final_date_transformado.parquet", "df")
 
 #Creación de nuestras variables explicativas y respuesta
-X = df.drop(["final", "date"], axis=1)
+X = df.drop(["final"], axis=1)
 y = df["final"]
 class_names = ["No Incendio", "Incendio"]
 feature_names = X.columns
@@ -123,65 +123,30 @@ if __name__ == "__main__":
 
     #'max_delta_step': {'values': [1, 5, 10]},
     configuraciones = {
-        "1_bayesiano_conservador": {
-            'method': 'bayes',
-            'metric': {'name': 'f1_score', 'goal': 'maximize'},
-            'parameters': {
-                'learning_rate': {'distribution': 'uniform', 'min': 0.05, 'max': 0.15},
-                'max_depth': {'values': [4, 5, 6, 7]},
-                'n_estimators': {'values': [200, 300, 400]},
-                'scale_pos_weight': {'values':[4]},
-                'umbral_decision': {'distribution': 'uniform', 'min': 0.35, 'max': 0.55}
-            }
-        },
-        "2_random_exploratorio_pesos": {
+        "1_random_exploratorio_pesos": {
             'method': 'random',
             'metric': {'name': 'f1_score', 'goal': 'maximize'},
             'parameters': {
                 'learning_rate': {'distribution': 'uniform', 'min': 0.01, 'max': 0.2},
                 'max_depth': {'values': [3, 5, 8]},
-                'n_estimators': {'values': [100, 500]},
-                'scale_pos_weight': {'values': [2, 4, 6]},
-                'umbral_decision': {'values': [0.4, 0.45, 0.5, 0.6]}
+                'n_estimators': {'values': [100, 300]},
+                'scale_pos_weight': {'values': [3, 4, 5]},
+                'umbral_decision': {'distribution': 'uniform', 'min': 0.4, 'max': 0.5}
             }
         },
-        "3_bayesiano_penalizado": {
+        "2_bayesiano": {
             'method': 'bayes',
             'metric': {'name': 'f1_score', 'goal': 'maximize'},
             'parameters': {
-                'learning_rate': {'values': [0.1]},
-                'max_depth': {'values': [6, 8, 10]},
-                'n_estimators': {'values': [300]},
+                'learning_rate': {'distribution': 'uniform', 'min': 0.05, 'max': 0.15},
+                'max_depth': {'values': [6, 7, 8]},
+                'n_estimators': {'values': [200, 250, 300]},
                 'reg_alpha': {'values': [0.1, 1, 5]},
                 'reg_lambda': {'values': [1, 10]},
                 'scale_pos_weight': {'values': [2, 3]},
                 'umbral_decision': {'distribution': 'uniform', 'min': 0.4, 'max': 0.5}
             }
         },
-
-        "4_bayesiano_robusto_estocastico": {
-            'method': 'bayes',
-            'metric': {'name': 'metricas/roc_auc', 'goal': 'maximize'}, 
-            'parameters': {
-                'learning_rate': {'distribution': 'uniform', 'min': 0.01, 'max': 0.1},
-                'max_depth': {'values': [4, 5, 6]}, # Mantenemos árboles poco profundos
-                'n_estimators': {'values': [300, 500]},
-                'scale_pos_weight': {'distribution': 'uniform', 'min': 2.0, 'max': 5.0},
-                'max_delta_step': {'values': [1, 5, 10]}, # Tu estabilizador estrella
-                
-                # --- EL ESCUDO CONTRA EL SOBREAJUSTE (ESTOCÁSTICOS) ---
-                # subsample: Entrena cada árbol con solo el 70-90% de las filas aleatoriamente.
-                'subsample': {'distribution': 'uniform', 'min': 0.7, 'max': 0.9},
-                # colsample_bytree: Oculta variables aleatorias en cada árbol para forzarle a aprender del resto.
-                'colsample_bytree': {'distribution': 'uniform', 'min': 0.6, 'max': 0.9},
-                
-                # --- GAMMA: EL CORTAFUEGOS ---
-                # gamma: Exige una ganancia mínima de pérdida para dividir una rama. Evita ramas inútiles.
-                'gamma': {'values': [0, 1, 5]},
-                
-                'umbral_decision': {'distribution': 'uniform', 'min': 0.35, 'max': 0.55}
-            }
-        }
     }
 
     runs_por_configuracion = 15

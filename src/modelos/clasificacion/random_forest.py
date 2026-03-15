@@ -15,6 +15,8 @@ from modelos.utils.metricas import evaluar_clasificacion
 import modelos.utils.anomalias as anom
 import numpy as np
 from imblearn.over_sampling import SMOTE
+import limpieza.limpieza as clean
+import modelos.utils.personalizacion as pers
 
 load_dotenv()
 os.environ["WANDB_API_KEY"] = os.getenv("WANDB_KEY", "")
@@ -58,7 +60,7 @@ def wandb_init(nombre, it):
 
 def arboles_decision_clasificacion(X_train, X_val, X_test, y_train, y_val, y_test, detallados=False, nombre = None):
     global NUM_IT
-    X_train, X_val, X_test = anom.isolationForest(X_train,X_val,X_test)
+
     NUM_IT += 1
     run = wandb_init(nombre,NUM_IT)
     config = wandb.config
@@ -183,14 +185,18 @@ def arboles_decision_clasificacion(X_train, X_val, X_test, y_train, y_val, y_tes
 
 
 def clasificacion():
-    X, y = cg.cargar_dataset_general(eliminar_correladas=False)
+
+    X, y = pers.pregunta_PCA()
+
     X_train, X_val, X_test, y_train, y_val, y_test = split_estratificado(X, y)
 
-    detallados = False
+    # Se aplica las puntuaciones de anomalías al dataset que el usuario seleccione
+    X_train, X_val, X_test = pers.anomalias(X_train, X_val, X_test)
 
-    iters = int(input("¿Cuántas iteraciones quieres ejecutar? : "))
+    iters, nombre = pers.pregunta_iters_nombre()
+
     detallado = input("¿Quieres ver los resultados detallados de cada iteración (curvas AUC, ROC, etc.)? (s/n) : ")
-    nombre = input("Por último, como quieres llamar a los runs de este sweep? ")
+    detallados = False
 
     if detallado.lower() == "s":
         detallados = True

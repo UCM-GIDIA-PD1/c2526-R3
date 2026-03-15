@@ -19,9 +19,9 @@ def isolationForest(X_train, X_val, X_test):
     test_anom = bosque.decision_function(X_test)
     val_anom = bosque.decision_function(X_val)
 
-    X_train['anomaly'] = train_anom
-    X_val['anomaly'] = val_anom
-    X_test['anomaly'] = test_anom
+    X_train['anomaly_ISOL_FOR'] = train_anom
+    X_val['anomaly_ISOL_FOR'] = val_anom
+    X_test['anomaly_ISOL_FOR'] = test_anom
 
     return X_train, X_val, X_test
 
@@ -42,9 +42,9 @@ def oneClassSVM(X_train, X_val, X_test):
     test_anom = svm.decision_function(X_test_esc)
     val_anom = svm.decision_function(X_val_esc)
 
-    X_train['anomaly'] = train_anom
-    X_val['anomaly'] = val_anom
-    X_test['anomaly'] = test_anom
+    X_train['anomaly_SVM'] = train_anom
+    X_val['anomaly_SVM'] = val_anom
+    X_test['anomaly_SVM'] = test_anom
 
     return X_train, X_val, X_test
 
@@ -58,7 +58,7 @@ def LOF(X_train, X_val, X_test):
 
     X_train_esc, X_val_esc, X_test_esc = escalado(X_train,X_val,X_test)
 
-    lof = LocalOutlierFactor(contamination=0.05, n_jobs = -1)
+    lof = LocalOutlierFactor(contamination=0.05, n_neighbors=25, n_jobs = -1)
 
     lof.fit(X_train_esc)
 
@@ -66,9 +66,9 @@ def LOF(X_train, X_val, X_test):
     test_anom = lof.decision_function(X_test_esc)
     val_anom = lof.decision_function(X_val_esc)
 
-    X_train['anomaly'] = train_anom
-    X_val['anomaly'] = val_anom
-    X_test['anomaly'] = test_anom
+    X_train['anomaly_LOF'] = train_anom
+    X_val['anomaly_LOF'] = val_anom
+    X_test['anomaly_LOF'] = test_anom
 
     return X_train, X_val, X_test
 

@@ -1,29 +1,33 @@
 program: random_forest.py
 entity: pd1-c2526-team3
-project: arboles-decision-sweeps
-name : sweep_random_forest
+project: sweep_random_forest_umbral_smote
+name: sweep_random_forest
 method: bayes
 metric:
   name: f1_5_score
   goal: maximize
 parameters:
   n_estimators:
-    values: [50, 100, 200, 250, 400, 500, 600, 750, 850, 1000]
+    values: [100, 200, 300, 400, 500,600,700,800,900] 
   max_depth:
     distribution: int_uniform
-    min: 3
-    max: 30
-  min_samples_split:
-    distribution: int_uniform
-    min: 2
-    max: 10
+    min: 7
+    max: 35      
   min_samples_leaf:
     distribution: int_uniform
     min: 1
-    max: 10
-  class_weight:
-    values: ['balanced_subsample', 'balanced']
+    max: 10 
+  min_samples_split:
+    distribution: int_uniform
+    min: 2
+    max: 18      
   criterion:
     values: ['gini', 'entropy']
   max_features:
-    values: ['sqrt', 'log2', None]
+    values: ['sqrt', 'log2', 'None']
+  umbral:
+    distribution: uniform
+    min: 0.15
+    max: 0.6
+  class_weight:
+    values: ['balanced', 'balanced_subsample']

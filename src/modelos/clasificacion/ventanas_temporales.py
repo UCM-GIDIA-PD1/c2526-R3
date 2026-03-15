@@ -85,8 +85,9 @@ def seleccionar_modelo(y_train):
     print("2. XGBoost (Con scale_pos_weight)")
     print("3. Random Forest (Balanceado)")
     print("4. Búsqueda Grid Mixta (60 modelos)")
+    print("5. Búsqueda Grid Diferente Enfoque Máximo f1-score (54 modelos)")
     
-    opcion = input("Elige el modelo a entrenar (1/2/3/4): ")
+    opcion = input("Elige el modelo a entrenar (1/2/3/4/5): ")
     
     if opcion == '2':
         negativos = (y_train == 0).sum()
@@ -153,6 +154,56 @@ def seleccionar_modelo(y_train):
                 
         return modelos
         
+    elif opcion == '5':
+        modelos = []
+        negativos = (y_train == 0).sum()
+        positivos = (y_train == 1).sum()
+        ratio = negativos / positivos
+        
+        for depth in [4, 6]:
+            for lr in [0.05, 0.1]:
+                for gamma in [0, 1, 5]: 
+                    clf_est = XGBClassifier(
+                        n_estimators=200,
+                        learning_rate=lr,
+                        max_depth=depth,
+                        gamma=gamma,
+                        subsample=0.8,
+                        colsample_bytree=0.8,
+                        random_state=SEED,
+                        eval_metric="logloss",
+                    )
+                    modelos.append((clf_est, f"XGB_Est_d{depth}_lr{lr}_g{gamma}_reg"))
+
+        for depth in [4, 6]:
+            for lr in [0.05, 0.1]:
+                for max_delta in [1, 5, 10]: 
+                    clf_bal = XGBClassifier(
+                        n_estimators=200,
+                        learning_rate=lr,
+                        max_depth=depth,
+                        scale_pos_weight=ratio,
+                        max_delta_step=max_delta,
+                        random_state=SEED,
+                        eval_metric="logloss",
+                    )
+                    modelos.append((clf_bal, f"XGB_Bal_d{depth}_lr{lr}_md{max_delta}"))
+
+        for depth in [8, 12, 20]:
+            for min_leaf in [1, 5, 10]:
+                for n_est in [200, 400]:
+                    clf_rf = RandomForestClassifier(
+                        n_estimators=n_est,
+                        max_depth=depth,
+                        min_samples_leaf=min_leaf,
+                        class_weight="balanced_subsample",
+                        random_state=SEED,
+                        n_jobs=-1
+                    )
+                    modelos.append((clf_rf, f"RF_BalSub_d{depth}_ml{min_leaf}_n{n_est}"))
+                    
+        return modelos
+
     else:
         clf = XGBClassifier(
             n_estimators=1000,

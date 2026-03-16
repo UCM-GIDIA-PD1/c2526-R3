@@ -40,6 +40,7 @@ def oneClassSVM(X_train, X_val, X_test):
 
     train_anom = svm.decision_function(X_train)
     test_anom = svm.decision_function(X_test)
+
     #val_anom = svm.decision_function(X_val)
 
     X_train['anomaly_SVM'] = train_anom
@@ -72,7 +73,7 @@ def LOF(X_train, X_val, X_test):
 
     return X_train, X_val, X_test
 
-def escalado(X_train, X_val, X_test):
+def escalado(X_train, X_val, X_test): # No se está utilizando porque el PCA ya realiza el escalado previamente
     '''
     Realiza el escalado con un StandardScaler y te devuelve los datos escalados.
     '''

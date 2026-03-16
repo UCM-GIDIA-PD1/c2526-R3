@@ -34,3 +34,11 @@ def limpieza_coordenadas():
     # Subimos a MinIO
     cliente = mf.crear_cliente()
     mf.subir_fichero(cliente, "grupo3/cleaned/final_lat_lon.parquet", df_return)
+
+
+def obtener_df_pca(num_componentes = 19):
+    cliente = mf.crear_cliente()
+    df_pca = mf.bajar_fichero(cliente, "grupo3/cleaned/pca/final_pca.parquet", "df")
+    columnas_componentes = [f"PC{i+1}" for i in range(num_componentes)]
+    
+    return df_pca[columnas_componentes + ["final"]]

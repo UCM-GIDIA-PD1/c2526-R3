@@ -26,6 +26,7 @@ WANDB_ENTITY = "pd1-c2526-team3"
 WANDB_PROJECT = "balancedRandomForestClassifier"
 SWEEP_PATH = Path(__file__).with_name("balanced_random_forest.yaml")
 SEED = 42
+NUM_IT = 0
 
 def wandb_init(nombre, it):
     return wandb.init(
@@ -63,11 +64,6 @@ def arboles_decision_clasificacion(X_train, X_val, X_test, y_train, y_val, y_tes
     run = wandb_init(nombre,NUM_IT)
     config = wandb.config
 
-    if config.max_features == "None": # Daba error sino porque el YAML devuelve un string
-        max_f = None
-    else:
-        max_f = config.max_features
-
     # 1. Modelo con parámetros del Sweep
     model = BalancedRandomForestClassifier(
         max_depth=config.max_depth,
@@ -83,7 +79,7 @@ def arboles_decision_clasificacion(X_train, X_val, X_test, y_train, y_val, y_tes
     # 2. Validación
     model.fit(X_train, y_train)
     y_pred_val = model.predict(X_val)
-    y_probas_val_full = model.predict_proba(X_val)
+    # y_probas_val_full = model.predict_proba(X_val)
     # y_prob_val_positivo = y_probas_val_full[:, 1]
 
     # metricas_val = evaluar_clasificacion(y_val, y_pred_val, y_prob_val_positivo, "Validación")
@@ -158,7 +154,7 @@ def clasificacion():
     wandb.agent(
         sweep_id=sweep_id,
         function=entrenamiento,
-        count=25,
+        count=iters,
         entity=WANDB_ENTITY,
         project=WANDB_PROJECT,
     )

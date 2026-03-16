@@ -14,6 +14,8 @@ import modelos.utils.carga_datos as cg
 from modelos.utils.particiones import split_estratificado
 from modelos.utils.metricas import evaluar_clasificacion
 
+import modelos.utils.personalizacion as pers
+
 load_dotenv()
 os.environ["WANDB_API_KEY"] = os.getenv("WANDB_KEY", "")
 
@@ -21,6 +23,15 @@ WANDB_ENTITY = "pd1-c2526-team3"
 WANDB_PROJECT = "balancedRandomForestClassifier" 
 SWEEP_PATH = Path(__file__).with_name("balanced_random_forest.yaml")
 SEED = 42
+NUM_IT = 0
+
+def wandb_init(nombre, it):
+    return wandb.init(
+        entity=WANDB_ENTITY,
+        project=WANDB_PROJECT,
+        name = f'{nombre}-{it}'
+    )
+
 
 def cargar_configuracion(ruta_yaml: Path = SWEEP_PATH):
     """Carga la configuración del sweep desde el YAML."""
@@ -44,9 +55,13 @@ def obtener_sweep_id():
     return sweep_id
 
 
-def arboles_decision_clasificacion(X_train, X_val, X_test, y_train, y_val, y_test):
-    run = wandb.init(entity=WANDB_ENTITY, project=WANDB_PROJECT)
+def arboles_decision_clasificacion(X_train, X_val, X_test, y_train, y_val, y_test, detallados=False, nombre = None):
+    global NUM_IT
+
+    NUM_IT += 1
+    run = wandb_init(nombre,NUM_IT)
     config = wandb.config
+
 
     # 1. Modelo con parámetros del Sweep
     model = BalancedRandomForestClassifier(
@@ -93,34 +108,54 @@ def arboles_decision_clasificacion(X_train, X_val, X_test, y_train, y_val, y_tes
         "test/precision": metricas_test["precision"],
     })
 
+    if detallados:
     # 6. 
-    wandb.sklearn.plot_classifier(
-        model,
-        X_train_full,
-        X_test,
-        y_train_full,
-        y_test,
-        y_pred_test,
-        y_probas_test_full,
-        labels=["no_incendio", "incendio"],
-        model_name="BalancedRandomForest",
-        feature_names=X_train_full.columns.tolist()
-    )
+        wandb.sklearn.plot_classifier(
+            model,
+            X_train_full,
+            X_test,
+            y_train_full,
+            y_test,
+            y_pred_test,
+            y_probas_test_full,
+            labels=["no_incendio", "incendio"],
+            model_name="BalancedRandomForest",
+            feature_names=X_train_full.columns.tolist()
+        )
+
+    wandb.sklearn.plot_confusion_matrix(y_val, y_pred_val, labels=["no_incendio", "incendio"])
+    wandb.sklearn.plot_feature_importances(model, feature_names=X_train.columns.tolist())
 
     run.finish()
 
+# Función principal
 def clasificacion():
-    X, y = cg.cargar_dataset_general(eliminar_correladas=False)
+    X, y = pers.pregunta_PCA()
+
     X_train, X_val, X_test, y_train, y_val, y_test = split_estratificado(X, y)
 
+    X_train, X_val, X_test = pers.anomalias(X_train, X_val, X_test)
+
+    iters, nombre = pers.pregunta_iters_nombre()
+
+    detallado = input("¿Quieres ver los resultados detallados de cada iteración (curvas AUC, ROC, etc.)? (s/n) : ")
+    detallados = False
+
+    if detallado.lower() == "s":
+        detallados = True
+        print("Se mostrarán los resultados detallados de cada iteración.")
+    else:
+        print("No se mostrarán los resultados detallados de cada iteración.")
+
+
     def entrenamiento():
-        arboles_decision_clasificacion(X_train, X_val, X_test, y_train, y_val, y_test)
+        arboles_decision_clasificacion(X_train, X_val, X_test, y_train, y_val, y_test, detallados, nombre)
 
     sweep_id = obtener_sweep_id()
     wandb.agent(
         sweep_id=sweep_id,
         function=entrenamiento,
-        count=25,
+        count=iters,
         entity=WANDB_ENTITY,
         project=WANDB_PROJECT,
     )

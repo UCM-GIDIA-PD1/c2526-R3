@@ -3,7 +3,7 @@ import pandas as pd
 
 def bajar_df_final():
     cliente = mf.crear_cliente()
-    df = mf.bajar_fichero(cliente, "grupo3/cleaned/final.parquet", "df")
+    df = mf.bajar_fichero(cliente, "grupo3/cleaned/pca/final_pca_date_transformado.parquet", "df")
     return df
 
 
@@ -29,7 +29,6 @@ def limpieza_coordenadas():
     modelo prediga en base a las condiciones y no a la localización.
     '''
     df = bajar_df_final()
-    
     df_return = df.drop(columns=["lat", "lon"], errors="ignore")
     
     # Subimos a MinIO

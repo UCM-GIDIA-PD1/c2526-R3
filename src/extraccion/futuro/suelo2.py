@@ -5,6 +5,7 @@ import time
 from datetime import datetime
 import numpy as np
 from extraccion import interrupcion
+from extraccion import minioFunctions
 
 sem_global = asyncio.Semaphore(10)
 
@@ -158,6 +159,8 @@ async def df_soil_temp(fires, limit = 20, fecha_ini = None, fecha_fin = None):
         print("DataFrame vacío, no hay datos.")
 
     csv_filename = "soil_temperatures.csv"
+    minioFunctions.preguntar_subida(df_resultado, "grupo3/raw/Suelo2/")
+
     df_resultado.to_csv(csv_filename, index=False)
     print(f"\nResultados guardados en '{csv_filename}'")
 

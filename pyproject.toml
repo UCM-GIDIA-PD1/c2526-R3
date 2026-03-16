@@ -7,6 +7,7 @@ requires-python = ">=3.12"
 dependencies = [
     "aiohttp>=3.13.3",
     "boto3>=1.42.49",
+    "dash>=4.0.0",
     "fsspec>=2026.2.0",
     "geemap>=0.37.1",
     "geodatasets>=2026.1.0",
@@ -30,11 +31,13 @@ dependencies = [
     "s3fs>=2026.2.0",
     "scikit-learn>=1.8.0",
     "seaborn>=0.13.2",
+    "setuptools>=82.0.1",
     "shapely>=2.1.2",
     "statsmodels>=0.14.6",
     "utm>=0.8.1",
     "wandb>=0.25.0",
     "weave>=0.52.31",
+    "wheel>=0.46.3",
     "xgboost>=3.2.0",
 ]
 

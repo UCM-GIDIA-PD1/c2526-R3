@@ -10,7 +10,6 @@ from extraccion import minioFunctions
 sem_global = asyncio.Semaphore(10)
 
 def formatear_fecha(fecha):
-
     if isinstance(fecha, (pd.Timestamp, datetime)):
         return fecha.strftime('%Y-%m-%d')
     dt = pd.to_datetime(fecha)
@@ -47,7 +46,7 @@ async def soil_temp(lat, lon, fecha_ini, fecha_fin, indice):
             print(f"Excepción en ({lat}, {lon}): {e}")
             return []
         finally:
-            await asyncio.sleep(0.3)
+            await asyncio.sleep(5)
 
     try:
         ts_dict = data.get('properties', {}).get('parameter', {}).get('TSOIL1', {})
@@ -58,18 +57,20 @@ async def soil_temp(lat, lon, fecha_ini, fecha_fin, indice):
             print(f"No hay datos de TSOIL1 para ({lat}, {lon})")
             return []
 
+        fecha_objetivo = datetime.strptime(fecha_ini, "%Y-%m-%d")
+        fecha_objetivo_str = fecha_objetivo.strftime("%Y%m%d")
+
         resultados = []
-        for fecha_str, temp in ts_dict.items():
-            if temp is None:
-                continue
-            fecha = datetime.strptime(fecha_str, "%Y%m%d").strftime("%Y-%m-%d")
+        temp = ts_dict.get(fecha_objetivo_str)
+        if temp is not None:
             resultados.append({
                 'fire_index': indice,
                 'lat': lat,
                 'lon': lon,
-                'date': fecha,
+                'date': fecha_ini,
                 'soil_temp': temp
             })
+
         if indice is not None:
             print(f"Temperatura suelo {indice} extraída.")
         return resultados
@@ -77,7 +78,8 @@ async def soil_temp(lat, lon, fecha_ini, fecha_fin, indice):
         print(f"Error procesando respuesta para ({lat}, {lon}): {e}")
         return []
 
-async def df_soil_temp(fires, limit = 20, fecha_ini = None, fecha_fin = None):
+
+async def df_soil_temp(fires, limit=20, fecha_ini=None, fecha_fin=None):
     inicio = time.time()
     print("Iniciando extracción de temperatura del suelo...")
 

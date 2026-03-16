@@ -194,7 +194,7 @@ def generar_graficas(resultados, coefs_dict):
 def main():
     args = parser.initialite_parser()
 
-    api_key = os.getenv("WANDB_ACCESS_KEY")
+    api_key = os.getenv("WANDB_KEY")
     if not api_key:
         print("WANDB_ACCESS_KEY no encontrada en .env — los runs no se registrarán")
     else:

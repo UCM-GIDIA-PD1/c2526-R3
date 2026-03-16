@@ -2,7 +2,7 @@ program: balanced_random_forest.py
 entity: pd1-c2526-team3
 project: balancedRandomForestClassifier
 name: sweep_balanced_rf_f2
-method: bayes # Bayes para encontrar el equilibrio entre precisión y recall
+method: grid #bayes # Bayes para encontrar el equilibrio entre precisión y recall
 metric:
   name: test/f1 #test/f2 Cambiamos a f2 para priorizar la detección de incendios reales
   goal: maximize

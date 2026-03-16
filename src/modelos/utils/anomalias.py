@@ -35,7 +35,7 @@ def oneClassSVM(X_train, X_val, X_test):
 
     X_train_esc, X_val_esc, X_test_esc = escalado(X_train,X_val,X_test)
 
-    svm = OneClassSVM(gamma='auto', n_jobs=-1)
+    svm = OneClassSVM(gamma='auto', cache_size=1000)
     svm.fit(X_train_esc)
 
     train_anom = svm.decision_function(X_train_esc)
@@ -58,7 +58,7 @@ def LOF(X_train, X_val, X_test):
 
     X_train_esc, X_val_esc, X_test_esc = escalado(X_train,X_val,X_test)
 
-    lof = LocalOutlierFactor(contamination=0.05, n_neighbors=25, n_jobs = -1)
+    lof = LocalOutlierFactor(contamination=0.05, n_neighbors=25, n_jobs = -1, novelty= True)
 
     lof.fit(X_train_esc)
 

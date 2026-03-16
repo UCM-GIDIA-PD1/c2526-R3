@@ -33,14 +33,13 @@ def oneClassSVM(X_train, X_val, X_test):
     a este modelo le afectan mucho.
     '''
 
-    X_train_esc, X_val_esc, X_test_esc = escalado(X_train,X_val,X_test)
 
     svm = OneClassSVM(gamma='auto', cache_size=1000)
-    svm.fit(X_train_esc)
+    svm.fit(X_train)
 
-    train_anom = svm.decision_function(X_train_esc)
-    test_anom = svm.decision_function(X_test_esc)
-    val_anom = svm.decision_function(X_val_esc)
+    train_anom = svm.decision_function(X_train)
+    test_anom = svm.decision_function(X_test)
+    val_anom = svm.decision_function(X_val)
 
     X_train['anomaly_SVM'] = train_anom
     X_val['anomaly_SVM'] = val_anom
@@ -56,15 +55,13 @@ def LOF(X_train, X_val, X_test):
     a este modelo le afectan mucho.
     '''
 
-    X_train_esc, X_val_esc, X_test_esc = escalado(X_train,X_val,X_test)
-
     lof = LocalOutlierFactor(contamination=0.05, n_neighbors=25, n_jobs = -1, novelty= True)
 
-    lof.fit(X_train_esc)
+    lof.fit(X_train)
 
-    train_anom = lof.decision_function(X_train_esc)
-    test_anom = lof.decision_function(X_test_esc)
-    val_anom = lof.decision_function(X_val_esc)
+    train_anom = lof.decision_function(X_train)
+    test_anom = lof.decision_function(X_test)
+    val_anom = lof.decision_function(X_val)
 
     X_train['anomaly_LOF'] = train_anom
     X_val['anomaly_LOF'] = val_anom
@@ -72,7 +69,7 @@ def LOF(X_train, X_val, X_test):
 
     return X_train, X_val, X_test
 
-def escalado(X_train, X_val, X_test):
+def escalado(X_train, X_val, X_test): # No se está utilizando porque el PCA ya realiza el escalado previamente
     '''
     Realiza el escalado con un StandardScaler y te devuelve los datos escalados.
     '''

@@ -5,88 +5,81 @@ from pathlib import Path
 import wandb
 import yaml
 from dotenv import load_dotenv
-from sklearn.ensemble import RandomForestRegressor
+from xgboost import XGBRegressor
 import numpy as np
 
 sys.path.append(os.path.join(os.path.dirname(__file__), "..", ".."))
 import modelos.utils.carga_datos as cg
 from modelos.utils.particiones import split_regresion as train
 from modelos.utils.metricas import evaluar_regresion
-
-# Importar el módulo de anomalías (ajusta la ruta relativa según tu estructura exacta)
 import modelos.utils.anomalias as anomalias
 
 load_dotenv()
 os.environ["WANDB_API_KEY"] = os.getenv("WANDB_KEY")
 
+os.environ.pop("WANDB_SWEEP_ID", None)
+os.environ.pop("SWEEP_ID_REGXG", None)
+
 WANDB_ENTITY = "pd1-c2526-team3"
-WANDB_PROJECT = "rdForest-frp-sweeps"
-SWEEP_PATH = Path(__file__).with_name("sweep.yaml")
+WANDB_PROJECT = "XGBoost-regresion"
+SWEEP_PATH = Path(__file__).with_name("sweep_xgBoost.yaml")
 SEED = 42
+NUM_IT = 0
 
 def cargar_configuracion(ruta_yaml: Path = SWEEP_PATH):
-    """Carga la configuración del sweep desde el YAML."""
+    """Carga la configuración del sweep desde el YAML de forma estricta."""
     with open(ruta_yaml, "r", encoding="utf-8") as f:
         return yaml.safe_load(f)
 
-
-def obtener_sweep_id():
-    """
-    Usa un sweep ya creado si existe en variables de entorno.
-    Si no existe, crea uno nuevo a partir del YAML.
-    """
-    sweep_id = os.getenv("WANDB_SWEEP_ID") or os.getenv("SWEEP_ID_REGRESION")
-    if sweep_id:
-        print(f"Usando sweep existente: {sweep_id}")
-        return sweep_id
-
+def forzar_nuevo_sweep():
+    """Ignora el entorno y obliga a Weights & Biases a crear un sweep nuevo."""
     config_sweep = cargar_configuracion()
     sweep_id = wandb.sweep(config_sweep, entity=WANDB_ENTITY, project=WANDB_PROJECT)
-    print(f"Sweep creado desde YAML: {sweep_id}")
     return sweep_id
-
 
 def wandb_init(nombre, it):
     return wandb.init(
         entity=WANDB_ENTITY,
         project=WANDB_PROJECT,
-        # name = f'{nombre}-{it}'
+        name=f'{nombre}-{it}'
     )
 
-def arboles_decision_regresion(X_train, X_val, X_test, y_train, y_val, y_test):
-    # global NUM_IT
-    # NUM_IT += 1
-    run = wandb_init(nombre=None, it=1)
+def xg_regresion(X_train, X_val, X_test, y_train, y_val, y_test):
+    global NUM_IT
+    NUM_IT += 1
+    run = wandb_init(nombre='bayes-xgbRegresion', it=NUM_IT)
     config = wandb.config
 
-    model = RandomForestRegressor(
+    model = XGBRegressor(
+        objective=config.objective,
         max_depth=config.max_depth,
-        criterion=config.criterion,
         n_estimators=config.n_estimators,
-        min_samples_leaf=config.min_samples_leaf,
-        min_samples_split=config.min_samples_split,
+        learning_rate=config.learning_rate,
+        min_child_weight=config.min_child_weight, 
+        gamma=config.gamma,                 
         random_state=SEED,
-        n_jobs=-1,
+        n_jobs=-1
     )
 
     model.fit(X_train, y_train)
 
     y_pred_train = model.predict(X_train)
     metricas_train = evaluar_regresion(
-        y_train, y_pred_train, "Entrenamiento — Random Forest", en_log=True
+        y_train, y_pred_train, "Entrenamiento — XGB regressor", en_log=True
     )
 
     y_pred_val = model.predict(X_val)
     metricas_val = evaluar_regresion(
-        y_val, y_pred_val, "Validación — Random Forest", en_log=True
+        y_val, y_pred_val, "Validación — XGB regressor", en_log=True
     )
 
-    X_train = np.vstack((X_train, X_val))
-    y_train = np.concatenate((y_train, y_val))
-    model.fit(X_train, y_train)
+    X_train_full = np.vstack((X_train, X_val))
+    y_train_full = np.concatenate((y_train, y_val))
+    model.fit(X_train_full, y_train_full)
+    
     y_pred_test = model.predict(X_test)
     metricas_test = evaluar_regresion(
-        y_test, y_pred_test, "Test — Random Forest", en_log=True
+        y_test, y_pred_test, "Test — XGB regressor", en_log=True
     )
 
     wandb.log({
@@ -104,32 +97,28 @@ def arboles_decision_regresion(X_train, X_val, X_test, y_train, y_val, y_test):
         "test/mae": metricas_test["mae"],
         "test/r2": metricas_test["r2"],
         "test/rmse_mw": metricas_test.get("rmse_mw", 0),
-        "n_features": X_train.shape[1],
+        "n_features": X_train_full.shape[1],
     })
 
     wandb.sklearn.plot_regressor(
         model,
-        X_train,
+        X_train_full,
         X_test,
-        y_train,
+        y_train_full,
         y_test,
-        model_name="RandomForestRegressor"
+        model_name="XGBRegressor" 
     )
-
-    wandb.sklearn.plot_residuals(model, X_test.values, y_test.values)
 
     run.finish()
 
 def main():
     X, y = cg.cargar_dataset_incendios(eliminar_correladas=False)
-    
     X_train, X_val, X_test, y_train, y_val, y_test = train(X, y)
 
-
     def entrenamiento():
-        arboles_decision_regresion(X_train, X_val, X_test, y_train, y_val, y_test)
+        xg_regresion(X_train, X_val, X_test, y_train, y_val, y_test)
 
-    sweep_id = obtener_sweep_id()
+    sweep_id = forzar_nuevo_sweep()
     wandb.agent(
         sweep_id=sweep_id,
         function=entrenamiento,

@@ -1,0 +1,34 @@
+program: frp_xgBoost.py
+method: bayes
+metric:
+  name: rmse_test
+  goal: minimize
+early_terminate:
+  type: hyperband
+  min_iter: 50
+parameters:
+  objective:
+    distribution: categorical
+    values:
+      - reg:squarederror
+      - reg:absoluteerror
+  max_depth:
+    distribution: int_uniform
+    min: 3
+    max: 10
+  min_child_weight:
+    distribution: int_uniform
+    min: 1
+    max: 7
+  gamma:
+    distribution: uniform
+    min: 0.0
+    max: 5.0
+  n_estimators:
+    distribution: int_uniform
+    min: 50
+    max: 750
+  learning_rate:
+    distribution: uniform
+    min: 0.01
+    max: 0.3

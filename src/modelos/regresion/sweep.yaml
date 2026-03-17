@@ -1,6 +1,6 @@
-method: bayes
+method: random
 metric:
-  name: rmse_val
+  name: rmse_test
   goal: minimize
 parameters:
   criterion:
@@ -12,11 +12,11 @@ parameters:
     min: 2
   min_samples_leaf:
     distribution: int_uniform
-    max: 18
+    max: 5
     min: 1
   min_samples_split:
     distribution: int_uniform
-    max: 20
+    max: 10
     min: 2
   n_estimators:
     distribution: int_uniform

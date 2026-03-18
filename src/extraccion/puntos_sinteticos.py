@@ -162,10 +162,12 @@ def crearSinteticos(df_incendios, subir = True):
 
     # 2.- Definir máscaras de regiones
     mascarasRegiones = [
-        'grupo3/BiogeoRegiones/AtlanticRegion.parquet', 'grupo3/BiogeoRegiones/BorealRegion.parquet', 'grupo3/BiogeoRegiones/MediterraneanRegion.parquet',
-        'grupo3/BiogeoRegiones/BlackSeaRegion.parquet', 'grupo3/BiogeoRegiones/ContinentalRegion.parquet', 'grupo3/BiogeoRegiones/MacaronesianRegion.parquet',
-        'grupo3/BiogeoRegiones/PannonianRegion.parquet', 'grupo3/BiogeoRegiones/SteppicRegion.parquet', 'grupo3/BiogeoRegiones/AnatolianRegion.parquet',
-        'grupo3/BiogeoRegiones/ArcticRegion.parquet', 'grupo3/BiogeoRegiones/AlpineRegion.parquet'
+        'grupo3/raw/Biogeoregiones/AtlanticRegion.parquet', 'grupo3/raw/BiogeoRegiones/BorealRegion.parquet', 'grupo3/raw/BiogeoRegiones/MediterraneanRegion.parquet',
+        'grupo3/raw/BiogeoRegiones/BlackSeaRegion.parquet', 'grupo3/raw/BiogeoRegiones/ContinentalRegion.parquet', 'grupo3/raw/BiogeoRegiones/MacaronesianRegion.parquet',
+        'grupo3/raw/BiogeoRegiones/PannonianRegion.parquet', 'grupo3/raw/BiogeoRegiones/SteppicRegion.parquet', 'grupo3/raw/BiogeoRegiones/AnatolianRegion.parquet',
+        'grupo3/raw/BiogeoRegiones/ArcticRegion.parquet', 'grupo3/raw/BiogeoRegiones/AlpineRegion.parquet', 'pd1/grupo3/raw/Countries/mascara_Belarus.parquet', 'pd1/grupo3/raw/Countries/mascara_Norte_Africa.parquet',
+        'pd1/grupo3/raw/Countries/mascara_Russian_Federation.parquet', 'pd1/grupo3/raw/Countries/mascara_Spain.parquet'
+
     ]
 
     cliente = minioFunctions.crear_cliente()

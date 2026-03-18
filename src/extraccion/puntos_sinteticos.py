@@ -313,7 +313,7 @@ def crearSinteticos(df_incendios, subir = True):
 
     mascaraRegionesGDF = []
 
-    # 4.- Calcular áreas, número de incendios y FRP total por zona
+       # 4.- Calcular áreas, número de incendios y FRP total por zona
     for i in range(len(listaZonas)):
         mascaraRegionesGDF.append(minioFunctions.bajar_fichero(cliente, mascarasRegiones[i], "gdf"))
     
@@ -323,7 +323,6 @@ def crearSinteticos(df_incendios, subir = True):
     areaTotal = 0
 
     for i, zona_df in enumerate(listaZonas):
-        print(f"Puntos totales de incendio en: {mascarasRegiones[i]}, {len(zona_df)}")
         listaIncendios.append(len(zona_df))
         listaFrpTotal.append(zona_df['frp_mean'].sum())
 
@@ -340,6 +339,60 @@ def crearSinteticos(df_incendios, subir = True):
         peso_area = listaAreas[i] / areaTotal if areaTotal > 0 else 0
         no_incendios_zona = (alpha * peso_incendios + (1 - alpha) * peso_area) * no_incendiosTotales
         listaNoIncendios.append(round(no_incendios_zona))
-        print(f"Puntos totales de no incendio en: {mascarasRegiones[i]}, {len(no_incendios_zona)}")
 
-    return listaNoIncendios
+    # 6.- Generar puntos sintéticos
+    todas_lats = []
+    todas_lons = []
+    todas_fechas = []
+
+    minio_config = {
+        "AWS_S3_ENDPOINT": "minio.fdi.ucm.es",
+        "AWS_HTTPS": "YES",
+        "AWS_VIRTUAL_HOSTING": "FALSE",
+        "GDAL_HTTP_UNSAFESSL": "YES",
+    }
+
+    ak, sk = minioFunctions.importar_keys()
+
+    with rasterio.Env(**minio_config, aws_access_key_id=ak, aws_secret_access_key=sk):
+        with rasterio.open("/vsis3/pd1/grupo3/mapa/mapa.tif") as src:
+          transformer = Transformer.from_crs("EPSG:4326", src.crs, always_xy=True)
+
+          for i in range(len(mascarasRegiones)):
+              # Puntos cercanos a incendios (solo si hay incendios en la zona)
+              if listaIncendios[i] > 0 and listaFrpTotal[i] > 0:
+                  restante, lats, lons, fechas = crearCercanos(
+                      listaZonas[i],           # DataFrame de incendios de la zona
+                      listaNoIncendios[i],     # total de puntos para esta zona
+                      listaFrpTotal[i],        # suma de FRP en la zona
+                      df_incendios,            # DataFrame completo (para validar)
+                      src, transformer
+                  )
+                  todas_lats.extend(lats)
+                  todas_lons.extend(lons)
+                  todas_fechas.extend(fechas)
+              else:
+                  restante = listaNoIncendios[i]  # si no hay incendios, todos son aleatorios
+
+              # Puntos aleatorios en la zona con los restantes
+              if restante > 0:
+                  anio = pd.to_datetime(df_incendios['date_first'].iloc[0]).year
+                  lats_rand, lons_rand, fechas_rand = crearAleatorios(
+                      mascarasRegiones[i],   # lista con una sola máscara
+                      df_incendios,             # DataFrame completo (para validar)
+                      restante,
+                      anio,
+                      src, transformer
+                  )
+                  todas_lats.extend(lats_rand)
+                  todas_lons.extend(lons_rand)
+                  todas_fechas.extend(fechas_rand)
+
+    final_df = pd.DataFrame({'lat': todas_lats, 'lon': todas_lons, 'date': todas_fechas})
+    
+    print("Hecho")
+    
+    if subir:
+        minioFunctions.preguntar_subida(final_df, "grupo3/raw/No_incendios/")
+    # 7.- Devolver DataFrame final
+    return final_df

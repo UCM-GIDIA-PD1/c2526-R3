@@ -54,7 +54,7 @@ def crear_features_temporales(df, radio_km=5, ventana_dias=7):
         fecha_actual = fila['date']
         fecha_inicio_ventana = fecha_actual - timedelta(days=ventana_dias)
         
-        mascota_temporal = (df['date'] >= fecha_inicio_ventana) & (df['date'] < fecha_actual) & (df['incendio'] == 1)
+        mascota_temporal = (df['date'] >= fecha_inicio_ventana) & (df['date'] < fecha_actual) & (df['final'] == 1)
         incendios_pasados = df[mascota_temporal]
         
         if not incendios_pasados.empty:
@@ -77,7 +77,7 @@ def crear_features_temporales(df, radio_km=5, ventana_dias=7):
     df = df.drop(['lat_rad', 'lon_rad'], axis=1)
     return df
 
-def split_temporal(X, y, test_size=0.2, val_size=0.1):
+def split_temporal(X, y, test_size=0.2, val_size=0):
     n_total = len(X)
     n_test = int(n_total * test_size)
     n_val = int(n_total * val_size)

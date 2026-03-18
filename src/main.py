@@ -6,7 +6,8 @@ import numpy as np
 import asyncio
 from dotenv import load_dotenv
 import traceback
-from extraccion import minioFunctions
+from extraccion import mascaras, minioFunctions
+from shapely.geometry import box
 
 # Función encargada de unificar y facilitar el debug de cada módulo, avisar de imports faltantes y diferentes rutas
 
@@ -308,7 +309,7 @@ async def main():
         await mostrar_menu()
         opcion = input("\n🔷 Selecciona una opción (0-12): ").strip()
 
-        if pregunta and opcion not in ["0", "5", "6", "8",'10', '11']:
+        if pregunta and opcion not in ["0", "5", "6", "8",'10', '11', '13']:
             resultado = pedirDatos()
             pregunta = False
 
@@ -440,8 +441,8 @@ async def main():
         elif opcion == "12":
             limit, fecha_ini, fecha_fin = obtener_parametros()
         
-            await ejecutar_funcion("Suelo", suelo2.df_soil_temp, df_incendios, limit=limit, fecha_ini=fecha_ini, fecha_fin=fecha_fin)
-
+            await ejecutar_funcion("Suelo", suelo2.df_soil_temp, df_incendios, limit=limit, fecha_ini=fecha_ini, fecha_fin=fecha_fin)                
+            
         elif opcion == "0":
             print("\n   ¡Adios! Pasa un buen día ")
             break

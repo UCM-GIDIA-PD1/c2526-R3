@@ -109,6 +109,10 @@ try:
     from extraccion.futuro import suelo2
     print("   ✅ OK")
 
+    print("   civilizacion")
+    from extraccion.futuro import civilizacion
+    print("   ✅ OK")
+
 
     MODULOS_CARGADOS = True
     print("\n BIEN: Todos los módulos cargados correctamente.\n")
@@ -183,6 +187,7 @@ async def mostrar_menu():
         print("  10. Concatenar un bucket de alguna característica (requiere archivos Parquet)")
         print("  11. Juntar todas las variables por año (merge)")
         print("  12. Nueva variable suelo2")
+        print("  13. Nueva variable civilizacion (por terminar)")
     print("  0. Salir")
     print(" "*60)
 
@@ -306,7 +311,7 @@ async def main():
 
     while True:
         await mostrar_menu()
-        opcion = input("\n🔷 Selecciona una opción (0-12): ").strip()
+        opcion = input("\n🔷 Selecciona una opción (0-13): ").strip()
 
         if pregunta and opcion not in ["0", "5", "6", "8",'10', '11']:
             resultado = pedirDatos()
@@ -441,6 +446,10 @@ async def main():
             limit, fecha_ini, fecha_fin = obtener_parametros()
         
             await ejecutar_funcion("Suelo", suelo2.df_soil_temp, df_incendios, limit=limit, fecha_ini=fecha_ini, fecha_fin=fecha_fin)
+
+        elif opcion == "13" and MODULOS_CARGADOS:
+            await ejecutar_funcion("Civilización", civilizacion.civilizacion, df_incendios)
+
 
         elif opcion == "0":
             print("\n   ¡Adios! Pasa un buen día ")

@@ -17,10 +17,10 @@ def isolationForest(X_train, X_val, X_test):
 
     train_anom = bosque.decision_function(X_train)
     test_anom = bosque.decision_function(X_test)
-    #val_anom = bosque.decision_function(X_val)
+    val_anom = bosque.decision_function(X_val)
 
     X_train['anomaly_ISOL_FOR'] = train_anom
-    #X_val['anomaly_ISOL_FOR'] = val_anom
+    X_val['anomaly_ISOL_FOR'] = val_anom
     X_test['anomaly_ISOL_FOR'] = test_anom
 
     return X_train, X_val, X_test
@@ -41,10 +41,10 @@ def oneClassSVM(X_train, X_val, X_test):
     train_anom = svm.decision_function(X_train)
     test_anom = svm.decision_function(X_test)
 
-    #val_anom = svm.decision_function(X_val)
+    val_anom = svm.decision_function(X_val)
 
     X_train['anomaly_SVM'] = train_anom
-    #X_val['anomaly_SVM'] = val_anom
+    X_val['anomaly_SVM'] = val_anom
     X_test['anomaly_SVM'] = test_anom
 
     return X_train, X_val, X_test

@@ -550,3 +550,12 @@ def crearSinteticosUnaZona(df_incendios, mascara, num_puntos, subir = True):
         
     # 3.- Devolver DataFrame final
     return final_df
+
+
+def eliminarZona(ruta_mascara, parquet, cliente):
+    eliminar = filtros_no_sinteticos.filtrar_zona_eliminar(ruta_mascara, parquet, cliente)
+    lats = eliminar['lat'].to_list()
+    lons = eliminar['lon'].to_list()
+    df_filtrado = parquet[~((parquet["lat"].isin(lats)) & (parquet["lon"].isin(lons)))]
+    return df_filtrado
+

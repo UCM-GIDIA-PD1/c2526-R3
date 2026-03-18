@@ -37,8 +37,8 @@ def filtrarZona(mascarasRegiones, parquetAnio, cliente): #Pasamos la lista de pa
       parquetsZonas.append(gdf_filtrado.drop(columns="geometry")) #Devuelve el parquet de esa zona
   return parquetsZonas
 
-def filtrar_ucrania(parquet, cliente):
-  zona = minioFunctions.bajar_fichero(cliente, "grupo3/raw/Countries/mascara_Ukraine.parquet","gdf")
+def filtrar_zona_eliminar(ruta, parquet, cliente):
+  zona = minioFunctions.bajar_fichero(cliente, ruta,"gdf")
   gdf = gpd.GeoDataFrame(
       parquet,
       geometry=gpd.points_from_xy(parquet.lon, parquet.lat),

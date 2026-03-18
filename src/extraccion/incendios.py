@@ -164,6 +164,7 @@ def fetch_fires(df, fecha_ini = None, fecha_fin = None, question=False):
     """
 
     try:
+        resumen = None
         df_clean = limpieza(df)
 
         if fecha_ini is not None:
@@ -185,6 +186,14 @@ def fetch_fires(df, fecha_ini = None, fecha_fin = None, question=False):
         resumen = resumen.merge(areas_df, on='fire_id', how='left')
         print("Hectáreas calculadas")
 
+        df_clean = df_clean.rename(columns={
+            'lat_mean': 'lat',
+            'lon_mean': 'lon',
+            'date_first': 'date'
+            })
+        
+        df_clean = df_clean.drop('date_last', axis = 1, errors='ignore')
+        
     except KeyboardInterrupt:
         print("\n Interrupción detectada. Guardando resultados parciales...")
         if 'resumen' in locals() and not resumen.empty:

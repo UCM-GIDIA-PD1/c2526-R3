@@ -48,4 +48,6 @@ def civilizacion(df):
 
     print(df_final)
 
-    #return df_final
+    minioFunctions.preguntar_subida(df_final, f'grupo3/raw/civilizacion/')
+
+    return df_final

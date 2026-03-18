@@ -396,3 +396,157 @@ def crearSinteticos(df_incendios, subir = True):
         minioFunctions.preguntar_subida(final_df, "grupo3/raw/No_incendios/")
     # 7.- Devolver DataFrame final
     return final_df
+
+def contarSinteticosPorArea(df_incendios):
+    '''
+    Calcula y devuelve ÚNICAMENTE el número de puntos sintéticos que se generarían por cada zona,
+    sin llegar a generarlos físicamente. Ideal para testeos rápidos.
+    '''
+    load_dotenv()
+    np.random.seed(42)
+
+    # 1.- Obtener límites de creación
+    no_incendiosTotales = len(df_incendios) * 30
+    incendiosTotales = len(df_incendios)
+
+    # 2.- Definir máscaras de regiones
+    mascarasRegiones = [
+    'grupo3/raw/Biogeoregiones/AtlanticRegion.parquet', 'grupo3/raw/Biogeoregiones/BorealRegion.parquet', 'grupo3/raw/Biogeoregiones/MediterraneanRegion.parquet',
+    'grupo3/raw/Biogeoregiones/BlackSeaRegion.parquet', 'grupo3/raw/Biogeoregiones/ContinentalRegion.parquet', 'grupo3/raw/Biogeoregiones/MacaronesianRegion.parquet',
+    'grupo3/raw/Biogeoregiones/PannonianRegion.parquet', 'grupo3/raw/Biogeoregiones/SteppicRegion.parquet', 'grupo3/raw/Biogeoregiones/AnatolianRegion.parquet',
+    'grupo3/raw/Biogeoregiones/ArcticRegion.parquet', 'grupo3/raw/Biogeoregiones/AlpineRegion.parquet'
+    ]
+
+    cliente = minioFunctions.crear_cliente()
+
+    # 3.- Obtener DataFrames de incendios por zona 
+    listaZonas, mascarasValidas = filtros_no_sinteticos.filtrarZona(mascarasRegiones, df_incendios, cliente)
+
+    mascaraRegionesGDF = []
+
+    # 4.- Calcular áreas y número de incendios por zona
+    for i in range(len(listaZonas)):
+        mascaraRegionesGDF.append(minioFunctions.bajar_fichero(cliente, mascarasValidas[i], "gdf"))
+
+    listaAreas = []
+    listaIncendios = []
+    areaTotal = 0
+
+    for i, zona_df in enumerate(listaZonas):
+        listaIncendios.append(len(zona_df))
+
+    # Leer la máscara geográfica para calcular el área
+    area = mascaraRegionesGDF[i].to_crs("EPSG:3035").geometry.area.sum() / 1e6  # km²
+    areaTotal += area
+    listaAreas.append(area)
+
+    # 5.- Distribuir puntos de no incendio por zona
+    alpha = 0.5
+    resultados = []
+
+    for i in range(len(mascarasValidas)):
+        peso_incendios = listaIncendios[i] / incendiosTotales if incendiosTotales > 0 else 0
+        peso_area = listaAreas[i] / areaTotal if areaTotal > 0 else 0
+        no_incendios_zona = (alpha * peso_incendios + (1 - alpha) * peso_area) * no_incendiosTotales
+
+        puntos_redondeados = round(no_incendios_zona)
+        nombre_limpio = mascarasValidas[i].split('/')[-1].replace('.parquet', '')
+
+        # Hacemos append a la lista con el formato simple
+        resultados.append(f"{nombre_limpio}: {puntos_redondeados}")
+
+    # 6.- Imprimir resultados
+    for linea in resultados:
+        print(linea)
+
+    return resultados
+
+
+def crearSinteticosUnaZona(df_incendios, mascara, num_puntos, subir = True):
+
+    '''
+    Función para crear puntos sintéticos de no incendio para una única zona específica.
+
+    Parámetros:
+    - df_incendios: DataFrame con los incendios del año
+    - mascara: ruta al archivo parquet de la máscara
+    - num_puntos: cantidad de puntos sintéticos a generar
+    - subir: booleano para subir o no el resultado
+
+    Devuelve:
+    - DataFrame con los puntos sintéticos generados
+    '''
+    
+    load_dotenv()
+
+    # Semilla para tener todos el mismo valor
+    np.random.seed(42)
+
+    cliente = minioFunctions.crear_cliente()
+
+    # 1.- Obtener DataFrames de incendios por zona
+    listaZonas, mascarasValidas = filtros_no_sinteticos.filtrarZona([mascara], df_incendios, cliente)
+
+    if not mascarasValidas:
+        print("Error: No se pudo procesar la mascara")
+        return pd.DataFrame()
+
+    zona_df = listaZonas[0]
+    frp_total = zona_df['frp_mean'].sum() if len(zona_df) > 0 else 0
+
+    # 2.- Generar puntos sintéticos
+    todas_lats = []
+    todas_lons = []
+    todas_fechas = []
+
+    minio_config = {
+        "AWS_S3_ENDPOINT": "minio.fdi.ucm.es",
+        "AWS_HTTPS": "YES",
+        "AWS_VIRTUAL_HOSTING": "FALSE",
+        "GDAL_HTTP_UNSAFESSL": "YES",
+    }
+
+    ak, sk = minioFunctions.importar_keys()
+
+    with rasterio.Env(**minio_config, aws_access_key_id=ak, aws_secret_access_key=sk):
+        with rasterio.open("/vsis3/pd1/grupo3/mapa/mapa.tif") as src:
+            transformer = Transformer.from_crs("EPSG:4326", src.crs, always_xy=True)
+
+            # Puntos cercanos a incendios (solo si hay incendios en la zona)
+            if len(zona_df) > 0 and frp_total > 0:
+                restante, lats, lons, fechas = crearCercanos(
+                    zona_df,                  # DataFrame de incendios de la zona
+                    num_puntos,               # total de puntos para esta zona
+                    frp_total,                # suma de FRP en la zona
+                    df_incendios,             # DataFrame completo (para validar)
+                    src, transformer
+                )
+                todas_lats.extend(lats)
+                todas_lons.extend(lons)
+                todas_fechas.extend(fechas)
+            else:
+                restante = num_puntos  # si no hay incendios, todos son aleatorios
+
+            # Puntos aleatorios en la zona con los restantes
+            if restante > 0:
+                anio = pd.to_datetime(df_incendios['date_first'].iloc[0]).year
+                lats_rand, lons_rand, fechas_rand = crearAleatorios(
+                    mascara,                  # ruta de la máscara
+                    df_incendios,             # DataFrame completo (para validar)
+                    restante,
+                    anio,
+                    src, transformer
+                )
+                todas_lats.extend(lats_rand)
+                todas_lons.extend(lons_rand)
+                todas_fechas.extend(fechas_rand)
+
+    final_df = pd.DataFrame({'lat': todas_lats, 'lon': todas_lons, 'date': todas_fechas})
+    
+    print("Hecho")
+    
+    if subir:
+        minioFunctions.preguntar_subida(final_df, "grupo3/raw/No_incendios/")
+        
+    # 3.- Devolver DataFrame final
+    return final_df

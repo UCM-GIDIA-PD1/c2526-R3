@@ -1,9 +1,7 @@
 import geopandas as gpd
 from pathlib import Path
-from shapely.geometry import Point
-from minioFunctions import *
-
-from parquet import to_parquet
+from shapely.geometry import Point, box
+from . import minioFunctions, parquet
 
 '''
 Las funciones a usar son:
@@ -24,14 +22,14 @@ def minio_a_local(carpeta_local, path_minio):
         path_destino.mkdir()
 
     #Traemos los archivos de MinIO a local 
-    cliente = crear_cliente()
+    cliente = minioFunctions.crear_cliente()
     path = path_minio
     ficheros = cliente.list_objects("pd1", prefix=path, recursive=True) 
 
     for fichero in ficheros:
         if not fichero.is_dir: #Es un archivo y no una carpeta
             nombre = fichero.object_name.split("/")[-1]
-            bajar_fichero_local(cliente, f"{path_minio}/{nombre}", f"{path_destino}/{nombre}")     
+            minioFunctions.bajar_fichero_local(cliente, f"{path_minio}/{nombre}", f"{path_destino}/{nombre}")     
             print(f"Subido {nombre}")
 
 #El archivo es .shp (shapefile) que almacena datos vectoriales que almacena la forma y ubicación de puntos geográficos
@@ -64,8 +62,8 @@ def extraer_biogeografica_raw():
     Extracción automática de las máscaras de las biogeoregiones desde MinIO
     :return bio_mascaras: 12 máscaras con las bioregiones en Europa tipo GeoDataFrame
     '''
-    cliente = crear_cliente()
-    minio_a_local(carpeta_local = "BiogeoRegiones_raw", path_minio = "grupo3/raw/Biogeoregiones")
+    cliente = minioFunctions.crear_cliente()
+    #minio_a_local(carpeta_local = "BiogeoRegiones_raw", path_minio = "grupo3/raw/Biogeoregiones")
     
     #Extracción de los archivos desde local
     actual_p = Path(__file__).resolve()
@@ -92,7 +90,43 @@ def extraer_biogeografica_raw():
         mascara = gpd.GeoDataFrame(geometry=[geom], crs=f.crs)
         mascaras[region] = mascara
 
-    return mascaras 
+    return mascaras     
+
+def extraer_pais(pais = None):
+    '''
+    Extracción automática de la máscara del país o países pasados por parámetro desde MinIO
+    
+    :param pais: nombre del país a extraer 
+    :param paises: lista de países a extraer
+    :return mascara_pais: mascara del país o países (unificados) tipo GeoDataFrame
+    '''
+    assert pais != None, "No hay ningún país para extraer"
+    assert isinstance(pais, str) or isinstance(pais, list), "El país debe ser un string o una lista de strings"
+
+    #minio_a_local(carpeta_local = "Countries", path_minio = "grupo3/maps/Countries")
+
+    #Extracción de los archivos desde local
+    actual_p = Path(__file__).resolve()
+    data = actual_p.parent.parent.parent / "data" / "Countries"
+    path = data / "countries.shp"
+    print(path)
+    mundo = gpd.read_file(path)
+    assert not mundo.empty, "Archivo vacio"
+
+    #Para depurar
+    #print("Columnas: ", list(mundo.columns))
+    #print(mundo["NAME_ENGL"].unique())
+
+    if isinstance(pais, str): #Solo procesamos un país
+        pais = mundo[mundo['NAME_ENGL'] == pais] 
+    else: #Procesamos varios países
+        pais = mundo[mundo['NAME_ENGL'].isin(pais)]
+
+    #Conversión a GeoDataframe
+    mascara = pais['geometry'].union_all() 
+    mascara_pais = gpd.GeoDataFrame(geometry=[mascara], crs=pais.crs)
+
+    return mascara_pais 
 
 def bioregions_to_parquet(mascaras: dict):
     '''
@@ -106,11 +140,9 @@ def bioregions_to_parquet(mascaras: dict):
         assert "geometry" in valor.columns, "No existen datos geometricos"
 
         nombre = clave.replace("Bio-geographical", "").replace(" ", "").strip()
-        to_parquet(valor["geometry"], nombre, "BiogeoRegiones") 
+        parquet.to_parquet(valor["geometry"], nombre, "BiogeoRegiones") 
 
         
-
-
 def parse_parquet(path: str):
     '''
     Convierte parquet a geodataframe
@@ -125,9 +157,44 @@ def parse_parquet(path: str):
     return gdf
 
 def is_in(mascara: gpd.GeoDataFrame, punto: Point):
+    '''
+    Comprueba si el punto está dentro de la máscara
+    :param mascara: GeoDataFrame con la geometría de la máscara
+    :param punto: tipo Point con las coordenadas del punto a comprobar
+    :return: True si el punto está dentro de la máscara
+    '''
     assert not mascara.empty and not mascara is None, "No existe contenido en el GeoDataFrame"
-    assert Point != None, "Punto vacío"
+    assert isinstance(punto, Point), "El punto no es del tipo Point"
     return mascara.iloc[0].geometry.contains(punto)
 
 
-mascaras = extraer_europa_raw()
+def extraer_mascaras_faltantes():
+    '''
+    Función para extraer las máscaras de los países que faltan por generar
+    puntos de no incendios. Se suben los parquets automáticamente a MinIO
+    '''
+    for pais in ["Belarus", "Spain", "Russian Federation", "Ukraine"]:
+        df_pais = extraer_pais(pais)
+        cliente = minioFunctions.crear_cliente()
+
+        if pais == "Spain":
+            #Seleccionamos solo Ceuta y Melilla con un box delimitador
+            ceuta_melilla = box(-6.0, 35.0, -2.5, 35.5)
+            df_pais = df_pais.clip(ceuta_melilla)
+
+            #Seleccionamos también todo el norte de África
+            norte_africa = ["Morocco", "Algeria", "Tunisia", "Libya", "Egypt"]
+            df_africa = extraer_pais(norte_africa)
+            df_africa = df_africa.clip(box(-18.0, 27.0, 35.0, 38.0)) #Solo nos quedamos con el norte de África
+
+            #Juntamos Ceuta y Melilla con el norte de África
+            df_pais = gpd.GeoDataFrame(pd.concat([df_pais, df_africa]  , ignore_index=True), crs=df_pais.crs)
+            pais = "Norte_Africa"
+                    
+        elif pais == "Russian Federation":
+            #Seleccionamos solo la rusia europea
+            rusia_europa = box(-15.0, 35.0, 60.0, 85.0)
+            df_pais = df_pais.clip(rusia_europa)
+
+        #Subimos a MinIO         
+        minioFunctions.subir_fichero(cliente, f"grupo3/raw/Countries/mascara_{pais.replace(' ', '_')}.parquet", df_pais)

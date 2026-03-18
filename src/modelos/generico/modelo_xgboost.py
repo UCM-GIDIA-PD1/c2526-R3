@@ -23,37 +23,85 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from modelos import parser
+from modelos.utils import personalizacion as per
+from modelos.clasificacion import ventanas_temporales as vt
 
-#Conexion con WANDB
-wandb.require("core") 
-os.environ["WANDB_START_METHOD"] = "thread"
-minioFunctions.load_dotenv()
-os.environ['WANDB_API_KEY'] = os.getenv('WANDB_KEY')
+def menu():
+    print("Opciones: ")
+    print("1. XGBoost con configuraciones normales")
+    print("2. XGBoost con aplicación de ventanas temporales y anomalías")
+    
+    opcion = int(input("Elige opcion [1,2]: "))
+    assert opcion == 1 or opcion == 2, "Número no válido"
 
-#Inicializamos parser para pasar las características de nuestro modelo por consola
-args = parser.initialite_parser()
+    return opcion
 
-#Conexión con MinIO
-cliente = minioFunctions.crear_cliente()
-df = minioFunctions.bajar_fichero(cliente, "grupo3/cleaned/final_date_transformado.parquet", "df")
+def conectar_WANDB():
+    #Conexion con WANDB
+    wandb.require("core") 
+    os.environ["WANDB_START_METHOD"] = "thread"
+    minioFunctions.load_dotenv()
+    os.environ['WANDB_API_KEY'] = os.getenv('WANDB_KEY')
 
-#Creación de nuestras variables explicativas y respuesta
-X = df.drop(["final"], axis=1)
-y = df["final"]
-class_names = ["No Incendio", "Incendio"]
-feature_names = X.columns
+def funcionalidad_tags():
+    #Inicializamos parser para pasar las características de nuestro modelo por consola
+    args = parser.initialite_parser()
 
-#División de los datos en entrenamiento y validación
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-
-def train():
-    #Creamos nuevo WANDB con las características de nuestro modelo entrenado (tags)
-    todas_tags = []
+    tags = []
     if args.modelo: 
-        todas_tags.append(args.modelo)
-    todas_tags = args.tags + [f"correladas_{args.eliminar_correladas}"]
+        tags.append(args.modelo)
+    tags = args.tags + [f"correladas_{args.eliminar_correladas}"]
+
+    return tags
+
+def configuraciones_iniciales():
+    tags = funcionalidad_tags()
+
+    #Conexión con MinIO
+    cliente = minioFunctions.crear_cliente()
+    df = minioFunctions.bajar_fichero(cliente, "grupo3/cleaned/final_date_transformado.parquet", "df")
+
+    #Creación de nuestras variables explicativas y respuesta
+    X = df.drop(["final"], axis=1)
+    y = df["final"]
+    class_names = ["No Incendio", "Incendio"]
+    feature_names = X.columns
+
+    #División de los datos en entrenamiento y validación
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+    return tags, class_names, feature_names, X_train, X_test, y_train, y_test
+
+def ventanas_temporales_y_anomalias():
+    #Tags
+    tags = funcionalidad_tags()
+
+    #MinIO
+    cliente = minioFunctions.crear_cliente()
+    df = minioFunctions.bajar_fichero(cliente, "grupo3/cleaned/final_date_transformado2.parquet", "df")
+
+    #Primer paso: aplicación de ventanas temporales
+    df = vt.crear_features_temporales(df)
+
+    #Segundo paso: aplicación de PCA
+    X, y = per.pregunta_PCA()
+
+    #Tercer paso: división temporal
+    X_train, X_val, X_test, y_train, y_val, y_test = vt.split_temporal(X, y)
+
+    #Cuarto paso: anomalías
+    X_train, X_val, X_test = per.anomalias(X_train, X_val, X_test)
+
+    #Nombres columnas
+    num_columnas = X_train.shape[1]
+    feature_names = [f"Variable_{i}" for i in range(num_columnas)]
+    class_names = ["No Incendio", "Incendio"]
+
+    return tags, class_names, feature_names, X_train, X_test, y_train, y_test
+
+def train(tags, class_names, feature_names, X_train, X_test, y_train, y_test):
     with wandb.init(settings=wandb.Settings(start_method="thread"),
-                    tags=todas_tags) as run:
+                    tags=tags) as run:
         
         config_dict = dict(wandb.config)
         
@@ -122,8 +170,9 @@ if __name__ == "__main__":
     entidad = "pd1-c2526-team3"
 
     #'max_delta_step': {'values': [1, 5, 10]},
+    
     configuraciones = {
-        "1_random_exploratorio_pesos": {
+        "random_ventanas_anomalias": {
             'method': 'random',
             'metric': {'name': 'f1_score', 'goal': 'maximize'},
             'parameters': {
@@ -134,7 +183,8 @@ if __name__ == "__main__":
                 'umbral_decision': {'distribution': 'uniform', 'min': 0.4, 'max': 0.5}
             }
         },
-        "2_bayesiano": {
+
+        "bayesiano_ventanas_anomalias": {
             'method': 'bayes',
             'metric': {'name': 'f1_score', 'goal': 'maximize'},
             'parameters': {
@@ -143,16 +193,26 @@ if __name__ == "__main__":
                 'n_estimators': {'values': [200, 250, 300]},
                 'reg_alpha': {'values': [0.1, 1, 5]},
                 'reg_lambda': {'values': [1, 10]},
-                'scale_pos_weight': {'values': [2, 3]},
-                'umbral_decision': {'distribution': 'uniform', 'min': 0.4, 'max': 0.5}
+                'scale_pos_weight': {'distribution': 'int_uniform', 'min': 5, 'max': 20},
+                'umbral_decision': {'distribution': 'uniform', 'min': 0.25, 'max': 0.5},
+                'subsample': {'distribution': 'uniform', 'min': 0.7, 'max': 0.9},
+                'colsample_bytree': {'distribution': 'uniform', 'min': 0.7, 'max': 0.9},
+                'min_child_weight': {'values': [1, 3, 5]}
             }
         },
     }
 
     runs_por_configuracion = 15
-
+    conectar_WANDB()
+    opcion = menu()
+    
+    if opcion == 1:
+        tags, class_names, feature_names, X_train, X_test, y_train, y_test = configuraciones_iniciales()
+    else:
+        tags, class_names, feature_names, X_train, X_test, y_train, y_test = ventanas_temporales_y_anomalias()
+    
     for nombre_config, config in configuraciones.items():
         print(f"\nIniciando Sweep: {nombre_config}")
         config['name'] = nombre_config         
         sweep_id = wandb.sweep(config, project=proyecto, entity=entidad)
-        wandb.agent(sweep_id, function=train, count=runs_por_configuracion)
+        wandb.agent(sweep_id, function=lambda: train(tags, class_names, feature_names, X_train, X_test, y_train, y_test), count=runs_por_configuracion)

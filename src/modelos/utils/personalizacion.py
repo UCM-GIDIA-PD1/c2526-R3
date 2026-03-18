@@ -1,6 +1,7 @@
 import limpieza.limpieza as clean
 import modelos.utils.carga_datos as cg
 import modelos.utils.anomalias as anom
+import extraccion.minioFunctions as mf
 
 def pregunta_PCA():
     '''
@@ -11,7 +12,7 @@ def pregunta_PCA():
          pca = input("¿Quieres aplicar PCA a los datos? (s/n) : ")
          if pca.lower() == 's':
             comps = int(input('Cuantos componentes quieres usar? '))
-            df = clean.obtener_df_pca(comps)
+            df = clean.bajar_df_final()
             X = df.drop(columns = ['final'])
             y = df['final']
             break

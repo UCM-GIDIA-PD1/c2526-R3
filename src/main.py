@@ -6,7 +6,9 @@ import numpy as np
 import asyncio
 from dotenv import load_dotenv
 import traceback
-from extraccion import minioFunctions
+from extraccion import mascaras, minioFunctions
+from shapely.geometry import box
+import geopandas as gpd
 
 # Función encargada de unificar y facilitar el debug de cada módulo, avisar de imports faltantes y diferentes rutas
 
@@ -313,7 +315,7 @@ async def main():
         await mostrar_menu()
         opcion = input("\n🔷 Selecciona una opción (0-13): ").strip()
 
-        if pregunta and opcion not in ["0", "5", "6", "8",'10', '11']:
+        if pregunta and opcion not in ["0", "5", "6", "8",'10', '11', '13']:
             resultado = pedirDatos()
             pregunta = False
 

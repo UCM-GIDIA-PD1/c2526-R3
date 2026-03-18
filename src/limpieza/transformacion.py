@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 from extraccion import minioFunctions as mf
 from limpieza import bajar_df_final
+import limpieza as lp
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler 
 
@@ -15,7 +16,7 @@ def pca():
     df = bajar_df_final()
     
     # Separamos las características y variable objetivo
-    X = df.drop(columns=["final", "date"])
+    X = df.drop(columns=["final"])
     y = df["final"]
     
     #Estandarizamos los datos
@@ -33,7 +34,7 @@ def pca():
     
     # Subimos el nuevo dataframe a minio
     cliente = mf.crear_cliente()
-    mf.subir_fichero(cliente, "grupo3/cleaned/pca/final_pca.parquet", df_pca)
+    mf.subir_fichero(cliente, "grupo3/cleaned/pca/final_pca_date_transformado.parquet", df_pca)
 
     #Obtenemos las métricas del pca para su posterior análisis y las subimos a minio como parquet
     varianza = pca.explained_variance_ratio_
@@ -43,7 +44,7 @@ def pca():
         'Varianza_Explicada': varianza,
     })
 
-    mf.subir_fichero(cliente, "grupo3/cleaned/pca/metricas_pca.parquet", df_metricas)
+    mf.subir_fichero(cliente, "grupo3/cleaned/pca/metricas_pca_date_transformado.parquet", df_metricas)
 
     return df_pca, df_metricas
 
@@ -67,17 +68,17 @@ def tranformar_date():
     '''
 
     df = bajar_df_final()
-    
+    print(df.columns)
+
     #Extraemos el día y lo transformamos con senos y cosenos a formato cíclico
+    df["date"] = pd.to_datetime(df["date"])
     dias = df["date"].dt.dayofyear
     df['dia_sin'] = np.sin(2 * np.pi * dias / 365)
     df['dia_cos'] = np.cos(2 * np.pi * dias / 365)
 
-    df = df.drop(columns=["date"], errors="ignore")
-
     # Subimos a minio
     cliente = mf.crear_cliente()
-    mf.subir_fichero(cliente, "grupo3/cleaned/final_date_transformado.parquet", df)
+    mf.subir_fichero(cliente, "grupo3/cleaned/final_date_transformado2.parquet", df)
 
 def obtener_df_date_transformado():
     '''

@@ -1,6 +1,6 @@
 import geopandas as gpd
 from pathlib import Path
-from shapely.geometry import Point
+from shapely.geometry import Point, box
 from . import minioFunctions, parquet
 
 '''
@@ -92,12 +92,17 @@ def extraer_biogeografica_raw():
 
     return mascaras     
 
-def extraer_pais(pais):
+def extraer_pais(pais = None):
     '''
-    Extracción automática de la máscara del país pasado por parámetro desde MinIO
+    Extracción automática de la máscara del país o países pasados por parámetro desde MinIO
     
-    :return mascara_pais: mascara del país tipo GeoDataFrame
+    :param pais: nombre del país a extraer 
+    :param paises: lista de países a extraer
+    :return mascara_pais: mascara del país o países (unificados) tipo GeoDataFrame
     '''
+    assert pais != None, "No hay ningún país para extraer"
+    assert isinstance(pais, str) or isinstance(pais, list), "El país debe ser un string o una lista de strings"
+
     #minio_a_local(carpeta_local = "Countries", path_minio = "grupo3/maps/Countries")
 
     #Extracción de los archivos desde local
@@ -112,7 +117,10 @@ def extraer_pais(pais):
     #print("Columnas: ", list(mundo.columns))
     #print(mundo["NAME_ENGL"].unique())
 
-    pais = mundo[mundo['NAME_ENGL'] == pais] 
+    if isinstance(pais, str): #Solo procesamos un país
+        pais = mundo[mundo['NAME_ENGL'] == pais] 
+    else: #Procesamos varios países
+        pais = mundo[mundo['NAME_ENGL'].isin(pais)]
 
     #Conversión a GeoDataframe
     mascara = pais['geometry'].union_all() 
@@ -149,25 +157,44 @@ def parse_parquet(path: str):
     return gdf
 
 def is_in(mascara: gpd.GeoDataFrame, punto: Point):
+    '''
+    Comprueba si el punto está dentro de la máscara
+    :param mascara: GeoDataFrame con la geometría de la máscara
+    :param punto: tipo Point con las coordenadas del punto a comprobar
+    :return: True si el punto está dentro de la máscara
+    '''
     assert not mascara.empty and not mascara is None, "No existe contenido en el GeoDataFrame"
-    assert Point != None, "Punto vacío"
+    assert isinstance(punto, Point), "El punto no es del tipo Point"
     return mascara.iloc[0].geometry.contains(punto)
 
-'''
-Extracción desde main
- for pais in ["Belarus", "Spain", "Russian Federation"]:
-                df_pais = mascaras.extraer_pais(pais)
-                cliente = minioFunctions.crear_cliente()
 
-                if pais == "Spain":
-                    #Seleccionamos solo Ceuta y Melilla con un box delimitador
-                    ceuta_melilla = box(-6.0, 35.0, -2.5, 35.5)
-                    df_pais = df_pais.clip(ceuta_melilla)
-                elif pais == "Russian Federation":
-                    #Seleccionamos solo la rusia europea
-                    rusia_europa = box(-15.0, 35.0, 60.0, 85.0)
-                    df_pais = df_pais.clip(rusia_europa)
-                
-                minioFunctions.subir_fichero(cliente, f"grupo3/raw/Countries/mascara_{pais.replace(' ', '_')}.parquet", df_pais)
+def extraer_mascaras_faltantes():
+    '''
+    Función para extraer las máscaras de los países que faltan por generar
+    puntos de no incendios. Se suben los parquets automáticamente a MinIO
+    '''
+    for pais in ["Belarus", "Spain", "Russian Federation", "Ukraine"]:
+        df_pais = extraer_pais(pais)
+        cliente = minioFunctions.crear_cliente()
 
-'''
+        if pais == "Spain":
+            #Seleccionamos solo Ceuta y Melilla con un box delimitador
+            ceuta_melilla = box(-6.0, 35.0, -2.5, 35.5)
+            df_pais = df_pais.clip(ceuta_melilla)
+
+            #Seleccionamos también todo el norte de África
+            norte_africa = ["Morocco", "Algeria", "Tunisia", "Libya", "Egypt"]
+            df_africa = extraer_pais(norte_africa)
+            df_africa = df_africa.clip(box(-18.0, 27.0, 35.0, 38.0)) #Solo nos quedamos con el norte de África
+
+            #Juntamos Ceuta y Melilla con el norte de África
+            df_pais = gpd.GeoDataFrame(pd.concat([df_pais, df_africa]  , ignore_index=True), crs=df_pais.crs)
+            pais = "Norte_Africa"
+                    
+        elif pais == "Russian Federation":
+            #Seleccionamos solo la rusia europea
+            rusia_europa = box(-15.0, 35.0, 60.0, 85.0)
+            df_pais = df_pais.clip(rusia_europa)
+
+        #Subimos a MinIO         
+        minioFunctions.subir_fichero(cliente, f"grupo3/raw/Countries/mascara_{pais.replace(' ', '_')}.parquet", df_pais)

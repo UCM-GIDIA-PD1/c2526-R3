@@ -8,6 +8,7 @@ from dotenv import load_dotenv
 import traceback
 from extraccion import mascaras, minioFunctions
 from shapely.geometry import box
+import geopandas as gpd
 
 # Función encargada de unificar y facilitar el debug de cada módulo, avisar de imports faltantes y diferentes rutas
 
@@ -441,7 +442,7 @@ async def main():
         elif opcion == "12":
             limit, fecha_ini, fecha_fin = obtener_parametros()
         
-            await ejecutar_funcion("Suelo", suelo2.df_soil_temp, df_incendios, limit=limit, fecha_ini=fecha_ini, fecha_fin=fecha_fin)                
+            await ejecutar_funcion("Suelo", suelo2.df_soil_temp, df_incendios, limit=limit, fecha_ini=fecha_ini, fecha_fin=fecha_fin)
             
         elif opcion == "0":
             print("\n   ¡Adios! Pasa un buen día ")

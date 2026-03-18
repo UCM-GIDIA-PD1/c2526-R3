@@ -187,12 +187,16 @@ def fetch_fires(df, fecha_ini = None, fecha_fin = None, question=False):
         print("Hectáreas calculadas")
 
         df_clean = df_clean.rename(columns={
-            'lat_mean': 'lat',
-            'lon_mean': 'lon',
-            'date_first': 'date'
-            })
-        
-        df_clean = df_clean.drop('date_last', axis = 1, errors='ignore')
+
+        'lat_mean': 'lat',
+
+        'lon_mean': 'lon',
+
+        'date_first': 'date'
+
+        })
+
+        df_clean.drop('date_last', axis = 1) 
         
     except KeyboardInterrupt:
         print("\n Interrupción detectada. Guardando resultados parciales...")

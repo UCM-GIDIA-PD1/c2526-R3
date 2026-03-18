@@ -189,7 +189,7 @@ async def mostrar_menu():
         print("  10. Concatenar un bucket de alguna característica (requiere archivos Parquet)")
         print("  11. Juntar todas las variables por año (merge)")
         print("  12. Nueva variable suelo2")
-        print("  13. Nueva variable civilizacion (por terminar)")
+        print("  13. Nueva variable civilizacion")
     print("  0. Salir")
     print(" "*60)
 

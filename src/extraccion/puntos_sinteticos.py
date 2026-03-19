@@ -108,7 +108,7 @@ def crearCercanos(incendiosZona, numNoIncendios, frpTotal, df, src, transformer)
             puntos_por_mes = numPuntos // 12
             resto = numPuntos % 12
 
-            fecha_incendio = pd.to_datetime(fila['date_first'])
+            fecha_incendio = pd.to_datetime(fila['date'])
             mes_incendio = fecha_incendio.month
             anio_incendio = fecha_incendio.year
             dia_base = min(fecha_incendio.day, 28)
@@ -294,7 +294,7 @@ def crearSinteticos(df_incendios, subir = True):
     # Semilla para tener todos el mismo valor
     np.random.seed(42)
 
-    # 1.- Objetener límites de creación
+    # 1.- Objetener límites de creación 
 
     no_incendiosTotales = len(df_incendios) * 30
     incendiosTotales = len(df_incendios)
@@ -304,7 +304,8 @@ def crearSinteticos(df_incendios, subir = True):
         'grupo3/raw/Biogeoregiones/AtlanticRegion.parquet', 'grupo3/raw/Biogeoregiones/BorealRegion.parquet', 'grupo3/raw/Biogeoregiones/MediterraneanRegion.parquet',
         'grupo3/raw/Biogeoregiones/BlackSeaRegion.parquet', 'grupo3/raw/Biogeoregiones/ContinentalRegion.parquet', 'grupo3/raw/Biogeoregiones/MacaronesianRegion.parquet',
         'grupo3/raw/Biogeoregiones/PannonianRegion.parquet', 'grupo3/raw/Biogeoregiones/SteppicRegion.parquet', 'grupo3/raw/Biogeoregiones/AnatolianRegion.parquet',
-        'grupo3/raw/Biogeoregiones/ArcticRegion.parquet', 'grupo3/raw/Biogeoregiones/AlpineRegion.parquet']
+        'grupo3/raw/Biogeoregiones/ArcticRegion.parquet', 'grupo3/raw/Biogeoregiones/AlpineRegion.parquet','grupo3/raw/Countries/mascara_Belarus.parquet', 'grupo3/raw/Countries/mascara_Norte_Africa.parquet',
+        'grupo3/raw/Countries/mascara_Russian_Federation.parquet']
 
     cliente = minioFunctions.crear_cliente()
 
@@ -376,7 +377,7 @@ def crearSinteticos(df_incendios, subir = True):
 
               # Puntos aleatorios en la zona con los restantes
               if restante > 0:
-                  anio = pd.to_datetime(df_incendios['date_first'].iloc[0]).year
+                  anio = pd.to_datetime(df_incendios['date'].iloc[0]).year
                   lats_rand, lons_rand, fechas_rand = crearAleatorios(
                       mascarasRegiones[i],   # lista con una sola máscara
                       df_incendios,             # DataFrame completo (para validar)
@@ -414,19 +415,20 @@ def contarSinteticosPorArea(df_incendios):
     'grupo3/raw/Biogeoregiones/AtlanticRegion.parquet', 'grupo3/raw/Biogeoregiones/BorealRegion.parquet', 'grupo3/raw/Biogeoregiones/MediterraneanRegion.parquet',
     'grupo3/raw/Biogeoregiones/BlackSeaRegion.parquet', 'grupo3/raw/Biogeoregiones/ContinentalRegion.parquet', 'grupo3/raw/Biogeoregiones/MacaronesianRegion.parquet',
     'grupo3/raw/Biogeoregiones/PannonianRegion.parquet', 'grupo3/raw/Biogeoregiones/SteppicRegion.parquet', 'grupo3/raw/Biogeoregiones/AnatolianRegion.parquet',
-    'grupo3/raw/Biogeoregiones/ArcticRegion.parquet', 'grupo3/raw/Biogeoregiones/AlpineRegion.parquet'
+    'grupo3/raw/Biogeoregiones/ArcticRegion.parquet', 'grupo3/raw/Biogeoregiones/AlpineRegion.parquet','grupo3/raw/Countries/mascara_Belarus.parquet', 'grupo3/raw/Countries/mascara_Norte_Africa.parquet',
+    'grupo3/raw/Countries/mascara_Russian_Federation.parquet'
     ]
 
     cliente = minioFunctions.crear_cliente()
 
     # 3.- Obtener DataFrames de incendios por zona 
-    listaZonas, mascarasValidas = filtros_no_sinteticos.filtrarZona(mascarasRegiones, df_incendios, cliente)
+    listaZonas = filtros_no_sinteticos.filtrarZona(mascarasRegiones, df_incendios, cliente)
 
     mascaraRegionesGDF = []
 
     # 4.- Calcular áreas y número de incendios por zona
     for i in range(len(listaZonas)):
-        mascaraRegionesGDF.append(minioFunctions.bajar_fichero(cliente, mascarasValidas[i], "gdf"))
+        mascaraRegionesGDF.append(minioFunctions.bajar_fichero(cliente, mascarasRegiones[i], "gdf"))
 
     listaAreas = []
     listaIncendios = []
@@ -435,24 +437,23 @@ def contarSinteticosPorArea(df_incendios):
     for i, zona_df in enumerate(listaZonas):
         listaIncendios.append(len(zona_df))
 
-    # Leer la máscara geográfica para calcular el área
-    area = mascaraRegionesGDF[i].to_crs("EPSG:3035").geometry.area.sum() / 1e6  # km²
-    areaTotal += area
-    listaAreas.append(area)
+        # Leer la máscara geográfica para calcular el área (¡Ahora dentro del bucle!)
+        area = mascaraRegionesGDF[i].to_crs("EPSG:3035").geometry.area.sum() / 1e6  # km²
+        areaTotal += area
+        listaAreas.append(area)
 
     # 5.- Distribuir puntos de no incendio por zona
     alpha = 0.5
     resultados = []
 
-    for i in range(len(mascarasValidas)):
+    for i in range(len(mascarasRegiones)):
         peso_incendios = listaIncendios[i] / incendiosTotales if incendiosTotales > 0 else 0
         peso_area = listaAreas[i] / areaTotal if areaTotal > 0 else 0
         no_incendios_zona = (alpha * peso_incendios + (1 - alpha) * peso_area) * no_incendiosTotales
 
         puntos_redondeados = round(no_incendios_zona)
-        nombre_limpio = mascarasValidas[i].split('/')[-1].replace('.parquet', '')
+        nombre_limpio = mascarasRegiones[i].split('/')[-1].replace('.parquet', '')
 
-        # Hacemos append a la lista con el formato simple
         resultados.append(f"{nombre_limpio}: {puntos_redondeados}")
 
     # 6.- Imprimir resultados
@@ -485,11 +486,7 @@ def crearSinteticosUnaZona(df_incendios, mascara, num_puntos, subir = True):
     cliente = minioFunctions.crear_cliente()
 
     # 1.- Obtener DataFrames de incendios por zona
-    listaZonas, mascarasValidas = filtros_no_sinteticos.filtrarZona([mascara], df_incendios, cliente)
-
-    if not mascarasValidas:
-        print("Error: No se pudo procesar la mascara")
-        return pd.DataFrame()
+    listaZonas = filtros_no_sinteticos.filtrarZona([mascara], df_incendios, cliente)
 
     zona_df = listaZonas[0]
     frp_total = zona_df['frp_mean'].sum() if len(zona_df) > 0 else 0
@@ -509,7 +506,7 @@ def crearSinteticosUnaZona(df_incendios, mascara, num_puntos, subir = True):
     ak, sk = minioFunctions.importar_keys()
 
     with rasterio.Env(**minio_config, aws_access_key_id=ak, aws_secret_access_key=sk):
-        with rasterio.open("/vsis3/pd1/grupo3/mapa/mapa.tif") as src:
+        with rasterio.open("/vsis3/pd1/grupo3/maps/mapa/mapa.tif") as src:
             transformer = Transformer.from_crs("EPSG:4326", src.crs, always_xy=True)
 
             # Puntos cercanos a incendios (solo si hay incendios en la zona)
@@ -529,7 +526,7 @@ def crearSinteticosUnaZona(df_incendios, mascara, num_puntos, subir = True):
 
             # Puntos aleatorios en la zona con los restantes
             if restante > 0:
-                anio = pd.to_datetime(df_incendios['date_first'].iloc[0]).year
+                anio = pd.to_datetime(df_incendios['date'].iloc[0]).year
                 lats_rand, lons_rand, fechas_rand = crearAleatorios(
                     mascara,                  # ruta de la máscara
                     df_incendios,             # DataFrame completo (para validar)
@@ -545,8 +542,10 @@ def crearSinteticosUnaZona(df_incendios, mascara, num_puntos, subir = True):
     
     print("Hecho")
     
+    print(len(final_df))
+
     if subir:
-        minioFunctions.preguntar_subida(final_df, "grupo3/raw/No_incendios/")
+        minioFunctions.preguntar_subida(final_df, "grupo3/raw/No_incendios/Nuevas_Zonas/")
         
     # 3.- Devolver DataFrame final
     return final_df

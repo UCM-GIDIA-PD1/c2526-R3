@@ -7,7 +7,7 @@ from datetime import date
 # Filtros encargados de mejorar la precisión y utilidad de datos sintéticos generados
 
 def esIncendio(lat, lon, incendios):
-  esIncendio = ((incendios.lat_mean == lat) & (incendios.lon_mean == lon)).any() #Devuelve si alguna fila cumple esta propiedad
+  esIncendio = ((incendios.lat == lat) & (incendios.lon == lon)).any() #Devuelve si alguna fila cumple esta propiedad
   return esIncendio
 
 def esAguaUrbano(lat, lon, src, transformer):
@@ -17,9 +17,10 @@ def esAguaUrbano(lat, lon, src, transformer):
 
 def puntoValido(lat, lon, parquet, src, transformer):
   noIncendio = not esIncendio(lat, lon, parquet)
-  noAguaUrbano = not esAguaUrbano(lat, lon, src, transformer)
+  #noAguaUrbano = not esAguaUrbano(lat, lon, src, transformer)
 
-  return noIncendio and noAguaUrbano
+  #return noIncendio and noAguaUrbano
+  return noIncendio
 
 def filtrarZona(mascarasRegiones, parquetAnio, cliente): #Pasamos la lista de parquets de las mascaras y el parquet del año que queremos
   parquetsZonas = []
@@ -27,7 +28,7 @@ def filtrarZona(mascarasRegiones, parquetAnio, cliente): #Pasamos la lista de pa
       zona = minioFunctions.bajar_fichero(cliente, mascaraZona, "gdf")
       gdf = gpd.GeoDataFrame(
           parquetAnio,
-          geometry=gpd.points_from_xy(parquetAnio.lon_mean, parquetAnio.lat_mean),
+          geometry=gpd.points_from_xy(parquetAnio.lon, parquetAnio.lat),
           crs="EPSG:4326"
       )
       zona = zona.to_crs(gdf.crs)

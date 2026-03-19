@@ -4,6 +4,9 @@ import numpy as np
 from sklearn.neighbors import BallTree
 
 def limpieza_inicial():
+    '''
+    Realiza la limpieza inicial a partir del dataset de poblaciones original y se sube al minio
+    '''
     cliente = minioFunctions.crear_cliente()
     path = 'grupo3/maps/civilizaciones/poblaciones_mas_de_1000.csv'
     df = minioFunctions.bajar_csv(cliente, path, ';')

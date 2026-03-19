@@ -2,6 +2,7 @@ import geopandas as gpd
 from pathlib import Path
 from shapely.geometry import Point, box
 from . import minioFunctions, parquet
+import pandas as pd
 
 '''
 Las funciones a usar son:
@@ -100,7 +101,7 @@ def extraer_pais(pais = None):
     :param paises: lista de países a extraer
     :return mascara_pais: mascara del país o países (unificados) tipo GeoDataFrame
     '''
-    assert pais != None, "No hay ningún país para extraer"
+    assert pais is not None, "No hay ningún país para extraer"
     assert isinstance(pais, str) or isinstance(pais, list), "El país debe ser un string o una lista de strings"
 
     #minio_a_local(carpeta_local = "Countries", path_minio = "grupo3/maps/Countries")
@@ -116,14 +117,15 @@ def extraer_pais(pais = None):
     #Para depurar
     #print("Columnas: ", list(mundo.columns))
     #print(mundo["NAME_ENGL"].unique())
-
+    
+    mundo = mundo.to_crs(epsg=4326) #El archivo lo descargué en epsg=3035
     if isinstance(pais, str): #Solo procesamos un país
         pais = mundo[mundo['NAME_ENGL'] == pais] 
     else: #Procesamos varios países
         pais = mundo[mundo['NAME_ENGL'].isin(pais)]
 
-    #Conversión a GeoDataframe
-    mascara = pais['geometry'].union_all() 
+    #Conversión a GeoDataframe (make_valid() para arreglar errores de geometría rusos)
+    mascara = pais['geometry'].make_valid().union_all() 
     mascara_pais = gpd.GeoDataFrame(geometry=[mascara], crs=pais.crs)
 
     return mascara_pais 
@@ -193,7 +195,7 @@ def extraer_mascaras_faltantes():
                     
         elif pais == "Russian Federation":
             #Seleccionamos solo la rusia europea
-            rusia_europa = box(-15.0, 35.0, 60.0, 85.0)
+            rusia_europa = box(19.0, 41.0, 60.0, 65.0)
             df_pais = df_pais.clip(rusia_europa)
 
         #Subimos a MinIO         

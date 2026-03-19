@@ -315,7 +315,7 @@ async def main():
         await mostrar_menu()
         opcion = input("\n🔷 Selecciona una opción (0-13): ").strip()
 
-        if pregunta and opcion not in ["0", "5", "6", "8",'10', '11']:
+        if pregunta and opcion not in ["0", "5", "6", "8",'10', '11', '14']:
             resultado = pedirDatos()
             pregunta = False
 
@@ -451,6 +451,10 @@ async def main():
 
         elif opcion == "13" and MODULOS_CARGADOS:
             await ejecutar_funcion("Civilización", civilizacion.civilizacion, df_incendios)
+
+        
+        elif opcion == "14":
+            mascaras.extraer_mascaras_faltantes()
 
 
         elif opcion == "0":

@@ -5,6 +5,8 @@ import rasterio
 from dotenv import load_dotenv
 from . import minioFunctions
 from . import filtros_no_sinteticos
+from shapely.geometry import Point
+import geopandas as gpd
 
 # Funciones encargadas de crear puntos sintéticos de acuerdo con el Área, el frp de fuego y el número de incendios
 def crearAleatorios(mascara, df, noIncendios, anio, src, transformer):
@@ -35,164 +37,28 @@ def crearAleatorios(mascara, df, noIncendios, anio, src, transformer):
     # Leer la máscara de la región
     mascara_gdf = minioFunctions.bajar_fichero(cliente, mascara, "gdf")
     mascara_gdf = mascara_gdf.to_crs("EPSG:4326")
-    # Obtener los límites geográficos de la región
-    minx, miny, maxx, maxy = mascara_gdf.geometry.total_bounds
-
-    #Evitamos que haya errores
-    minx = max(minx, -10.0)
-    maxx = min(maxx, 30.0)
-    miny = max(miny, 35.0)
-    maxy = min(maxy, 71.0)
-
-    # Generar puntos para cada mes (de 1 a 12)
-    for mes in range(1, 13):
-        for _ in range(puntos_por_mes):
-            
-            #Tres intentos de conseguir un mejor punto
-            intentos = 0
-
-            while intentos < 3:
-                lat = np.random.uniform(miny, maxy)
-                lon = np.random.uniform(minx, maxx)
-                intentos += 1
-
-                if filtros_no_sinteticos.puntoValido(lat, lon, df, src, transformer):
-                    listaLat.append(lat)
-                    listaLon.append(lon)
-                    dia = np.random.randint(1, 29)  # día aleatorio entre 1 y 28 (incluido)
-                    fechas.append(filtros_no_sinteticos.crearFecha(dia, mes, anio))
-                    break  
-
-    return listaLat, listaLon, fechas
-
-
-def crearCercanos(incendiosZona, numNoIncendios, frpTotal, df, src, transformer):
-
-    """
-    Crea puntos sintéticos cercanos a incendios reales, distribuidos proporcionalmente al FRP de cada incendio.
-
-    Parámetros:
-    - incendiosZona: DataFrame con los incendios de la zona (ya filtrados, NO una ruta)
-    - numNoIncendios: número total de puntos de no incendio a generar en esta zona
-    - frpTotal: suma de frp_mean de todos los incendios de la zona
-    - df: DataFrame con todos los incendios del año (para validar puntos)
-    - src, transformer: objeto raster y objeto Transformer para validar puntos
-
-    Devuelve:
-    - numNoIncendios_restante: número de puntos que no se han podido generar cerca de incendios (para generar aleatorios)
-    - tres listas: latitudes, longitudes y fechas de los puntos generados.
-    """
-
-    from math import cos, sin
-    import numpy as np
-    import pandas as pd
     
-
-    df = incendiosZona
-    listaLat = []
-    listaLon = []
-    fechas = []
-
-    if len(df) == 0 or frpTotal == 0:
-        return numNoIncendios, listaLat, listaLon, fechas
-
-    numNoIncendios_restante = numNoIncendios
-
-    for i in range(len(df)):
-        fila = df.iloc[i]
-        importancia = fila['frp_mean'] / frpTotal
-        numPuntos = round(importancia * numNoIncendios)
-
-        if numPuntos > 0:
-            numNoIncendios_restante -= numPuntos
-            puntos_por_mes = numPuntos // 12
-            resto = numPuntos % 12
-
-            fecha_incendio = pd.to_datetime(fila['date'])
-            mes_incendio = fecha_incendio.month
-            anio_incendio = fecha_incendio.year
-            dia_base = min(fecha_incendio.day, 28)
-
-            for mes in range(1, 13):
-                puntos_este_mes = puntos_por_mes + (1 if mes <= resto else 0)
-
-                if mes == mes_incendio:
-                    puntos_este_mes = max(0, puntos_este_mes - 1)
-
-                for _ in range(puntos_este_mes):
-                    distancia = np.random.uniform(5000, 10000)
-                    grado = np.random.uniform(0, 360)
-                    varianza_lat = distancia * cos(grado) / 111320
-                    varianza_lon = distancia * sin(grado) / (111320 * cos(fila['lat']))
-                    lat = varianza_lat + fila['lat']
-                    lon = varianza_lon + fila['lon']
-
-                    if filtros_no_sinteticos.puntoValido(lat, lon, df, src, transformer):
-                        listaLat.append(lat)
-                        listaLon.append(lon)
-                        fechas.append(filtros_no_sinteticos.crearFecha(dia_base, mes, anio_incendio))
-                    else:
-                        numNoIncendios_restante += 1
-
-    return numNoIncendios_restante, listaLat, listaLon, fechas
-
-
-import pandas as pd
-from pyproj import Transformer
-import numpy as np
-import rasterio
-from dotenv import load_dotenv
-from . import minioFunctions
-from . import filtros_no_sinteticos
-
-# Funciones encargadas de crear puntos sintéticos de acuerdo con el Área, el frp de fuego y el número de incendios
-def crearAleatorios(mascara, df, noIncendios, anio, src, transformer):
-
-    '''
-    Crea puntos aleatorios dentro de una máscara geográfica, asegurando que sean válidos según ciertos filtros.
-    Parámetros:
-    - mascara: ruta al archivo de la máscara geográfica (archivo Parquet con geometría).
-    - df: DataFrame con los incendios del año (para validar puntos).
-    - noIncendios: número total de puntos de no incendio a generar en esta zona (debe ser múltiplo de 12).
-    - anio: año para asignar a los puntos generados.
-    - src: objeto raster para validar puntos.
-    - transformer: objeto Transformer para validar puntos.
-    Devuelve:
-    - tres listas: latitudes, longitudes y fechas de los puntos generados.
-    '''
-
-    listaLat = []
-    listaLon = []
-    fechas = []
-
-    if noIncendios % 12 != 0:
-        noIncendios = ((noIncendios // 12) + 1) * 12
-
-    puntos_por_mes = noIncendios // 12  # número de puntos a generar cada mes en esta zona
-    cliente = minioFunctions.crear_cliente()
-
-    # Leer la máscara de la región
-    mascara_gdf = minioFunctions.bajar_fichero(cliente, mascara, "gdf")
-    mascara_gdf = mascara_gdf.to_crs("EPSG:4326")
-    # Obtener los límites geográficos de la región
-    minx, miny, maxx, maxy = mascara_gdf.geometry.total_bounds
-
-    #Evitamos que haya errores
-    minx = max(minx, -10.0)
-    maxx = min(maxx, 30.0)
-    miny = max(miny, 35.0)
-    maxy = min(maxy, 71.0)
+    #Generamos los puntos
+    geometria_real = mascara_gdf.geometry.union_all()
+    puntos_geometria = gpd.GeoSeries([geometria_real]).sample_points(noIncendios)
+    puntos = list(puntos_geometria.iloc[0].geoms)
 
     # Generar puntos para cada mes (de 1 a 12)
+    i = 0
     for mes in range(1, 13):
         for _ in range(puntos_por_mes):
             
             #Tres intentos de conseguir un mejor punto
             intentos = 0
 
+            punto_actual = puntos.pop()
+            if not punto_actual.within(geometria_real):
+                continue
+
+            lat = punto_actual.y
+            lon = punto_actual.x
+            
             while intentos < 3:
-                lat = np.random.uniform(miny, maxy)
-                lon = np.random.uniform(minx, maxx)
                 intentos += 1
 
                 if filtros_no_sinteticos.puntoValido(lat, lon, df, src, transformer):
@@ -201,6 +67,13 @@ def crearAleatorios(mascara, df, noIncendios, anio, src, transformer):
                     dia = np.random.randint(1, 29)  # día aleatorio entre 1 y 28 (incluido)
                     fechas.append(filtros_no_sinteticos.crearFecha(dia, mes, anio))
                     break  
+                else:
+                    puntos_geometria = gpd.GeoSeries([geometria_real]).sample_points(1)
+                    punto = list(puntos_geometria.iloc[0].geoms)
+                    if not punto[0].within(geometria_real):
+                        break
+                    lat = punto[0].y
+                    lon = punto[0].x
 
     return listaLat, listaLon, fechas
 
@@ -305,7 +178,7 @@ def crearSinteticos(df_incendios, subir = True):
         'grupo3/raw/Biogeoregiones/BlackSeaRegion.parquet', 'grupo3/raw/Biogeoregiones/ContinentalRegion.parquet', 'grupo3/raw/Biogeoregiones/MacaronesianRegion.parquet',
         'grupo3/raw/Biogeoregiones/PannonianRegion.parquet', 'grupo3/raw/Biogeoregiones/SteppicRegion.parquet', 'grupo3/raw/Biogeoregiones/AnatolianRegion.parquet',
         'grupo3/raw/Biogeoregiones/ArcticRegion.parquet', 'grupo3/raw/Biogeoregiones/AlpineRegion.parquet','grupo3/raw/Countries/mascara_Belarus.parquet', 'grupo3/raw/Countries/mascara_Norte_Africa.parquet',
-        'grupo3/raw/Countries/mascara_Russian_Federation.parquet']
+        'grupo3/raw/Countries/mascara_rusia0.parquet', 'grupo3/raw/Countries/mascara_rusia1.parquet']
 
     cliente = minioFunctions.crear_cliente()
 
@@ -416,8 +289,7 @@ def contarSinteticosPorArea(df_incendios):
     'grupo3/raw/Biogeoregiones/BlackSeaRegion.parquet', 'grupo3/raw/Biogeoregiones/ContinentalRegion.parquet', 'grupo3/raw/Biogeoregiones/MacaronesianRegion.parquet',
     'grupo3/raw/Biogeoregiones/PannonianRegion.parquet', 'grupo3/raw/Biogeoregiones/SteppicRegion.parquet', 'grupo3/raw/Biogeoregiones/AnatolianRegion.parquet',
     'grupo3/raw/Biogeoregiones/ArcticRegion.parquet', 'grupo3/raw/Biogeoregiones/AlpineRegion.parquet','grupo3/raw/Countries/mascara_Belarus.parquet', 'grupo3/raw/Countries/mascara_Norte_Africa.parquet',
-    'grupo3/raw/Countries/mascara_Russian_Federation.parquet'
-    ]
+    'grupo3/raw/Countries/mascara_rusia0.parquet', 'grupo3/raw/Countries/mascara_rusia1.parquet']
 
     cliente = minioFunctions.crear_cliente()
 

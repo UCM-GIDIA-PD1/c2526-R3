@@ -48,8 +48,8 @@ def filtrar_zona_eliminar(ruta, parquet, cliente):
   zona = zona.to_crs(gdf.crs)
   gdf = gdf.to_crs(zona.crs) #Transforma al sistema de coordenadas de la zona
   mascara = gdf.geometry.within(zona.geometry.iloc[0], align=False) #Crea el filtro de los puntos que pertenecen a la zona estudiada
-  gdf_ucrania = gdf[mascara].copy()
-  return gdf_ucrania.drop(columns="geometry") #Devuelve el parquet de Ucrania
+  gdf_zona = gdf[mascara].copy()
+  return gdf_zona.drop(columns="geometry") #Devuelve el parquet de Ucrania
 
 
 def crearFecha(dia, mes, anio):

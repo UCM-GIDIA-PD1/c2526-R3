@@ -7,6 +7,7 @@ from . import minioFunctions
 from . import filtros_no_sinteticos
 from shapely.geometry import Point
 import geopandas as gpd
+from scipy.spatial.distance import cdist
 
 # Funciones encargadas de crear puntos sintéticos de acuerdo con el Área, el frp de fuego y el número de incendios
 def crearAleatorios(mascara, df, noIncendios, anio, src, transformer):
@@ -78,40 +79,22 @@ def crearAleatorios(mascara, df, noIncendios, anio, src, transformer):
     return listaLat, listaLon, fechas
 
 
-def crearCercanos(incendiosZona, numNoIncendios, frpTotal, df, src, transformer):
-
-    """
-    Crea puntos sintéticos cercanos a incendios reales, distribuidos proporcionalmente al FRP de cada incendio.
-
-    Parámetros:
-    - incendiosZona: DataFrame con los incendios de la zona (ya filtrados, NO una ruta)
-    - numNoIncendios: número total de puntos de no incendio a generar en esta zona
-    - frpTotal: suma de frp_mean de todos los incendios de la zona
-    - df: DataFrame con todos los incendios del año (para validar puntos)
-    - src, transformer: objeto raster y objeto Transformer para validar puntos
-
-    Devuelve:
-    - numNoIncendios_restante: número de puntos que no se han podido generar cerca de incendios (para generar aleatorios)
-    - tres listas: latitudes, longitudes y fechas de los puntos generados.
-    """
-
-    from math import cos, sin
+def crearCercanos(incendiosZona, numNoIncendios, frpTotal, df_completo, src, transformer):
+    from math import cos, sin, radians
     import numpy as np
     import pandas as pd
-    
 
-    df = incendiosZona
     listaLat = []
     listaLon = []
     fechas = []
 
-    if len(df) == 0 or frpTotal == 0:
+    if len(incendiosZona) == 0 or frpTotal == 0:
         return numNoIncendios, listaLat, listaLon, fechas
 
     numNoIncendios_restante = numNoIncendios
 
-    for i in range(len(df)):
-        fila = df.iloc[i]
+    for i in range(len(incendiosZona)):
+        fila = incendiosZona.iloc[i]
         importancia = fila['frp_mean'] / frpTotal
         numPuntos = round(importancia * numNoIncendios)
 
@@ -126,28 +109,37 @@ def crearCercanos(incendiosZona, numNoIncendios, frpTotal, df, src, transformer)
             dia_base = min(fecha_incendio.day, 28)
 
             for mes in range(1, 13):
+                # Repartimos el resto entre los primeros meses
                 puntos_este_mes = puntos_por_mes + (1 if mes <= resto else 0)
 
+                # Si es el mes del incendio, intentamos no poner puntos ahí o poner uno menos
                 if mes == mes_incendio:
                     puntos_este_mes = max(0, puntos_este_mes - 1)
 
                 for _ in range(puntos_este_mes):
-                    distancia = np.random.uniform(5000, 10000)
-                    grado = np.random.uniform(0, 360)
-                    varianza_lat = distancia * cos(grado) / 111320
-                    varianza_lon = distancia * sin(grado) / (111320 * cos(fila['lat']))
+                    distancia = np.random.uniform(5000, 10000) # Metros
+                    # Convertir grado a radianes para sin/cos
+                    angulo_rad = radians(np.random.uniform(0, 360))
+                    
+                    # Corrección de distancia en grados (Aproximación Haversine simplificada)
+                    varianza_lat = (distancia * cos(angulo_rad)) / 111320
+                    # IMPORTANTE: El coseno de la latitud también debe estar en radianes
+                    cos_lat = cos(radians(fila['lat']))
+                    varianza_lon = (distancia * sin(angulo_rad)) / (111320 * cos_lat)
+                    
                     lat = varianza_lat + fila['lat']
                     lon = varianza_lon + fila['lon']
 
-                    if filtros_no_sinteticos.puntoValido(lat, lon, df, src, transformer):
+                    # Usamos df_completo para validar, no solo los de la zona
+                    if filtros_no_sinteticos.puntoValido(lat, lon, df_completo, src, transformer):
                         listaLat.append(lat)
                         listaLon.append(lon)
                         fechas.append(filtros_no_sinteticos.crearFecha(dia_base, mes, anio_incendio))
                     else:
+                        # Si el punto cae en agua o sobre un incendio real, se devuelve al saco de aleatorios
                         numNoIncendios_restante += 1
 
     return numNoIncendios_restante, listaLat, listaLon, fechas
-
 
 def crearSinteticos(df_incendios, subir = True):
 
@@ -178,7 +170,7 @@ def crearSinteticos(df_incendios, subir = True):
         'grupo3/raw/Biogeoregiones/BlackSeaRegion.parquet', 'grupo3/raw/Biogeoregiones/ContinentalRegion.parquet', 'grupo3/raw/Biogeoregiones/MacaronesianRegion.parquet',
         'grupo3/raw/Biogeoregiones/PannonianRegion.parquet', 'grupo3/raw/Biogeoregiones/SteppicRegion.parquet', 'grupo3/raw/Biogeoregiones/AnatolianRegion.parquet',
         'grupo3/raw/Biogeoregiones/ArcticRegion.parquet', 'grupo3/raw/Biogeoregiones/AlpineRegion.parquet','grupo3/raw/Countries/mascara_Belarus.parquet', 'grupo3/raw/Countries/mascara_Norte_Africa.parquet',
-        'grupo3/raw/Countries/mascara_rusia0.parquet', 'grupo3/raw/Countries/mascara_rusia1.parquet']
+        'grupo3/raw/Countries/mascara_zona_Moscu.parquet', 'grupo3/raw/Countries/mascara_San_Petersburgo.parquet']
 
     cliente = minioFunctions.crear_cliente()
 
@@ -285,11 +277,11 @@ def contarSinteticosPorArea(df_incendios):
 
     # 2.- Definir máscaras de regiones
     mascarasRegiones = [
-    'grupo3/raw/Biogeoregiones/AtlanticRegion.parquet', 'grupo3/raw/Biogeoregiones/BorealRegion.parquet', 'grupo3/raw/Biogeoregiones/MediterraneanRegion.parquet',
-    'grupo3/raw/Biogeoregiones/BlackSeaRegion.parquet', 'grupo3/raw/Biogeoregiones/ContinentalRegion.parquet', 'grupo3/raw/Biogeoregiones/MacaronesianRegion.parquet',
-    'grupo3/raw/Biogeoregiones/PannonianRegion.parquet', 'grupo3/raw/Biogeoregiones/SteppicRegion.parquet', 'grupo3/raw/Biogeoregiones/AnatolianRegion.parquet',
-    'grupo3/raw/Biogeoregiones/ArcticRegion.parquet', 'grupo3/raw/Biogeoregiones/AlpineRegion.parquet','grupo3/raw/Countries/mascara_Belarus.parquet', 'grupo3/raw/Countries/mascara_Norte_Africa.parquet',
-    'grupo3/raw/Countries/mascara_rusia0.parquet', 'grupo3/raw/Countries/mascara_rusia1.parquet']
+        'grupo3/raw/Biogeoregiones/AtlanticRegion.parquet', 'grupo3/raw/Biogeoregiones/BorealRegion.parquet', 'grupo3/raw/Biogeoregiones/MediterraneanRegion.parquet',
+        'grupo3/raw/Biogeoregiones/BlackSeaRegion.parquet', 'grupo3/raw/Biogeoregiones/ContinentalRegion.parquet', 'grupo3/raw/Biogeoregiones/MacaronesianRegion.parquet',
+        'grupo3/raw/Biogeoregiones/PannonianRegion.parquet', 'grupo3/raw/Biogeoregiones/SteppicRegion.parquet', 'grupo3/raw/Biogeoregiones/AnatolianRegion.parquet',
+        'grupo3/raw/Biogeoregiones/ArcticRegion.parquet', 'grupo3/raw/Biogeoregiones/AlpineRegion.parquet','grupo3/raw/Countries/mascara_Belarus.parquet', 'grupo3/raw/Countries/mascara_Norte_Africa.parquet',
+        'grupo3/raw/Countries/mascara_zona_Moscu.parquet', 'grupo3/raw/Countries/mascara_San_Petersburgo.parquet']
 
     cliente = minioFunctions.crear_cliente()
 
@@ -430,3 +422,97 @@ def eliminarZona(ruta_mascara, parquet, cliente):
     df_filtrado = parquet[~((parquet["lat"].isin(lats)) & (parquet["lon"].isin(lons)))]
     return df_filtrado
 
+def puntosParaBorrar(df, ruta_mascara, puntos, cliente):
+    # Filtrado por máscara
+    df_zona = filtros_no_sinteticos.filtrar_zona_eliminar(ruta_mascara, df, cliente)
+    
+    if df_zona.empty:
+        return pd.DataFrame(columns=['lat', 'lon', 'date'])
+
+    # Preparación Temporal
+    df_zona['date'] = pd.to_datetime(df_zona['date'])
+    
+    # Columna combinada Año-Mes 
+    df_zona['periodo'] = df_zona['date'].dt.to_period('M')
+    
+    # Mezcla aleatoria 
+    df_zona = df_zona.sample(frac=1, random_state=42).reset_index(drop=True)
+
+    puntos_seleccionados = []
+    # Umbral de 10km en grados
+    distancia_min = 10 / 111.32 
+
+    # Obtenemos todos los meses-años (para poder repartir equitativamente)
+    periodos_disponibles = sorted(df_zona['periodo'].unique())
+    
+    # Usamos un set para llevar control de los índices usados
+    indices_usados = set()
+    
+    id = 0
+    sin_exito = 0 
+    num_max_fallos = len(df_zona) 
+
+    while len(puntos_seleccionados) < puntos and sin_exito < num_max_fallos:
+        periodo_actual = periodos_disponibles[id % len(periodos_disponibles)]
+        
+        candidatos = df_zona[(df_zona['periodo'] == periodo_actual) & (~df_zona.index.isin(indices_usados))]
+        
+        if not candidatos.empty:
+            fila = candidatos.iloc[0]
+            id_ini = candidatos.index[0]
+            
+            punto_propuesto = (fila['lat'], fila['lon'])
+            fecha_propuesta = fila['date']
+            
+            # 5. 10km
+            es_valido = True
+            if puntos_seleccionados:
+                # Comprobar Distancia
+                coords_existentes = [(p['lat'], p['lon']) for p in puntos_seleccionados]
+                distancias = cdist([punto_propuesto], coords_existentes, metric='euclidean')[0]
+                
+                # Comprobar Fecha (Evitar duplicados exactos)
+                fechas_existentes = [p['date'] for p in puntos_seleccionados]
+                
+                if np.any(distancias < distancia_min) or (fecha_propuesta in fechas_existentes):
+                    es_valido = False
+            
+            if es_valido:
+                puntos_seleccionados.append({
+                    'lat': fila['lat'],
+                    'lon': fila['lon'],
+                    'date': fila['date']
+                })
+                sin_exito = 0 # Reseteamos si tuvimos éxito
+            else:
+                sin_exito += 1
+            
+            # Marcamos como usado para no volver a evaluar el punto
+            indices_usados.add(id_ini)
+        else:
+            # Si este mes ya no tiene más puntos pasamos al siguiente
+            sin_exito += 1
+
+        id += 1
+
+    final_df = pd.DataFrame(puntos_seleccionados)
+    
+    if not final_df.empty:
+        resumen_años = final_df['date'].dt.year.value_counts().sort_index()
+        print("Puntos seleccionados por año:")
+        print(resumen_años)
+        
+    return final_df
+
+def eliminarPuntosSeleccionados(df_grande, df_pequeno):
+    # Elimina del DataFrame grande las filas que coinciden en latitud, longitud y fecha con el pequeño
+
+    cols = ['lat', 'lon', 'date']
+
+    df_grande['date'] = pd.to_datetime(df_grande['date'])
+    df_pequeno['date'] = pd.to_datetime(df_pequeno['date'])
+    
+    df_temp = df_grande.merge(df_pequeno[cols], on=cols, how='left', indicator=True)
+    df_final = df_temp[df_temp['_merge'] == 'left_only'].drop(columns=['_merge'])
+    
+    return df_final.reset_index(drop=True)

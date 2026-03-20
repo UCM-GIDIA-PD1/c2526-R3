@@ -38,18 +38,18 @@ def filtrarZona(mascarasRegiones, parquetAnio, cliente): #Pasamos la lista de pa
       parquetsZonas.append(gdf_filtrado.drop(columns="geometry")) #Devuelve el parquet de esa zona
   return parquetsZonas
 
-def filtrar_zona_eliminar(ruta, parquet, cliente):
+def filtrar_zona_eliminar(ruta, df, cliente):
   zona = minioFunctions.bajar_fichero(cliente, ruta,"gdf")
   gdf = gpd.GeoDataFrame(
-      parquet,
-      geometry=gpd.points_from_xy(parquet.lon, parquet.lat),
+      df,
+      geometry=gpd.points_from_xy(df.lon, df.lat),
       crs="EPSG:4326"
   )
   zona = zona.to_crs(gdf.crs)
   gdf = gdf.to_crs(zona.crs) #Transforma al sistema de coordenadas de la zona
   mascara = gdf.geometry.within(zona.geometry.iloc[0], align=False) #Crea el filtro de los puntos que pertenecen a la zona estudiada
   gdf_zona = gdf[mascara].copy()
-  return gdf_zona.drop(columns="geometry") #Devuelve el parquet de Ucrania
+  return gdf_zona.drop(columns="geometry") #Devuelve el parquet de la zona
 
 
 def crearFecha(dia, mes, anio):

@@ -144,10 +144,8 @@ def arboles_decision_clasificacion(X_train, X_val, X_test, y_train, y_val, y_tes
 
         })
 
-        wandb.sklearn.plot_confusion_matrix(y_val, y_pred_val, labels=["no_incendio", "incendio"])
+        wf.matriz_confusion_feature_importance(model, y_pred_val, y_val, X_train.columns.tolist())
         
-        wandb.sklearn.plot_feature_importances(model, feature_names=X_train.columns.tolist())
-
     run.finish()
 
 

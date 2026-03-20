@@ -44,10 +44,18 @@ def inicializar_apikey_wandb():
     '''
     load_dotenv()
     api_key = os.getenv("WANDB_KEY")
-    
+
     if not api_key:
         print("API key de wandb no encontrada. Acuérdate de ponerla como WANDB_KEY en el archivo .env")
         return False
     
     os.environ["WANDB_API_KEY"] = api_key
     return True
+
+def matriz_confusion_feature_importance(model, y_pred, y, features):
+    '''
+    Muestra la matriz de confusión y la importancia de las features en wandb.
+    '''
+    wandb.sklearn.plot_confusion_matrix(y, y_pred, labels=["no_incendio", "incendio"])
+        
+    wandb.sklearn.plot_feature_importances(model, feature_names= features)

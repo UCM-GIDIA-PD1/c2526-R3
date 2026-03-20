@@ -1,8 +1,7 @@
 import pandas as pd
 import numpy as np
 from extraccion import minioFunctions as mf
-from limpieza import bajar_df_final
-import limpieza as lp
+import limpieza.limpieza as lp
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler 
 
@@ -73,7 +72,7 @@ def tranformar_date():
     que el modelo pueda entenderlo mejor (usando senos y cosenos).
     '''
 
-    df = bajar_df_final()
+    df = lp.bajar_df_final()
     print(df.columns)
 
     #Extraemos el día y lo transformamos con senos y cosenos a formato cíclico

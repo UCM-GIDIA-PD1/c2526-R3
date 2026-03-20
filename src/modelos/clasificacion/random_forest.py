@@ -5,7 +5,7 @@ from pathlib import Path
 import wandb
 import yaml
 from dotenv import load_dotenv
-from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
+from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import fbeta_score
 
 sys.path.append(os.path.join(os.path.dirname(__file__), "..", ".."))
@@ -14,7 +14,6 @@ from modelos.utils.particiones import split_estratificado
 from modelos.utils.metricas import evaluar_clasificacion
 import modelos.utils.anomalias as anom
 import numpy as np
-from imblearn.over_sampling import SMOTE
 import limpieza.limpieza as clean
 import modelos.utils.personalizacion as pers
 
@@ -185,8 +184,6 @@ def arboles_decision_clasificacion(X_train, X_val, X_test, y_train, y_val, y_tes
 
 
 def clasificacion():
-
-    X, y = pers.pregunta_PCA()
 
     X_train, X_val, X_test, y_train, y_val, y_test = split_estratificado(X, y)
 

@@ -5,7 +5,7 @@ from pathlib import Path
 import wandb
 import yaml
 from dotenv import load_dotenv
-from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
+from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import fbeta_score
 
 sys.path.append(os.path.join(os.path.dirname(__file__), "..", ".."))
@@ -14,12 +14,10 @@ from modelos.utils.particiones import split_estratificado
 from modelos.utils.metricas import evaluar_clasificacion
 import modelos.utils.anomalias as anom
 import numpy as np
-from imblearn.over_sampling import SMOTE
 import limpieza.limpieza as clean
 import modelos.utils.personalizacion as pers
-
-load_dotenv()
-os.environ["WANDB_API_KEY"] = os.getenv("WANDB_KEY", "")
+import extraccion.minioFunctions as mf
+import modelos.utils.wandbFunctions as wf
 
 WANDB_ENTITY = "pd1-c2526-team3"
 WANDB_PROJECT = "sweep_random_forest_umbral_smote"
@@ -27,42 +25,11 @@ SWEEP_PATH = Path(__file__).with_name("randomforest_sweep.yaml")
 SEED = 42
 NUM_IT = 0
 
-
-def cargar_configuracion(ruta_yaml: Path = SWEEP_PATH):
-    """Carga la configuración del sweep desde el YAML."""
-    with open(ruta_yaml, "r", encoding="utf-8") as f:
-        return yaml.safe_load(f)
-
-
-def obtener_sweep_id():
-    """
-    Usa un sweep ya creado si existe en variables de entorno.
-    Si no existe, crea uno nuevo a partir del YAML.
-    """
-    sweep_id = os.getenv("WANDB_SWEEP_ID") or os.getenv("SWEEP_ID")
-    if sweep_id:
-        print(f"Usando sweep existente: {sweep_id}")
-        return sweep_id
-
-    config_sweep = cargar_configuracion()
-    sweep_id = wandb.sweep(config_sweep, entity=WANDB_ENTITY, project=WANDB_PROJECT)
-    print(f"Sweep creado desde YAML: {sweep_id}")
-    return sweep_id
-
-
-def wandb_init(nombre, it):
-    return wandb.init(
-        entity=WANDB_ENTITY,
-        project=WANDB_PROJECT,
-        name = f'{nombre}-{it}'
-    )
-
-
 def arboles_decision_clasificacion(X_train, X_val, X_test, y_train, y_val, y_test, detallados=False, nombre = None):
     global NUM_IT
 
     NUM_IT += 1
-    run = wandb_init(nombre,NUM_IT)
+    run = wf.wandb_init(WANDB_PROJECT, nombre, NUM_IT)
     config = wandb.config
 
     if config.max_features == "None": # Daba error sino porque el YAML devuelve un string
@@ -177,16 +144,17 @@ def arboles_decision_clasificacion(X_train, X_val, X_test, y_train, y_val, y_tes
 
         })
 
-        wandb.sklearn.plot_confusion_matrix(y_val, y_pred_val, labels=["no_incendio", "incendio"])
+        wf.matriz_confusion_feature_importance(model, y_pred_val, y_val, X_train.columns.tolist())
         
-        wandb.sklearn.plot_feature_importances(model, feature_names=X_train.columns.tolist())
-
     run.finish()
 
 
 def clasificacion():
 
-    X, y = pers.pregunta_PCA()
+    if not wf.inicializar_apikey_wandb():
+        return
+    
+    X, y = cg.cargar_dataset_clasificacion_todas_variables()
 
     X_train, X_val, X_test, y_train, y_val, y_test = split_estratificado(X, y)
 
@@ -208,7 +176,7 @@ def clasificacion():
     def entrenamiento():
         arboles_decision_clasificacion(X_train, X_val, X_test, y_train, y_val, y_test, detallados, nombre)
 
-    sweep_id = obtener_sweep_id()
+    sweep_id = wf.crear_sweep_id(WANDB_PROJECT, SWEEP_PATH)
 
     wandb.agent(
         sweep_id=sweep_id,

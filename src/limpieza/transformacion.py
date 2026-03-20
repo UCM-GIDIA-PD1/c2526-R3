@@ -1,17 +1,17 @@
 import pandas as pd
 import numpy as np
 from extraccion import minioFunctions as mf
-from limpieza import bajar_df_final
-import limpieza as lp
+import limpieza.limpieza as lp
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler 
 
-def pca(df):
+def pca(df, subir_a_minio=True):
     '''
     Aplicamos PCA a un dataset para reducir la dimensionalidad
 
     :param df: dataframe con las características y la variable objetivo
-
+    :param subir_a_minio: booleano para decidir si subir el dataframe a minio
+    
     :return df_pca: dataframe con las componentes principales y la variable objetivo
     :return df_metricas: dataframe con las métricas (de momento solo he incluído la varianza).
     '''
@@ -34,9 +34,10 @@ def pca(df):
     df_pca["final"] = y.values
     
     # Subimos el nuevo dataframe a minio
-    cliente = mf.crear_cliente()
-    print("Creado el dataframe con las componentes principales.")
-    mf.preguntar_subida(df_pca, "grupo3/cleaned/pca/")
+
+    if subir_a_minio:
+        print("Creado el dataframe con las componentes principales.")
+        mf.preguntar_subida(df_pca, "grupo3/cleaned/pca/")
 
     #Obtenemos las métricas del pca para su posterior análisis y las subimos a minio como parquet
     varianza = pca.explained_variance_ratio_
@@ -46,8 +47,9 @@ def pca(df):
         'Varianza_Explicada': varianza,
     })
 
-    print("Creado el dataframe con las metricas.")
-    mf.preguntar_subida(df_metricas, "grupo3/cleaned/pca/")
+    if subir_a_minio:
+        print("Creado el dataframe con las metricas.")
+        mf.preguntar_subida(df_metricas, "grupo3/cleaned/pca/")
 
     return df_pca, df_metricas
 
@@ -70,7 +72,7 @@ def tranformar_date():
     que el modelo pueda entenderlo mejor (usando senos y cosenos).
     '''
 
-    df = bajar_df_final()
+    df = lp.bajar_df_final()
     print(df.columns)
 
     #Extraemos el día y lo transformamos con senos y cosenos a formato cíclico
@@ -93,3 +95,4 @@ def obtener_df_date_transformado():
     df_date_transformado = mf.bajar_fichero(cliente, "grupo3/cleaned/final_date_transformado.parquet", "df")
     
     return df_date_transformado
+

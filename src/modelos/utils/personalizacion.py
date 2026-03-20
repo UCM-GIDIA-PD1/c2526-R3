@@ -39,8 +39,8 @@ def anomalias(X_train, X_val, X_test):
 
     print("\n--- Selección de Análisis de Anomalías ---")
     print("1. Isolation Forest")
-    print("2. One Class SVM (obligatorio PCA previo)")
-    print("3. Local Outlier Factor (LOF) (obligatorio PCA previo)")
+    print("2. One Class SVM")
+    print("3. Local Outlier Factor (LOF)")
     print("Pulsa Enter sin escribir nada para no aplicar ningún análisis de anomalías.")
     print("(Puedes seleccionar varios separados por comas, ej: 1,3)")
 
@@ -56,13 +56,17 @@ def anomalias(X_train, X_val, X_test):
         print("Aplicando Isolation Forest...")
         X_train, X_val, X_test = anom.isolationForest(X_train, X_val, X_test)
         print("Aplicado Isolation Forest!")
+    if '2' in opciones or '3' in opciones:
+         print("Realizando escalado y PCA...")
+         X_train_PCA, X_val_PCA, X_test_PCA = anom.escalado_PCA(X_train, X_val, X_test)
+         print("Escalado y PCA realizados!")
     if '2' in opciones:
         print("Aplicando One Class SVM...")
-        X_train, X_val, X_test = anom.oneClassSVM(X_train, X_val, X_test)
+        X_train, X_val, X_test = anom.oneClassSVM(X_train_PCA, X_val_PCA, X_test_PCA, X_train, X_val, X_test)
         print("Aplicado One Class SVM!")
     if '3' in opciones:
         print("Aplicando Local Outlier Factor (LOF)...")
-        X_train, X_val, X_test = anom.LOF(X_train, X_val, X_test)
+        X_train, X_val, X_test = anom.LOF(X_train_PCA, X_val_PCA, X_test_PCA, X_train, X_val, X_test)
         print("Aplicado Local Outlier Factor (LOF)!")
 
     return X_train, X_val, X_test

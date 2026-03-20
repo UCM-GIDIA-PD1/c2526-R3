@@ -38,8 +38,6 @@ def oneClassSVM(X_train_PCA, X_val_PCA, X_test_PCA, X_train, X_val, X_test):
     a este modelo le afectan mucho.
     '''
 
-
-
     svm = OneClassSVM(gamma='auto', cache_size=1000)
     svm.fit(X_train_PCA)
 
@@ -62,7 +60,7 @@ def LOF(X_train_PCA, X_val_PCA, X_test_PCA, X_train, X_val, X_test):
     a este modelo le afectan mucho.
     '''
 
-
+    
     lof = LocalOutlierFactor(contamination=0.05, n_neighbors=25, n_jobs = -1, novelty= True)
 
     lof.fit(X_train_PCA)

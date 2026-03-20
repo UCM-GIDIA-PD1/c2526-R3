@@ -155,3 +155,15 @@ def cargar_dataset_incendios(years=YEARS, eliminar_correladas=True, logs=True):
         print(f"  Nota: para convertir predicciones a MW usa np.expm1(y_pred)")
 
     return X, y
+
+
+def cargar_dataset_clasificacion_todas_variables():
+
+    cliente = crear_cliente()
+    ruta = 'grupo3/cleaned/final_date_transformado_civilizacion.parquet'
+    df = bajar_fichero(cliente, ruta)
+
+    X = df.drop(columns = ['final'])
+    y = df['final']
+
+    return X, y

@@ -98,13 +98,13 @@ async def df_soil_temp(fires, limit=20, fecha_ini=None, fecha_fin=None):
             ini_fila = fecha_ini
             fin_fila = fecha_fin
         else:
-            ini_fila = row['date_first']
-            fin_fila = row['date_first']
+            ini_fila = row['date']
+            fin_fila = row['date']
 
         tareas.append(
             soil_temp(
-                lat=row['lat_mean'],
-                lon=row['lon_mean'],
+                lat=row['lat'],
+                lon=row['lon'],
                 fecha_ini=ini_fila,
                 fecha_fin=fin_fila,
                 indice=i

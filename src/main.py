@@ -303,7 +303,7 @@ def pedirDatos():
         parquet_bytes = df.to_parquet() 
         return parquet_bytes
     else:
-        print(df["date_first"].head())
+        print(df["date"].head())
         return df
 
 # MAIN

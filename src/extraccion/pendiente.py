@@ -49,7 +49,7 @@ async def df_pendiente(fires, limit = 20, fecha_ini = None, fecha_fin = None):
     """
     Extrae la informacion del terreno de una serie de incendios 
     
-    Requiere que el DataFrame fires contenga las columnas 'lat_mean', 'lon_mean' y 'date_first'.
+    Requiere que el DataFrame fires contenga las columnas 'lat', 'lon' y 'date'.
     """
 
     ini = time.time()
@@ -63,9 +63,9 @@ async def df_pendiente(fires, limit = 20, fecha_ini = None, fecha_fin = None):
 
     tareas = [
         pendiente(
-            row['lat_mean'],
-            row['lon_mean'],
-            row['date_first'],
+            row['lat'],
+            row['lon'],
+            row['date'],
             indice=i
         )
         for i, row in enumerate(rows)

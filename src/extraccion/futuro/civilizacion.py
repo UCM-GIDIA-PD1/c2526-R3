@@ -36,7 +36,7 @@ def civilizacion(df):
 
     # Pasar a radianes
     pobl_rad = np.deg2rad(np.array(df_pobl[['lat', 'lon']]))
-    inc_rad = np.deg2rad(np.array(df[['lat_mean', 'lon_mean']]))
+    inc_rad = np.deg2rad(np.array(df[['lat', 'lon']]))
 
     # Crea el índice espacial
     tree = BallTree(pobl_rad, metric='haversine')
@@ -47,7 +47,7 @@ def civilizacion(df):
     # 6371 es el radio de la Tierra en km
     distancias = distancias * 6371
 
-    df_final = pd.DataFrame({'lat': df['lat_mean'], 'lon': df['lon_mean'], 'dist_civ': distancias.flatten()})
+    df_final = pd.DataFrame({'lat': df['lat'], 'lon': df['lon'], 'dist_civ': distancias.flatten()})
 
     print(df_final)
 

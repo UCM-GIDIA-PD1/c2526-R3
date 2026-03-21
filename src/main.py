@@ -99,7 +99,7 @@ try:
     print("   ✅ OK")
 
     print("   puntos_sinteticos")
-    from extraccion import puntos_sinteticos
+    from extraccion import puntos_no_incendio
     print("   ✅ OK")
 
     print("   suelo")
@@ -379,8 +379,8 @@ async def main():
             - pendiente.py: Extrae los datos de la pendiente al mandar una ruta .parquet con los satélites de Google Earth Engine.
             - vegetacion.py: Extrae los datos de la vegetación al mandar una ruta .parquet con la API de Google Earth.
             - vegetacion2.py: Analiza los datos mediante una rasterización de un .tif para saber si se encuentra en agua, zona urbana o en qué tipo de vegetación se encuentra.
-            - puntos_sinteticos.py: Creación de puntos por incendio basado en cercanía, área, intensidad de incendios y aleatoriedad.
-            - filtros_no_sinteticos.py: Funciones para filtrar la creación de puntos sintéticos.
+            - puntos_no_incendio.py: Creación de puntos por incendio basado en cercanía, área, intensidad de incendios y aleatoriedad.
+            - filtros_no_incendio.py: Funciones para filtrar la creación de puntos de no incendio.
             - mascaras.py: Diferentes funciones de parse y de filtro de máscaras y parquets.
             - minioFunctions.py: Funciones para subir, bajar y manejar archivos en MinIO sin tener que tenerlos en local.
             - parquet.py: Función para ordenar parquets dentro de MinIO.
@@ -415,7 +415,7 @@ async def main():
                 
                 # Es un hilo separado para no molestar la sincronización
 
-                df_resultado = await asyncio.to_thread(puntos_sinteticos.crearSinteticos, df_incendios)
+                df_resultado = await asyncio.to_thread(puntos_no_incendio.crearSinteticos, df_incendios)
                 print(f"\n   Se generaron {len(df_resultado)} puntos sintéticos.")
                 print("\nPrimeras 10 filas:")
                 print(df_resultado.head(10))

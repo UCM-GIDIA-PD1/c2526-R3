@@ -4,10 +4,13 @@ import numpy as np
 import rasterio
 from dotenv import load_dotenv
 from . import minioFunctions
-from . import filtros_no_sinteticos
+from . import filtros_no_incendio
 from shapely.geometry import Point
 import geopandas as gpd
 from scipy.spatial.distance import cdist
+from math import cos, sin, radians
+import numpy as np
+import pandas as pd
 
 # Funciones encargadas de crear puntos sintéticos de acuerdo con el Área, el frp de fuego y el número de incendios
 def crearAleatorios(mascara, df, noIncendios, anio, src, transformer):
@@ -62,11 +65,11 @@ def crearAleatorios(mascara, df, noIncendios, anio, src, transformer):
             while intentos < 3:
                 intentos += 1
 
-                if filtros_no_sinteticos.puntoValido(lat, lon, df, src, transformer):
+                if filtros_no_incendio.puntoValido(lat, lon, df, src, transformer):
                     listaLat.append(lat)
                     listaLon.append(lon)
                     dia = np.random.randint(1, 29)  # día aleatorio entre 1 y 28 (incluido)
-                    fechas.append(filtros_no_sinteticos.crearFecha(dia, mes, anio))
+                    fechas.append(filtros_no_incendio.crearFecha(dia, mes, anio))
                     break  
                 else:
                     puntos_geometria = gpd.GeoSeries([geometria_real]).sample_points(1)
@@ -80,9 +83,20 @@ def crearAleatorios(mascara, df, noIncendios, anio, src, transformer):
 
 
 def crearCercanos(incendiosZona, numNoIncendios, frpTotal, df_completo, src, transformer):
-    from math import cos, sin, radians
-    import numpy as np
-    import pandas as pd
+    
+    '''
+    Crea puntos cercanos dentro de una máscara geográfica, asegurando que sean válidos según ciertos filtros.
+    Parámetros:
+        - incendiosZona: dataFrame con los incendios de la zona donde se pretende crear puntos de no incendio.
+        - numNoIncendios: el número de no incendios que se pretende crear en dicha zona.
+        - frpTotal: frp de la zona.
+        - df_completo: dataFrame con todos los datos de incendio 
+        - src: archivo raster del .tif de vegetación
+        - transformer: transformador de coordenadas geográficas
+
+    Devuelve:
+    - tres listas: número de no incendios (no creados, para aleatorios), latitudes, longitudes y fechas de los puntos generados.
+    '''
 
     listaLat = []
     listaLon = []
@@ -131,15 +145,17 @@ def crearCercanos(incendiosZona, numNoIncendios, frpTotal, df_completo, src, tra
                     lon = varianza_lon + fila['lon']
 
                     # Usamos df_completo para validar, no solo los de la zona
-                    if filtros_no_sinteticos.puntoValido(lat, lon, df_completo, src, transformer):
+                    if filtros_no_incendio.puntoValido(lat, lon, df_completo, src, transformer):
                         listaLat.append(lat)
                         listaLon.append(lon)
-                        fechas.append(filtros_no_sinteticos.crearFecha(dia_base, mes, anio_incendio))
+                        fechas.append(filtros_no_incendio.crearFecha(dia_base, mes, anio_incendio))
                     else:
                         # Si el punto cae en agua o sobre un incendio real, se devuelve al saco de aleatorios
                         numNoIncendios_restante += 1
 
     return numNoIncendios_restante, listaLat, listaLon, fechas
+
+
 
 def crearSinteticos(df_incendios, subir = True):
 
@@ -175,7 +191,7 @@ def crearSinteticos(df_incendios, subir = True):
     cliente = minioFunctions.crear_cliente()
 
     # 3.- Obtener DataFrames de incendios por zona (ya no son rutas, son DataFrames)
-    listaZonas = filtros_no_sinteticos.filtrarZona(mascarasRegiones, df_incendios,cliente)
+    listaZonas = filtros_no_incendio.filtrarZona(mascarasRegiones, df_incendios,cliente)
 
     mascaraRegionesGDF = []
 
@@ -263,6 +279,7 @@ def crearSinteticos(df_incendios, subir = True):
     # 7.- Devolver DataFrame final
     return final_df
 
+
 def contarSinteticosPorArea(df_incendios):
     '''
     Calcula y devuelve ÚNICAMENTE el número de puntos sintéticos que se generarían por cada zona,
@@ -286,7 +303,7 @@ def contarSinteticosPorArea(df_incendios):
     cliente = minioFunctions.crear_cliente()
 
     # 3.- Obtener DataFrames de incendios por zona 
-    listaZonas = filtros_no_sinteticos.filtrarZona(mascarasRegiones, df_incendios, cliente)
+    listaZonas = filtros_no_incendio.filtrarZona(mascarasRegiones, df_incendios, cliente)
 
     mascaraRegionesGDF = []
 
@@ -350,7 +367,7 @@ def crearSinteticosUnaZona(df_incendios, mascara, num_puntos, subir = True):
     cliente = minioFunctions.crear_cliente()
 
     # 1.- Obtener DataFrames de incendios por zona
-    listaZonas = filtros_no_sinteticos.filtrarZona([mascara], df_incendios, cliente)
+    listaZonas = filtros_no_incendio.filtrarZona([mascara], df_incendios, cliente)
 
     zona_df = listaZonas[0]
     frp_total = zona_df['frp_mean'].sum() if len(zona_df) > 0 else 0
@@ -415,16 +432,23 @@ def crearSinteticosUnaZona(df_incendios, mascara, num_puntos, subir = True):
     return final_df
 
 
-def eliminarZona(ruta_mascara, parquet, cliente):
-    eliminar = filtros_no_sinteticos.filtrar_zona_eliminar(ruta_mascara, parquet, cliente)
-    lats = eliminar['lat'].to_list()
-    lons = eliminar['lon'].to_list()
-    df_filtrado = parquet[~((parquet["lat"].isin(lats)) & (parquet["lon"].isin(lons)))]
-    return df_filtrado
-
 def puntosParaBorrar(df, ruta_mascara, puntos, cliente):
+
+    '''
+    Función para eliminar puntos del dataframe df, pertenecientes a una zona. No se eliminan todos, solo una parte
+
+    Parámetros:
+    - df: DataFrame con todos los puntos, del que se quieren eliminar
+    - ruta_mascara: ruta de la mascara que cubre la zona correspondiente
+    - puntos: número de puntos que se pretende eliminar
+    - cliente: cliente MinIO
+
+    Devuelve:
+    - DataFrame con los puntos que nos queremos quedar
+    '''
+
     # Filtrado por máscara
-    df_zona = filtros_no_sinteticos.filtrar_zona_eliminar(ruta_mascara, df, cliente)
+    df_zona = filtros_no_incendio.filtrar_zona_eliminar(ruta_mascara, df, cliente)
     
     if df_zona.empty:
         return pd.DataFrame(columns=['lat', 'lon', 'date'])
@@ -504,8 +528,18 @@ def puntosParaBorrar(df, ruta_mascara, puntos, cliente):
         
     return final_df
 
+
 def eliminarPuntosSeleccionados(df_grande, df_pequeno):
-    # Elimina del DataFrame grande las filas que coinciden en latitud, longitud y fecha con el pequeño
+    '''
+    Función para eliminar puntos del dataframe grande, que coinciden con el pequeño en lat, lon y date.
+
+    Parámetros:
+    - df_grande: DataFrame con todos los puntos
+    - df_pequeno: DataFrame con los puntos que se quieren eliminar
+
+    Devuelve:
+    - DataFrame con los puntos que nos queremos quedar
+    '''
 
     cols = ['lat', 'lon', 'date']
 
@@ -516,3 +550,24 @@ def eliminarPuntosSeleccionados(df_grande, df_pequeno):
     df_final = df_temp[df_temp['_merge'] == 'left_only'].drop(columns=['_merge'])
     
     return df_final.reset_index(drop=True)
+
+
+def eliminarZona(ruta_mascara, parquet, cliente):
+    '''
+    Función para eliminar puntos de incendio pertenecientes a un parquet, de una zona determinada.
+
+    Parámetros:
+    - parquet: DataFrame con los incendios
+    - ruta_mascara: ruta al archivo parquet de la máscara
+    - cliente: cliente MinIO
+
+    Devuelve:
+    - DataFrame con los puntos de no incendio que no pertenecen a esa zona
+    '''
+
+    eliminar = filtros_no_incendio.filtrar_zona_eliminar(ruta_mascara, parquet, cliente)
+    lats = eliminar['lat'].to_list()
+    lons = eliminar['lon'].to_list()
+    df_filtrado = parquet[~((parquet["lat"].isin(lats)) & (parquet["lon"].isin(lons)))]
+
+    return df_filtrado

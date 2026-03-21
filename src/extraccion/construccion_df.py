@@ -1,4 +1,4 @@
-from . import incendios, pendiente, vegetacion, fisicas, minioFunctions, puntos_sinteticos, interrupcion
+from . import incendios, pendiente, vegetacion, fisicas, minioFunctions, puntos_no_incendio, interrupcion
 import time
 import pandas as pd
 import asyncio

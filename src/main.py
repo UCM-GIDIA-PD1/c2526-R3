@@ -98,7 +98,7 @@ try:
     from extraccion.descartadas import vegetacion2
     print("   ✅ OK")
 
-    print("   puntos_sinteticos")
+    print("   puntos_no_incendio")
     from extraccion import puntos_no_incendio
     print("   ✅ OK")
 

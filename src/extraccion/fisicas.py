@@ -83,7 +83,7 @@ async def df_fisicas(fires, limit=20, fecha_ini=None, fecha_fin=None, directo=Fa
     ini_none = fecha_ini is None
 
     if not fin_none and not ini_none: 
-        fires = fires[fires.date_first.between(fecha_ini, fecha_fin)]
+        fires = fires[fires.date.between(fecha_ini, fecha_fin)]
 
     session = aiohttp.ClientSession()
     try:
@@ -98,9 +98,9 @@ async def df_fisicas(fires, limit=20, fecha_ini=None, fecha_fin=None, directo=Fa
         tareas = [
             fetch_environment(
                 session=session,
-                lat=row['lat_mean'],
-                lon=row['lon_mean'],
-                date=row['date_first'].split()[0],
+                lat=row['lat'],
+                lon=row['lon'],
+                date=row['date'].split()[0],
                 indice=i,
                 directo=directo
             )

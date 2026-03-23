@@ -4,6 +4,9 @@ import numpy as np
 from sklearn.neighbors import BallTree
 
 def limpieza_inicial():
+    '''
+    Realiza la limpieza inicial a partir del dataset de poblaciones original y se sube al minio
+    '''
     cliente = minioFunctions.crear_cliente()
     path = 'grupo3/maps/civilizaciones/poblaciones_mas_de_1000.csv'
     df = minioFunctions.bajar_csv(cliente, path, ';')
@@ -33,7 +36,7 @@ def civilizacion(df):
 
     # Pasar a radianes
     pobl_rad = np.deg2rad(np.array(df_pobl[['lat', 'lon']]))
-    inc_rad = np.deg2rad(np.array(df[['lat_mean', 'lon_mean']]))
+    inc_rad = np.deg2rad(np.array(df[['lat', 'lon']]))
 
     # Crea el índice espacial
     tree = BallTree(pobl_rad, metric='haversine')
@@ -44,8 +47,10 @@ def civilizacion(df):
     # 6371 es el radio de la Tierra en km
     distancias = distancias * 6371
 
-    df_final = pd.DataFrame({'lat': df['lat_mean'], 'lon': df['lon_mean'], 'dist_civ': distancias.flatten()})
+    df_final = pd.DataFrame({'lat': df['lat'], 'lon': df['lon'], 'dist_civ': distancias.flatten()})
 
     print(df_final)
 
-    #return df_final
+    minioFunctions.preguntar_subida(df_final, f'grupo3/raw/civilizacion/')
+
+    return df_final

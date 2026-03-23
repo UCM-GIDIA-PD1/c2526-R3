@@ -2,6 +2,7 @@ import geopandas as gpd
 from pathlib import Path
 from shapely.geometry import Point, box
 from . import minioFunctions, parquet
+import pandas as pd
 
 '''
 Las funciones a usar son:
@@ -100,10 +101,10 @@ def extraer_pais(pais = None):
     :param paises: lista de países a extraer
     :return mascara_pais: mascara del país o países (unificados) tipo GeoDataFrame
     '''
-    assert pais != None, "No hay ningún país para extraer"
+    assert pais is not None, "No hay ningún país para extraer"
     assert isinstance(pais, str) or isinstance(pais, list), "El país debe ser un string o una lista de strings"
 
-    #minio_a_local(carpeta_local = "Countries", path_minio = "grupo3/maps/Countries")
+    minio_a_local(carpeta_local = "Countries", path_minio = "grupo3/maps/Countries")
 
     #Extracción de los archivos desde local
     actual_p = Path(__file__).resolve()
@@ -116,14 +117,15 @@ def extraer_pais(pais = None):
     #Para depurar
     #print("Columnas: ", list(mundo.columns))
     #print(mundo["NAME_ENGL"].unique())
-
+    
+    mundo = mundo.to_crs(epsg=4326) #El archivo lo descargué en epsg=3035
     if isinstance(pais, str): #Solo procesamos un país
         pais = mundo[mundo['NAME_ENGL'] == pais] 
     else: #Procesamos varios países
         pais = mundo[mundo['NAME_ENGL'].isin(pais)]
 
-    #Conversión a GeoDataframe
-    mascara = pais['geometry'].union_all() 
+    #Conversión a GeoDataframe (make_valid() para arreglar errores de geometría rusos)
+    mascara = pais['geometry'].make_valid().union_all() 
     mascara_pais = gpd.GeoDataFrame(geometry=[mascara], crs=pais.crs)
 
     return mascara_pais 
@@ -167,6 +169,8 @@ def is_in(mascara: gpd.GeoDataFrame, punto: Point):
     assert isinstance(punto, Point), "El punto no es del tipo Point"
     return mascara.iloc[0].geometry.contains(punto)
 
+from shapely.geometry import box, Polygon
+import matplotlib.pyplot as plt
 
 def extraer_mascaras_faltantes():
     '''
@@ -178,23 +182,77 @@ def extraer_mascaras_faltantes():
         cliente = minioFunctions.crear_cliente()
 
         if pais == "Spain":
-            #Seleccionamos solo Ceuta y Melilla con un box delimitador
+            # Seleccionamos solo Ceuta y Melilla con un box delimitador
             ceuta_melilla = box(-6.0, 35.0, -2.5, 35.5)
-            df_pais = df_pais.clip(ceuta_melilla)
+            df_pais_cm = df_pais.clip(ceuta_melilla)
+            
+            # Subimos y saltamos al siguiente país
+            minioFunctions.subir_fichero(cliente, "grupo3/raw/Countries/mascara_Ceuta_Melilla.parquet", df_pais_cm)
+            continue 
 
-            #Seleccionamos también todo el norte de África
-            norte_africa = ["Morocco", "Algeria", "Tunisia", "Libya", "Egypt"]
-            df_africa = extraer_pais(norte_africa)
-            df_africa = df_africa.clip(box(-18.0, 27.0, 35.0, 38.0)) #Solo nos quedamos con el norte de África
-
-            #Juntamos Ceuta y Melilla con el norte de África
-            df_pais = gpd.GeoDataFrame(pd.concat([df_pais, df_africa]  , ignore_index=True), crs=df_pais.crs)
-            pais = "Norte_Africa"
-                    
         elif pais == "Russian Federation":
-            #Seleccionamos solo la rusia europea
-            rusia_europa = box(-15.0, 35.0, 60.0, 85.0)
-            df_pais = df_pais.clip(rusia_europa)
+            # ---------------------------------------------------------
+            # 1. ZONA OESTE AISLADA (Kaliningrado) - INTACTA
+            # ---------------------------------------------------------
+            coords_spb = [
+                (19.8, 54.4), (19.8, 55.0), (21.5, 55.3),
+                (23.8, 55.3), (23.8, 54.4), (21.5, 54.4)
+            ]
+            poligono_spb = Polygon(coords_spb)
+            df_spb = df_pais.clip(poligono_spb)
+            
+            # Subimos la máscara de Kaliningrado
+            minioFunctions.subir_fichero(cliente, "grupo3/raw/Countries/mascara_San_Petersburgo.parquet", df_spb)
 
-        #Subimos a MinIO         
-        minioFunctions.subir_fichero(cliente, f"grupo3/raw/Countries/mascara_{pais.replace(' ', '_')}.parquet", df_pais)
+            # ---------------------------------------------------------
+            # 2. ZONA RUSIA EUROPEA (Ajustada a la frontera real y corte en 35)
+            # ---------------------------------------------------------
+            # Empezamos en la Longitud 27 (fuera del país) para que el clip()
+            # dibuje la frontera real automáticamente por la izquierda.
+            coords_moscu = [
+                (27.0, 50.0), # Suroeste (Fuera del país)
+                (27.0, 68.0), # Noroeste (Fuera del país)
+                (35.0, 68.0), # Noreste (Tope recto en Lon 35)
+                (35.0, 50.0)  # Sureste (Tope recto en Lon 35)
+            ]
+            poligono_moscu = Polygon(coords_moscu)
+            df_moscu = df_pais.clip(poligono_moscu)
+            
+            # Subimos la máscara de Rusia Europea
+            minioFunctions.subir_fichero(cliente, "grupo3/raw/Countries/mascara_zona_Moscu.parquet", df_moscu)
+            
+            continue
+
+        # Subimos a MinIO para Belarus, Ukraine u otros países normales
+        nombre_archivo = f"grupo3/raw/Countries/mascara_{pais.replace(' ', '_')}.parquet"
+        minioFunctions.subir_fichero(cliente, nombre_archivo, df_pais)
+
+
+if __name__ == '__main__':
+    # 1. EJECUCIÓN REAL: Genera los recortes y los sube a MinIO
+    print("🚀 Iniciando proceso de extracción y subida a MinIO...")
+    try:
+        extraer_mascaras_faltantes()
+        print("✅ ¡Proceso completado con éxito! Los archivos ya deberían estar en el bucket.")
+    except Exception as e:
+        print(f"❌ Error durante la subida: {e}")
+
+    # 2. VERIFICACIÓN VISUAL (Opcional): 
+    # Mantenemos esto solo para que estés 100% seguro de lo que acabas de subir
+    print("\nGenerando vista previa de seguridad...")
+    df_rusia = extraer_pais("Russian Federation")
+    
+    # Geometría Kaliningrado (Azul)
+    poly_spb = Polygon([(19.8, 54.4), (19.8, 55.0), (21.5, 55.3), (23.8, 55.3), (23.8, 54.4), (21.5, 54.4)])
+    # Geometría Rusia Europea (Rojo)
+    poly_moscu = Polygon([(27.0, 50.0), (27.0, 68.0), (35.0, 68.0), (35.0, 50.0)])
+
+    fig, ax = plt.subplots(figsize=(10, 8))
+    df_rusia.plot(ax=ax, color='lightgrey', alpha=0.5)
+    df_rusia.clip(poly_spb).plot(ax=ax, color='blue', label='Subido como SPB (Kaliningrado)')
+    df_rusia.clip(poly_moscu).plot(ax=ax, color='red', label='Subido como Moscú (Rusia Europea)')
+    
+    ax.set_xlim(18, 40)
+    ax.set_ylim(50, 67)
+    plt.legend()
+    plt.show()

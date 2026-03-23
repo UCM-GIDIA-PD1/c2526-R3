@@ -1,0 +1,31 @@
+program: decisiontree.py
+entity: pd1-c2526-team3
+project: decision_tree_clasificacion
+name: sweep_random_forest
+method: bayes
+metric:
+  name: f1_5_score
+  goal: maximize
+parameters:
+  max_depth:
+    distribution: int_uniform
+    min: 5
+    max: 35      
+  min_samples_leaf:
+    distribution: int_uniform
+    min: 1
+    max: 20
+  min_samples_split:
+    distribution: int_uniform
+    min: 2
+    max: 18      
+  criterion:
+    values: ['gini', 'entropy']
+  max_features:
+    values: ['sqrt', 'log2', 'None']
+  umbral:
+    distribution: uniform
+    min: 0.3
+    max: 0.6
+  class_weight:
+    values: ['balanced', 'balanced_subsample']

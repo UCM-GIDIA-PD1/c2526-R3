@@ -1,19 +1,20 @@
 import pandas as pd
 import numpy as np
 from extraccion import minioFunctions as mf
-from limpieza import bajar_df_final
-import limpieza as lp
+import limpieza.limpieza as lp
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler 
 
-def pca():
+def pca(df, subir_a_minio=True):
     '''
-    Aplicamos PCA a nuestro dataset final para reducir la dimensionalidad
+    Aplicamos PCA a un dataset para reducir la dimensionalidad
 
+    :param df: dataframe con las características y la variable objetivo
+    :param subir_a_minio: booleano para decidir si subir el dataframe a minio
+    
     :return df_pca: dataframe con las componentes principales y la variable objetivo
     :return df_metricas: dataframe con las métricas (de momento solo he incluído la varianza).
     '''
-    df = bajar_df_final()
     
     # Separamos las características y variable objetivo
     X = df.drop(columns=["final"])
@@ -33,8 +34,10 @@ def pca():
     df_pca["final"] = y.values
     
     # Subimos el nuevo dataframe a minio
-    cliente = mf.crear_cliente()
-    mf.subir_fichero(cliente, "grupo3/cleaned/pca/final_pca_date_transformado.parquet", df_pca)
+
+    if subir_a_minio:
+        print("Creado el dataframe con las componentes principales.")
+        mf.preguntar_subida(df_pca, "grupo3/cleaned/pca/")
 
     #Obtenemos las métricas del pca para su posterior análisis y las subimos a minio como parquet
     varianza = pca.explained_variance_ratio_
@@ -44,11 +47,13 @@ def pca():
         'Varianza_Explicada': varianza,
     })
 
-    mf.subir_fichero(cliente, "grupo3/cleaned/pca/metricas_pca_date_transformado.parquet", df_metricas)
+    if subir_a_minio:
+        print("Creado el dataframe con las metricas.")
+        mf.preguntar_subida(df_metricas, "grupo3/cleaned/pca/")
 
     return df_pca, df_metricas
 
-def obtener_df_pca(num_componentes = 19):
+def obtener_df_pca(num_componentes):
     '''
     Obtenemos el dataframe con las componentes principales
 
@@ -67,7 +72,7 @@ def tranformar_date():
     que el modelo pueda entenderlo mejor (usando senos y cosenos).
     '''
 
-    df = bajar_df_final()
+    df = lp.bajar_df_final()
     print(df.columns)
 
     #Extraemos el día y lo transformamos con senos y cosenos a formato cíclico
@@ -90,3 +95,4 @@ def obtener_df_date_transformado():
     df_date_transformado = mf.bajar_fichero(cliente, "grupo3/cleaned/final_date_transformado.parquet", "df")
     
     return df_date_transformado
+

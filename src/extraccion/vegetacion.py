@@ -135,7 +135,7 @@ async def df_vegetacion(fires, limit = 20, fecha_ini = None, fecha_fin = None):
   Obtiene un DataFrame con los índices de vegetación para los incendios en un rango de fechas
 
   Parámetros:
-  - fires: DataFrame con los incendios con columnas 'lat_mean', 'lon_mean', y 'date_first'
+  - fires: DataFrame con los incendios con columnas 'lat', 'lon', y 'date'
   - limit: número de incendios a procesar (por defecto 20)
   - fecha_ini: fecha inicial del rango (por defecto None)
   - fecha_fin: fecha final del rango (por defecto None)
@@ -154,9 +154,9 @@ async def df_vegetacion(fires, limit = 20, fecha_ini = None, fecha_fin = None):
   
   tareas = [
       vegetacion(
-          row['lat_mean'],
-          row['lon_mean'],
-          row['date_first'],
+          row['lat'],
+          row['lon'],
+          row['date'],
           indice=i
       )
       for i, row in enumerate(rows)

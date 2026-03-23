@@ -15,6 +15,7 @@ from modelos.utils.particiones import split_estratificado
 from modelos.utils.metricas import evaluar_clasificacion
 
 import modelos.utils.personalizacion as pers
+import modelos.utils.wandbFunctions as wf
 
 load_dotenv()
 os.environ["WANDB_API_KEY"] = os.getenv("WANDB_KEY", "")
@@ -25,41 +26,11 @@ SWEEP_PATH = Path(__file__).with_name("balanced_random_forest.yaml")
 SEED = 42
 NUM_IT = 0
 
-def wandb_init(nombre, it):
-    return wandb.init(
-        entity=WANDB_ENTITY,
-        project=WANDB_PROJECT,
-        name = f'{nombre}-{it}'
-    )
-
-
-def cargar_configuracion(ruta_yaml: Path = SWEEP_PATH):
-    """Carga la configuración del sweep desde el YAML."""
-    with open(ruta_yaml, "r", encoding="utf-8") as f:
-        return yaml.safe_load(f)
-
-
-def obtener_sweep_id():
-    """
-    Usa un sweep ya creado si existe en variables de entorno.
-    Si no existe, crea uno nuevo a partir del YAML.
-    """
-    sweep_id = os.getenv("WANDB_SWEEP_ID") or os.getenv("SWEEP_ID")
-    if sweep_id:
-        print(f"Usando sweep existente: {sweep_id}")
-        return sweep_id
-
-    config_sweep = cargar_configuracion()
-    sweep_id = wandb.sweep(config_sweep, entity=WANDB_ENTITY, project=WANDB_PROJECT)
-    print(f"Sweep creado desde YAML: {sweep_id}")
-    return sweep_id
-
-
 def arboles_decision_clasificacion(X_train, X_val, X_test, y_train, y_val, y_test, detallados=False, nombre = None):
     global NUM_IT
-
     NUM_IT += 1
-    run = wandb_init(nombre,NUM_IT)
+
+    run = wf.wandb_init(nombre,NUM_IT)
     config = wandb.config
 
 
@@ -123,13 +94,16 @@ def arboles_decision_clasificacion(X_train, X_val, X_test, y_train, y_val, y_tes
             feature_names=X_train_full.columns.tolist()
         )
 
-    wandb.sklearn.plot_confusion_matrix(y_val, y_pred_val, labels=["no_incendio", "incendio"])
-    wandb.sklearn.plot_feature_importances(model, feature_names=X_train.columns.tolist())
+    wf.matriz_confusion_feature_importance(model, y_pred_val, y_val, X_train.columns.tolist())
 
     run.finish()
 
 # Función principal
 def clasificacion():
+
+    if not wf.inicializar_apikey_wandb():
+        return
+
     X, y = pers.pregunta_PCA()
 
     X_train, X_val, X_test, y_train, y_val, y_test = split_estratificado(X, y)
@@ -151,7 +125,7 @@ def clasificacion():
     def entrenamiento():
         arboles_decision_clasificacion(X_train, X_val, X_test, y_train, y_val, y_test, detallados, nombre)
 
-    sweep_id = obtener_sweep_id()
+    sweep_id = wf.crear_sweep_id(WANDB_PROJECT, SWEEP_PATH)
     wandb.agent(
         sweep_id=sweep_id,
         function=entrenamiento,

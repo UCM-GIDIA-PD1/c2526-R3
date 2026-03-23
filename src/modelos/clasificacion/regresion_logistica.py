@@ -19,6 +19,7 @@ from modelos.utils.particiones import (
     split_simple, split_estratificado, get_pesos_clase
 )
 from modelos.utils.metricas import evaluar_clasificacion
+import modelos.utils.wandbFunctions as wf
 
 load_dotenv()
 
@@ -194,11 +195,8 @@ def generar_graficas(resultados, coefs_dict):
 def main():
     args = parser.initialite_parser()
 
-    api_key = os.getenv("WANDB_KEY")
-    if not api_key:
-        print("WANDB_ACCESS_KEY no encontrada en .env — los runs no se registrarán")
-    else:
-        wandb.login(key=api_key)
+    if not wf.inicializar_apikey_wandb():
+        return
 
     eliminar = args.eliminar_correladas
     X, y = cargar_dataset_general(eliminar_correladas=eliminar)

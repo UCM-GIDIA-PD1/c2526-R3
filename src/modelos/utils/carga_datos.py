@@ -167,3 +167,14 @@ def cargar_dataset_clasificacion_todas_variables():
     y = df['final']
 
     return X, y
+
+def cargar_dataset_regresion_todas_variables():
+
+    cliente = crear_cliente()
+    ruta = 'grupo3/cleaned/Modelo_Incendios_final.parquet'
+    df = bajar_fichero(cliente, ruta)
+
+    X = df.drop(columns = ['frp_mean'])
+    y = df['frp_mean']
+
+    return X, y

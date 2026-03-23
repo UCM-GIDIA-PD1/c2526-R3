@@ -13,12 +13,9 @@ import modelos.utils.carga_datos as cg
 from modelos.utils.particiones import split_regresion as train
 from modelos.utils.metricas import evaluar_regresion
 import modelos.utils.anomalias as anomalias
+import modelos.utils.wandbFunctions as wf
+import modelos.utils.personalizacion as pers
 
-load_dotenv()
-os.environ["WANDB_API_KEY"] = os.getenv("WANDB_KEY")
-
-os.environ.pop("WANDB_SWEEP_ID", None)
-os.environ.pop("SWEEP_ID_REGXG", None)
 
 WANDB_ENTITY = "pd1-c2526-team3"
 WANDB_PROJECT = "XGBoost-regresion"
@@ -26,28 +23,11 @@ SWEEP_PATH = Path(__file__).with_name("sweep_xgBoost.yaml")
 SEED = 42
 NUM_IT = 0
 
-def cargar_configuracion(ruta_yaml: Path = SWEEP_PATH):
-    """Carga la configuración del sweep desde el YAML de forma estricta."""
-    with open(ruta_yaml, "r", encoding="utf-8") as f:
-        return yaml.safe_load(f)
 
-def forzar_nuevo_sweep():
-    """Ignora el entorno y obliga a Weights & Biases a crear un sweep nuevo."""
-    config_sweep = cargar_configuracion()
-    sweep_id = wandb.sweep(config_sweep, entity=WANDB_ENTITY, project=WANDB_PROJECT)
-    return sweep_id
-
-def wandb_init(nombre, it):
-    return wandb.init(
-        entity=WANDB_ENTITY,
-        project=WANDB_PROJECT,
-        name=f'{nombre}-{it}'
-    )
-
-def xg_regresion(X_train, X_val, X_test, y_train, y_val, y_test):
+def xg_regresion(X_train, X_val, X_test, y_train, y_val, y_test, nombre = None):
     global NUM_IT
     NUM_IT += 1
-    run = wandb_init(nombre='bayes-xgbRegresion', it=NUM_IT)
+    run = wf.wandb_init(WANDB_PROJECT,nombre, NUM_IT)
     config = wandb.config
 
     model = XGBRegressor(
@@ -112,17 +92,23 @@ def xg_regresion(X_train, X_val, X_test, y_train, y_val, y_test):
     run.finish()
 
 def main():
-    X, y = cg.cargar_dataset_incendios(eliminar_correladas=False)
+
+    if not wf.inicializar_apikey_wandb():
+        return
+
+    X, y = cg.cargar_dataset_regresion_todas_variables(eliminar_correladas=False)
     X_train, X_val, X_test, y_train, y_val, y_test = train(X, y)
 
-    def entrenamiento():
-        xg_regresion(X_train, X_val, X_test, y_train, y_val, y_test)
+    nombre,iters = pers.pregunta_iters_nombre()
 
-    sweep_id = forzar_nuevo_sweep()
+    def entrenamiento():
+        xg_regresion(X_train, X_val, X_test, y_train, y_val, y_test, nombre)
+
+    sweep_id = wf.crear_sweep_id(WANDB_PROJECT, SWEEP_PATH)
     wandb.agent(
         sweep_id=sweep_id,
         function=entrenamiento,
-        count=25,
+        count=iters,
         entity=WANDB_ENTITY,
         project=WANDB_PROJECT,
     )

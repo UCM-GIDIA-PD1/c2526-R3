@@ -127,10 +127,11 @@ def cargar_dataset_incendios(years=YEARS, eliminar_correladas=True, logs=True):
     df = df.drop(columns=['date_last', 'count', 'lat', 'lon', 'frp_sum', 'final', 'duration_days', 'date'])
 
     # Eliminar columnas de metadatos que no son features
-    cols_metadatos = ["date_last", "count", "lat", "lon", "frp_sum",
+    
+    """cols_metadatos = ["date_last", "count", "lat", "lon", "frp_sum",
                       "final", "duration_days", "date", "_year"]
     df = df.drop(columns=[c for c in cols_metadatos if c in df.columns])
-
+    """
     if eliminar_correladas:
         df = df.drop(columns=COLS_ELIMINAR, errors="ignore")
 

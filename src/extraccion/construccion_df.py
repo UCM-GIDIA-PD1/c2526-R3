@@ -250,3 +250,25 @@ def concatenar_df():
     df = pd.concat(dfs)
 
     minioFunctions.preguntar_subida(df, f"grupo3/raw/{variable}/")
+
+
+def concatenar_variables():
+
+    nombre_parquet = input("Introduce el nombre de los parquets a juntar: ")
+    lista_var = ['Pendiente', 'Fisicas', 'Suelo2', 'civilizacion', 'Vegetacion']
+    cliente = minioFunctions.crear_cliente()
+    
+    for variable in lista_var:
+        carpeta = f"grupo3/raw/{variable}"
+        elementos = cliente.list_objects('pd1', prefix = carpeta, recursive = True)
+        archs = [elem.object_name for elem in elementos if elem.object_name == f'{nombre_parquet}.parquet']
+
+        
+    dfs = []
+
+    for arch in archs:
+        dfs.append(minioFunctions.bajar_fichero(cliente, arch))
+    
+    df = pd.concat(dfs)
+
+    minioFunctions.preguntar_subida(df, f"grupo3/raw/Nuevas_Zonas/")

@@ -3,6 +3,7 @@ import time
 import pandas as pd
 import asyncio
 import aiohttp
+from functools import reduce
 
 sem_global = asyncio.Semaphore(20)
 
@@ -12,18 +13,18 @@ async def procesar_fila_completa(session, row, index, directo):
     Extrae las caracteristicas ambientales para una sola observacion.
     
     Importante:
-    - Asume que 'row' es una tupla que contiene los atributos 'date_first', 'lat_mean' y 'lon_mean'.
+    - Asume que 'row' es una tupla que contiene los atributos 'date', 'lat' y 'lon'.
     - Aplica un retraso escalonado (index * 0.1) para disminuir el riesgo de bloqueos por parte de las APIs
     """
 
     async with sem_global:
         
         await asyncio.sleep(index * 0.1)
-        fecha_str = row.date_first.strftime('%Y-%m-%d')
+        fecha_str = row.date.strftime('%Y-%m-%d')
         tareas = [
-            fisicas.fetch_environment(session, row.lat_mean, row.lon_mean, fecha_str, directo),
-            vegetacion.vegetacion(row.lat_mean, row.lon_mean, fecha_str),
-            pendiente.pendiente(row.lat_mean, row.lon_mean, fecha_str),
+            fisicas.fetch_environment(session, row.lat, row.lon, fecha_str, directo),
+            vegetacion.vegetacion(row.lat, row.lon, fecha_str),
+            pendiente.pendiente(row.lat, row.lon, fecha_str),
         ]
 
         try:
@@ -55,7 +56,7 @@ async def build_environmental_df(file, limit=100, fecha_ini=None, fecha_fin=None
 
     no_fires = puntos_sinteticos.crearSinteticos(fires, False)
     
-    no_fires = no_fires.rename(columns={'lat': 'lat_mean', 'lon': 'lon_mean', 'date': 'date_first'})
+    no_fires = no_fires.rename(columns={'lat': 'lat', 'lon': 'lon', 'date': 'date'})
     
     for col in fires.columns:
         if col not in no_fires.columns and col != 'final':
@@ -65,7 +66,7 @@ async def build_environmental_df(file, limit=100, fecha_ini=None, fecha_fin=None
     no_fires["final"] = 0
 
     merged = pd.concat([fires, no_fires], ignore_index=True)
-    merged['date_first'] = pd.to_datetime(merged['date_first'])
+    merged['date'] = pd.to_datetime(merged['date'])
 
     async with aiohttp.ClientSession() as session:
 
@@ -147,15 +148,15 @@ def merge_parquets(path_list, anio):
     incendios_y_no_incendios = minioFunctions.bajar_fichero(cliente, path_list[0], "df")
     incendios_y_no_incendios.rename(
         columns={
-            "date_first" : "date",
-            "lat_mean" : "lat",
-            "lon_mean" : "lon"
+            "date" : "date",
+            "lat" : "lat",
+            "lon" : "lon"
         }, inplace = True
     )
 
     #Las seleccionamos para posteriormente tratar los nulos
     columns = incendios_y_no_incendios.columns
-    columns = [col for col in columns if col not in ['date', 'date_last', 'date_first']]
+    columns = [col for col in columns if col not in ['date', 'date_last', 'date']]
 
     #Saneamos el problema con las fechas (distintos formatos en los distintos dataframes)
     incendios_y_no_incendios['date'] = pd.to_datetime(incendios_y_no_incendios['date'], format='mixed').dt.normalize()
@@ -221,7 +222,7 @@ def juntar_incendios():
         #Outer join sobre las columnas de no_incendios => las columnas extra de "incendios" en "no_incendios" seran NaN
         merged = pd.concat([df_inc, df_no_inc], ignore_index=True)
 
-        merged['date_first'] = merged['date_first'].astype(str)
+        merged['date'] = merged['date'].astype(str)
         
         #Subimos a minio
         anio = incendio.object_name.split("_")[-1] #Cogemos el año y extensión .parquet
@@ -251,24 +252,52 @@ def concatenar_df():
 
     minioFunctions.preguntar_subida(df, f"grupo3/raw/{variable}/")
 
+from functools import reduce
 
 def concatenar_variables():
+    '''
+    Función para unir las variables de un .parquet con el mismo nombre.
+    '''
 
-    nombre_parquet = input("Introduce el nombre de los parquets a juntar: ")
+    nombre_parquet = input("Introduce el nombre de los parquets a juntar (sin .parquet): ")
     lista_var = ['Pendiente', 'Fisicas', 'Suelo2', 'civilizacion', 'Vegetacion']
     cliente = minioFunctions.crear_cliente()
     
-    for variable in lista_var:
-        carpeta = f"grupo3/raw/{variable}"
-        elementos = cliente.list_objects('pd1', prefix = carpeta, recursive = True)
-        archs = [elem.object_name for elem in elementos if elem.object_name == f'{nombre_parquet}.parquet']
-
-        
     dfs = []
 
-    for arch in archs:
-        dfs.append(minioFunctions.bajar_fichero(cliente, arch))
-    
-    df = pd.concat(dfs)
+    for variable in lista_var:
+        carpeta = f"grupo3/raw/{variable}"
+        elementos = cliente.list_objects('pd1', prefix=carpeta, recursive=True)
+        archs = [elem.object_name for elem in elementos if elem.object_name.endswith(f'{nombre_parquet}.parquet')]
+        
+        for arch in archs:
+            df_temp = minioFunctions.bajar_fichero(cliente, arch, "df")
+            
+            if df_temp is not None:
+                df_temp.rename(columns={'lat_mean': 'lat', 'lon_mean': 'lon', 'date_first': 'date'}, inplace=True)
+                
+                if 'date' in df_temp.columns:
+                    df_temp['date'] = pd.to_datetime(df_temp['date']).dt.normalize()
+                
+                dfs.append(df_temp)
 
-    minioFunctions.preguntar_subida(df, f"grupo3/raw/Nuevas_Zonas/")
+    df_final = dfs[0]
+    
+    for i, df2 in enumerate(dfs[1:], start=1):
+
+        columnas_comunes = ['lat', 'lon']
+
+        if 'date' in df_final.columns and 'date' in df2.columns:
+            columnas_comunes.append('date')
+        
+        print(f"Uniendo DataFrame {i} usando las columnas: {columnas_comunes}")
+        
+        df_final = pd.merge(df_final, df2, on=columnas_comunes, how='left')
+    
+    print(f"Columnas finales: {df_final.columns.tolist()}")
+    minioFunctions.preguntar_subida(df_final, f"grupo3/raw/Nuevas_Zonas/")
+    
+
+
+if __name__ =="__main__":
+    concatenar_variables()

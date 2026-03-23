@@ -6,29 +6,43 @@ metric:
 early_terminate:
   type: hyperband
   min_iter: 50
+
 parameters:
   objective:
-    distribution: categorical
-    values:
-      - reg:squarederror
-      - reg:absoluteerror
+    value: "reg:squarederror" 
   max_depth:
     distribution: int_uniform
     min: 3
-    max: 10
+    max: 12 
+  learning_rate:
+    distribution: log_uniform_values
+    min: 0.005
+    max: 0.2
+  n_estimators:
+    distribution: int_uniform
+    min: 100
+    max: 1000
   min_child_weight:
     distribution: int_uniform
     min: 1
-    max: 7
+    max: 10
+
+  subsample:
+    distribution: uniform
+    min: 0.5
+    max: 1.0 
+  colsample_bytree:
+    distribution: uniform
+    min: 0.5
+    max: 1.0 
+    distribution: log_uniform_values 
+    min: 1e-3
+    max: 10.0
+  reg_alpha:
+    distribution: log_uniform_values 
+    min: 1e-3
+    max: 10.0
   gamma:
     distribution: uniform
-    min: 0.0
-    max: 5.0
-  n_estimators:
-    distribution: int_uniform
-    min: 50
-    max: 750
-  learning_rate:
-    distribution: uniform
-    min: 0.01
-    max: 0.3
+    min: 0
+    max: 0.5

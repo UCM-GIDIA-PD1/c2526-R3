@@ -1,19 +1,5 @@
-import sys
-from pathlib import Path
-import os
-
-ruta_script = Path(__file__).resolve()  
-ruta_src = ruta_script.parent.parent.parent 
-ruta_extraccion = ruta_src / "extraccion"
-
-sys.path.append(str(ruta_extraccion))
-
-try:
-    import minioFunctions
-    print("minioFunctions cargado")
-except ImportError as e:
-    sys.exit(1)
-
+#sys.path.append(str(Path(__file__).resolve().parents[2] / "extraccion"))
+from extraccion import minioFunctions 
 import wandb
 import xgboost as xgb
 from sklearn.model_selection import train_test_split
@@ -23,7 +9,7 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from modelos import parser
-from modelos.utils import personalizacion as per
+from modelos.utils import personalizacion as per, wandbFunctions as wf
 from modelos.clasificacion import ventanas_temporales as vt
 
 def menu():
@@ -35,13 +21,6 @@ def menu():
     assert opcion == 1 or opcion == 2, "Número no válido"
 
     return opcion
-
-def conectar_WANDB():
-    #Conexion con WANDB
-    wandb.require("core") 
-    os.environ["WANDB_START_METHOD"] = "thread"
-    minioFunctions.load_dotenv()
-    os.environ['WANDB_API_KEY'] = os.getenv('WANDB_KEY')
 
 def funcionalidad_tags():
     #Inicializamos parser para pasar las características de nuestro modelo por consola
@@ -78,7 +57,7 @@ def ventanas_temporales_y_anomalias():
 
     #MinIO
     cliente = minioFunctions.crear_cliente()
-    df = minioFunctions.bajar_fichero(cliente, "grupo3/cleaned/final_date_transformado2.parquet", "df")
+    df = minioFunctions.bajar_fichero(cliente, "grupo3/cleaned/archivo_definitivo.parquet", "df")
 
     #Primer paso: aplicación de ventanas temporales
     df = vt.crear_features_temporales(df)
@@ -104,7 +83,6 @@ def train(tags, class_names, feature_names, X_train, X_test, y_train, y_test):
                     tags=tags) as run:
         
         config_dict = dict(wandb.config)
-        
         umbral = config_dict.pop('umbral_decision', 0.5)
         
         params_xgb = {
@@ -112,48 +90,36 @@ def train(tags, class_names, feature_names, X_train, X_test, y_train, y_test):
             'use_label_encoder': False,
             'eval_metric': 'logloss'
         }
-
         params_xgb.update(config_dict)
-        
         clf = xgb.XGBClassifier(**params_xgb)
 
-        clf.fit(
-            X_train, y_train,
-            eval_set=[(X_test, y_test)],
-            verbose=False
-        )
+        clf.fit(X_train, y_train, eval_set=[(X_test, y_test)], verbose=False)
         
         y_probas = clf.predict_proba(X_test)
         y_pred = (y_probas[:, 1] >= umbral).astype(int) 
-
         y_test_array = y_test.to_numpy()
 
-        #Métricas
+        # Métricas
         accuracy = (y_pred == y_test_array).mean()
         f1 = f1_score(y_test_array, y_pred)
         recall = recall_score(y_test_array, y_pred)
         precision = precision_score(y_test_array, y_pred)
         
-        #Mostramos en WANDB
+        # Mostramos en WANDB
         wandb.log({
             "metricas/accuracy": accuracy,
             "metricas/f1_score": f1,
             "metricas/recall": recall,
             "metricas/precision": precision,
-
             "graficas/roc_nativa": wandb.plot.roc_curve(y_test_array, y_probas, labels=class_names),
-            "graficas/pr_nativa": wandb.plot.pr_curve(y_test_array, y_probas, labels=class_names),
-            "graficas/matriz_confusion": wandb.plot.confusion_matrix(
-                preds=y_pred, 
-                y_true=y_test_array, 
-                class_names=class_names
-            )
+            "graficas/pr_nativa": wandb.plot.pr_curve(y_test_array, y_probas, labels=class_names)
         })
 
         plot_roc(y_test, y_probas, labels=class_names)
         plot_precision_recall(y_test, y_probas, labels=class_names)
-        plot_feature_importances(clf)
         
+        wf.matriz_confusion_feature_importance(clf, y_pred, y_test_array, feature_names)
+
         wandb.sklearn.plot_classifier(
             clf, X_train, X_test, y_train, y_test, 
             y_pred, y_probas, labels=class_names, 
@@ -162,15 +128,15 @@ def train(tags, class_names, feature_names, X_train, X_test, y_train, y_test):
 
         xgb.plot_importance(clf)
         wandb.log({"importancia_variables_xgb": wandb.Image(plt)})
-        plt.close() 
+        plt.close()
 
 if __name__ == "__main__":
-    wandb.login(key=os.getenv('WANDB_KEY'))
+    assert wf.inicializar_apikey_wandb(), "Error: No se pudo cargar la API Key de WandB."
+    wandb.login() 
+
     proyecto = "XGboost"
     entidad = "pd1-c2526-team3"
 
-    #'max_delta_step': {'values': [1, 5, 10]},
-    
     configuraciones = {
         "random_ventanas_anomalias": {
             'method': 'random',
@@ -203,7 +169,6 @@ if __name__ == "__main__":
     }
 
     runs_por_configuracion = 15
-    conectar_WANDB()
     opcion = menu()
     
     if opcion == 1:

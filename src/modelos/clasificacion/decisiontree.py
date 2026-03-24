@@ -96,7 +96,7 @@ def clasificacion():
     if not wf.inicializar_apikey_wandb():
         return
     
-    X, y = cg.cargar_dataset_clasificacion_todas_variables()
+    X, y = cg.cargar_dataset_clasificacion()
 
     X_train, X_val, X_test, y_train, y_val, y_test = part.split_estratificado(X, y)
 

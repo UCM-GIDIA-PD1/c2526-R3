@@ -158,10 +158,10 @@ def cargar_dataset_incendios(years=YEARS, eliminar_correladas=True, logs=True):
     return X, y
 
 
-def cargar_dataset_clasificacion_todas_variables():
+def cargar_dataset_clasificacion():
 
     cliente = crear_cliente()
-    ruta = 'grupo3/cleaned/final_date_transformado_civilizacion.parquet'
+    ruta = 'grupo3/cleaned/MINI.parquet'
     df = bajar_fichero(cliente, ruta)
 
     X = df.drop(columns = ['final'])
@@ -169,10 +169,10 @@ def cargar_dataset_clasificacion_todas_variables():
 
     return X, y
 
-def cargar_dataset_regresion_todas_variables():
+def cargar_dataset_frp():
 
     cliente = crear_cliente()
-    ruta = 'grupo3/cleaned/Modelo_Incendios_final.parquet'
+    ruta = 'grupo3/cleaned/MI.parquet'
     df = bajar_fichero(cliente, ruta)
 
     X = df.drop(columns = ['frp_mean'])

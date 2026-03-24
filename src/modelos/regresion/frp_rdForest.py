@@ -97,7 +97,7 @@ def main():
     if not wf.inicializar_apikey_wandb():
         return
     
-    X, y = cg.cargar_dataset_incendios(eliminar_correladas=False)
+    X, y = cg.cargar_dataset_frp()
     
     X_train, X_val, X_test, y_train, y_val, y_test = train(X, y)
 

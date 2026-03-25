@@ -53,7 +53,7 @@ async def build_environmental_df(file, limit=100, fecha_ini=None, fecha_fin=None
     
     assert not fires.empty, "El DataFrame está vacio"
 
-    no_fires = puntos_sinteticos.crearSinteticos(fires, False)
+    no_fires = puntos_no_incendio.crearSinteticos(fires, False)
     
     no_fires = no_fires.rename(columns={'lat': 'lat_mean', 'lon': 'lon_mean', 'date': 'date_first'})
     
@@ -257,11 +257,14 @@ def concatenar_variables():
     nombre_parquet = input("Introduce el nombre de los parquets a juntar: ")
     lista_var = ['Pendiente', 'Fisicas', 'Suelo2', 'civilizacion', 'Vegetacion']
     cliente = minioFunctions.crear_cliente()
-    
+    archs = []
+
     for variable in lista_var:
+        print(variable)
         carpeta = f"grupo3/raw/{variable}"
         elementos = cliente.list_objects('pd1', prefix = carpeta, recursive = True)
-        archs = [elem.object_name for elem in elementos if elem.object_name == f'{nombre_parquet}.parquet']
+        arch = [elem.object_name for elem in elementos if elem.object_name.endswith(f'{nombre_parquet}.parquet')]
+        archs.append(arch)
 
         
     dfs = []
@@ -272,3 +275,6 @@ def concatenar_variables():
     df = pd.concat(dfs)
 
     minioFunctions.preguntar_subida(df, f"grupo3/raw/Nuevas_Zonas/")
+
+if __name__ == "__main__":
+    concatenar_variables()

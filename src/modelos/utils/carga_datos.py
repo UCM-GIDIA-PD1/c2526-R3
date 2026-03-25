@@ -17,8 +17,8 @@ from extraccion.minioFunctions import crear_cliente, bajar_fichero
 
 # ── Configuración ──────────────────────────────────────────────────────────────
 
-PREFIX_GENERAL   = "grupo3/cleaned/modelo_General"
-PREFIX_INCENDIOS = "grupo3/cleaned/Modelo_Incendios"
+PREFIX_GENERAL   = "grupo3/cleaned/MINI"
+PREFIX_INCENDIOS = "grupo3/cleaned/MI"
 YEARS            = [2022, 2023, 2024, 2025]
 
 # Variables eliminadas correlación alta (r > 0.90)

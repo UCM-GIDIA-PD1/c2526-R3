@@ -12,7 +12,7 @@ parameters:
     min: 2
   min_samples_leaf:
     distribution: int_uniform
-    max: 5
+    max: 10
     min: 1
   min_samples_split:
     distribution: int_uniform

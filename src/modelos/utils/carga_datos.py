@@ -164,7 +164,7 @@ def cargar_dataset_clasificacion():
     ruta = 'grupo3/cleaned/MINI.parquet'
     df = bajar_fichero(cliente, ruta)
 
-    X = df.drop(columns = ['final'])
+    X = df.drop(columns = ['final', 'date', 'date_last'])
     y = df['final']
 
     return X, y
@@ -175,7 +175,7 @@ def cargar_dataset_frp():
     ruta = 'grupo3/cleaned/MI.parquet'
     df = bajar_fichero(cliente, ruta)
 
-    X = df.drop(columns = ['frp_mean'])
+    X = df.drop(columns = ['frp_mean', 'date', 'date_last'])
     y = df['frp_mean']
 
     return X, y

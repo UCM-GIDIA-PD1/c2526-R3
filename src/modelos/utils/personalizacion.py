@@ -17,7 +17,7 @@ def pregunta_PCA():
             y = df['final']
             break
          elif pca.lower() == 'n':
-             X,y = cg.cargar_dataset_general(eliminar_correladas=False)
+             X,y = cg.cargar_dataset_clasificacion(eliminar_correladas=False)
              break
          else:
              print("Entrada no válida. Por favor, ingresa 's' para sí o 'n' para no.")

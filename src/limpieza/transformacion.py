@@ -69,7 +69,7 @@ def obtener_df_pca(num_componentes):
 def tranformar_date():
     '''
     Extrae de la columna "date" el día y lo transforma a un formato cíclico para 
-    que el modelo pueda entenderlo mejor (usando senos y cosenos).
+    que el modelo pueda entenderlo mejor (usando senos y cosenos). Posteriormente lo sube a MinIO
     '''
 
     df = lp.bajar_df_final()

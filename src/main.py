@@ -9,7 +9,6 @@ import traceback
 from extraccion import mascaras, minioFunctions
 from shapely.geometry import box
 import geopandas as gpd
-
 # Función encargada de unificar y facilitar el debug de cada módulo, avisar de imports faltantes y diferentes rutas
 
 
@@ -26,11 +25,10 @@ def setup_earth_engine():
 
     try:
         import ee
-
         ruta_creds = os.getenv('RUTA_CREDENCIALES')
         
-        print(f"\n🔑 Configurando Earth Engine...")
-        print(f"   📁 RUTA_CREDENCIALES = {ruta_creds}")
+        print(f"\n Configurando Earth Engine...")
+        print(f"RUTA_CREDENCIALES = {ruta_creds}")
 
         if not ruta_creds:
             print("   CUIDADO!!! Variable RUTA_CREDENCIALES no definida en .env")
@@ -451,7 +449,6 @@ async def main():
 
         elif opcion == "13" and MODULOS_CARGADOS:
             await ejecutar_funcion("Civilización", civilizacion.civilizacion, df_incendios)
-
         
         elif opcion == "14":
             mascaras.extraer_mascaras_faltantes()

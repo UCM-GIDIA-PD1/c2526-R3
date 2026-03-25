@@ -42,13 +42,15 @@ def split_simple(X, y):
     X_tv, X_test, y_tv, y_test = train_test_split(
         X, y,
         test_size=TEST_SIZE,
-        random_state=SEED
+        random_state=SEED,
+        shuffle=False
     )
     # Segundo split: 80% train / 10% val (= 0.111 del 90%)
     X_train, X_val, y_train, y_val = train_test_split(
         X_tv, y_tv,
         test_size=VAL_SIZE / (1 - TEST_SIZE),
-        random_state=SEED
+        random_state=SEED, 
+        shuffle=False
     )
     _imprimir_resumen("SIMPLE", y_train, y_val, y_test)
     return X_train, X_val, X_test, y_train, y_val, y_test
@@ -69,13 +71,15 @@ def split_estratificado(X, y):
         X, y,
         test_size=TEST_SIZE,
         random_state=SEED,
-        stratify=y          # ← mantiene proporción de clases
+        stratify=y,         # ← mantiene proporción de clases
+        shuffle=False
     )
     X_train, X_val, y_train, y_val = train_test_split(
         X_tv, y_tv,
         test_size=VAL_SIZE / (1 - TEST_SIZE),
         random_state=SEED,
-        stratify=y_tv       # ← también en el segundo split
+        stratify=y_tv,       # ← también en el segundo split
+        shuffle=False
     )
     _imprimir_resumen("ESTRATIFICADO", y_train, y_val, y_test)
     return X_train, X_val, X_test, y_train, y_val, y_test
@@ -135,12 +139,14 @@ def split_regresion(X, y):
     X_tv, X_test, y_tv, y_test = train_test_split(
         X, y,
         test_size=TEST_SIZE,
-        random_state=SEED
+        random_state=SEED,
+        shuffle=False
     )
     X_train, X_val, y_train, y_val = train_test_split(
         X_tv, y_tv,
         test_size=VAL_SIZE / (1 - TEST_SIZE),
-        random_state=SEED
+        random_state=SEED,
+        shuffle=False
     )
     _imprimir_resumen_regresion(y_train, y_val, y_test)
     return X_train, X_val, X_test, y_train, y_val, y_test

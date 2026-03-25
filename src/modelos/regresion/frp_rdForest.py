@@ -15,48 +15,21 @@ from modelos.utils.metricas import evaluar_regresion
 
 # Importar el módulo de anomalías (ajusta la ruta relativa según tu estructura exacta)
 import modelos.utils.anomalias as anomalias
+import modelos.utils.wandbFunctions as wf
+import modelos.utils.personalizacion as pers
 
-load_dotenv()
-os.environ["WANDB_API_KEY"] = os.getenv("WANDB_KEY")
 
 WANDB_ENTITY = "pd1-c2526-team3"
 WANDB_PROJECT = "rdForest-frp-sweeps"
 SWEEP_PATH = Path(__file__).with_name("sweep.yaml")
 SEED = 42
-
-def cargar_configuracion(ruta_yaml: Path = SWEEP_PATH):
-    """Carga la configuración del sweep desde el YAML."""
-    with open(ruta_yaml, "r", encoding="utf-8") as f:
-        return yaml.safe_load(f)
+NUM_IT = 0
 
 
-def obtener_sweep_id():
-    """
-    Usa un sweep ya creado si existe en variables de entorno.
-    Si no existe, crea uno nuevo a partir del YAML.
-    """
-    sweep_id = os.getenv("WANDB_SWEEP_ID") or os.getenv("SWEEP_ID_REGRESION")
-    if sweep_id:
-        print(f"Usando sweep existente: {sweep_id}")
-        return sweep_id
-
-    config_sweep = cargar_configuracion()
-    sweep_id = wandb.sweep(config_sweep, entity=WANDB_ENTITY, project=WANDB_PROJECT)
-    print(f"Sweep creado desde YAML: {sweep_id}")
-    return sweep_id
-
-
-def wandb_init(nombre, it):
-    return wandb.init(
-        entity=WANDB_ENTITY,
-        project=WANDB_PROJECT,
-        # name = f'{nombre}-{it}'
-    )
-
-def arboles_decision_regresion(X_train, X_val, X_test, y_train, y_val, y_test):
-    # global NUM_IT
-    # NUM_IT += 1
-    run = wandb_init(nombre=None, it=1)
+def arboles_decision_regresion(X_train, X_val, X_test, y_train, y_val, y_test, nombre = None):
+    global NUM_IT
+    NUM_IT += 1
+    run = wf.wandb_init(nombre=nombre, it=NUM_IT)
     config = wandb.config
 
     model = RandomForestRegressor(
@@ -121,19 +94,23 @@ def arboles_decision_regresion(X_train, X_val, X_test, y_train, y_val, y_test):
     run.finish()
 
 def main():
-    X, y = cg.cargar_dataset_incendios(eliminar_correladas=False)
+    if not wf.inicializar_apikey_wandb():
+        return
+    
+    X, y = cg.cargar_dataset_frp()
     
     X_train, X_val, X_test, y_train, y_val, y_test = train(X, y)
 
+    nombre,iters = pers.pregunta_iters_nombre()
 
     def entrenamiento():
-        arboles_decision_regresion(X_train, X_val, X_test, y_train, y_val, y_test)
+        arboles_decision_regresion(X_train, X_val, X_test, y_train, y_val, y_test, nombre)
 
-    sweep_id = obtener_sweep_id()
+    sweep_id = wf.crear_sweep_id(WANDB_PROJECT, SWEEP_PATH)
     wandb.agent(
         sweep_id=sweep_id,
         function=entrenamiento,
-        count=25,
+        count=iters,
         entity=WANDB_ENTITY,
         project=WANDB_PROJECT,
     )

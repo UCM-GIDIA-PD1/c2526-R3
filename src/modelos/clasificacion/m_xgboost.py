@@ -15,9 +15,10 @@ sys.path.append(os.path.join(os.path.dirname(__file__), "..", ".."))
 from modelos.utils.carga_datos import cargar_dataset_general
 from modelos.utils.particiones import split_estratificado
 from modelos.utils.metricas import evaluar_clasificacion
+import modelos.utils.wandbFunctions as wf
 
 # Clave W&B — Juanan usa WANDB_KEY en el .env
-os.environ["WANDB_API_KEY"] = os.getenv("WANDB_KEY", "")
+# os.environ["WANDB_API_KEY"] = os.getenv("WANDB_KEY", "")
 
 WANDB_ENTITY = "pd1-c2526-team3"
 WANDB_PROJECT = "XGboost"
@@ -25,6 +26,9 @@ SEED = 42
 
 
 def main():
+    if not wf.inicializar_apikey_wandb():
+        return
+    
     # Todas las variables: no eliminar correladas por ahora
     X, y = cargar_dataset_general(eliminar_correladas=False)
 

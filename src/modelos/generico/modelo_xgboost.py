@@ -9,8 +9,9 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from modelos import parser
-from modelos.utils import personalizacion as per, wandbFunctions as wf
+from modelos.utils import personalizacion as per, wandbFunctions as wf, explicabilidad as exp
 from modelos.clasificacion import ventanas_temporales as vt
+import matplotlib.pyplot as plt
 
 def menu():
     print("Opciones: ")
@@ -78,6 +79,21 @@ def ventanas_temporales_y_anomalias():
 
     return tags, class_names, feature_names, X_train, X_test, y_train, y_test
 
+def explicabilidad_lime(clasificador, X_train, X_test):
+    '''
+    Explicabilidad de nuestro modelo XGBoost
+    '''
+    # Funciones del script explicabilidad.py para generar la gráfica
+    explicador = exp.inicializar_explicador(X_train)
+    explicacion_lime = exp.generar_explicacion(explicador, clasificador, X_test)
+    
+    fig_lime = explicacion_lime.as_pyplot_figure()
+    plt.tight_layout()
+
+    #Subimos a wandb
+    wandb.log({"explicabilidad/lime": wandb.Image(fig_lime)})
+    plt.close(fig_lime)
+
 def train(tags, class_names, feature_names, X_train, X_test, y_train, y_test):
     with wandb.init(settings=wandb.Settings(start_method="thread"),
                     tags=tags) as run:
@@ -129,6 +145,9 @@ def train(tags, class_names, feature_names, X_train, X_test, y_train, y_test):
         xgb.plot_importance(clf)
         wandb.log({"importancia_variables_xgb": wandb.Image(plt)})
         plt.close()
+
+        # Explicabilidad con LIME
+        explicabilidad_lime(clf, X_train, X_test)
 
 if __name__ == "__main__":
     assert wf.inicializar_apikey_wandb(), "Error: No se pudo cargar la API Key de WandB."

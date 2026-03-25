@@ -72,14 +72,14 @@ def split_estratificado(X, y):
         test_size=TEST_SIZE,
         random_state=SEED,
         stratify=y,         # ← mantiene proporción de clases
-        shuffle=False
+        shuffle=True
     )
     X_train, X_val, y_train, y_val = train_test_split(
         X_tv, y_tv,
         test_size=VAL_SIZE / (1 - TEST_SIZE),
         random_state=SEED,
         stratify=y_tv,       # ← también en el segundo split
-        shuffle=False
+        shuffle=True
     )
     _imprimir_resumen("ESTRATIFICADO", y_train, y_val, y_test)
     return X_train, X_val, X_test, y_train, y_val, y_test

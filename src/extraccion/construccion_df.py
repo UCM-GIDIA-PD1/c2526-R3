@@ -297,7 +297,3 @@ def concatenar_variables():
     print(f"Columnas finales: {df_final.columns.tolist()}")
     minioFunctions.preguntar_subida(df_final, f"grupo3/raw/Nuevas_Zonas/")
     
-
-
-if __name__ =="__main__":
-    concatenar_variables()

@@ -29,7 +29,7 @@ NUM_IT = 0
 def arboles_decision_regresion(X_train, X_val, X_test, y_train, y_val, y_test, nombre = None):
     global NUM_IT
     NUM_IT += 1
-    run = wf.wandb_init(nombre=nombre, it=NUM_IT)
+    run = wf.wandb_init(WANDB_PROJECT, nombre=nombre, it=NUM_IT)
     config = wandb.config
 
     model = RandomForestRegressor(

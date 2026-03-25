@@ -17,8 +17,8 @@ from extraccion.minioFunctions import crear_cliente, bajar_fichero
 
 # ── Configuración ──────────────────────────────────────────────────────────────
 
-PREFIX_GENERAL   = "grupo3/cleaned/modelo_General"
-PREFIX_INCENDIOS = "grupo3/cleaned/Modelo_Incendios"
+PREFIX_GENERAL   = "grupo3/cleaned/MINI"
+PREFIX_INCENDIOS = "grupo3/cleaned/MI"
 YEARS            = [2022, 2023, 2024, 2025]
 
 # Variables eliminadas correlación alta (r > 0.90)
@@ -39,15 +39,14 @@ TARGET_REGRESION     = "log_frp"
 def _cargar_parquets(prefix: str, years: list) -> pd.DataFrame:
     cliente = crear_cliente()
     dfs = []
-    for year in years:
-        key = f"{prefix}_{year}.parquet"
-        print(f"  Descargando {key}...")
-        df = bajar_fichero(cliente, key)
-        if df is not None:
-            df["_year"] = year
-            dfs.append(df)
-        else:
-            print(f"  ⚠️  No se pudo descargar {key}")
+    #for year in years:
+    key = f"{prefix}.parquet"
+    print(f"  Descargando {key}...")
+    df = bajar_fichero(cliente, key)
+    if df is not None:
+        dfs.append(df)
+    else:
+        print(f"  ⚠️  No se pudo descargar {key}")
     if not dfs:
         raise RuntimeError(
             "No se cargó ningún archivo. ¿Tienes la VPN de la UCM activa?"
@@ -158,13 +157,13 @@ def cargar_dataset_incendios(years=YEARS, eliminar_correladas=True, logs=True):
     return X, y
 
 
-def cargar_dataset_clasificacion():
+def cargar_dataset_clasificacion_todas_variables():
 
     cliente = crear_cliente()
-    ruta = 'grupo3/cleaned/MINI.parquet'
+    ruta = 'grupo3/cleaned/final_date_transformado_civilizacion.parquet'
     df = bajar_fichero(cliente, ruta)
 
-    X = df.drop(columns = ['final'])
+    X = df.drop(columns = ['final', 'date', 'date_last'])
     y = df['final']
 
     return X, y
@@ -175,7 +174,7 @@ def cargar_dataset_frp():
     ruta = 'grupo3/cleaned/MI.parquet'
     df = bajar_fichero(cliente, ruta)
 
-    X = df.drop(columns = ['frp_mean'])
+    X = df.drop(columns = ['frp_mean', 'date', 'date_last'])
     y = df['frp_mean']
 
     return X, y

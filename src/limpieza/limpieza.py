@@ -22,6 +22,46 @@ def limpieza(df):
 
     return [df1.dropna(), df2.dropna(), df3.dropna(), df4.dropna()]
 
+def mostrar_nulos(df):
+    """
+    Retorna un resumen de las columnas que tienen nulos y cuántos tienen.
+    """
+
+    if df is None:
+        return None
+    
+    nulos = df.isna().sum()
+    columnas_con_nulos = nulos[nulos > 0]
+    
+    if columnas_con_nulos.empty:
+        return None
+    
+    return columnas_con_nulos
+
+def limpieza_nulos(df, columnas=None):
+    """
+    Borra filas con valores nulos. 
+    Si 'columnas' es una lista, solo mira nulos en esas columnas.
+    Si 'columnas' es None o vacía, mira en todo el DataFrame.
+    """
+
+    if df is None:
+        return None
+    
+    df_temp = df.copy()
+    
+    if columnas:
+        columnas_validas = [c for c in columnas if c in df_temp.columns]
+        print(f"Filtrando nulos en columnas: {columnas_validas}")
+        df_temp = df_temp.dropna(subset=columnas_validas)
+    else:
+        print("Filtrando nulos en todas las columnas del DataFrame")
+        df_temp = df_temp.dropna()
+
+    mf.preguntar_subida(df_temp, "grupo3/cleaned/")
+        
+    return df_temp
+
 def limpieza_coordenadas():
     '''
     XGBoost le está dando demasiada importancia a las variables de latitud y longitud, por lo que vamos

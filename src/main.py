@@ -9,6 +9,7 @@ import traceback
 from extraccion import mascaras, minioFunctions
 from shapely.geometry import box
 import geopandas as gpd
+from limpieza import limpieza
 # Función encargada de unificar y facilitar el debug de cada módulo, avisar de imports faltantes y diferentes rutas
 
 
@@ -188,6 +189,8 @@ async def mostrar_menu():
         print("  11. Juntar todas las variables por año (merge)")
         print("  12. Nueva variable suelo2")
         print("  13. Nueva variable civilizacion")
+        print("  14. Extraer máscaras faltantes")
+        print("  15. Limpieza de valores nulos")
     print("  0. Salir")
     print(" "*60)
 
@@ -453,6 +456,71 @@ async def main():
         elif opcion == "14":
             mascaras.extraer_mascaras_faltantes()
 
+        elif opcion == "15" and MODULOS_CARGADOS:
+            nulos = input("\n¿Quieres ver los valores nulos? (s/n): ").strip()
+
+            if nulos == "s":
+                print("\n Analizando valores nulos...")
+                
+                resumen_nulos = await asyncio.to_thread(limpieza.mostrar_nulos, df_incendios)
+                
+                if resumen_nulos is None:
+                    print("El DataFrame no tiene valores nulos.")
+                else:
+                    print("\n Columnas con valores nulos detectadas:")
+                    print("-" * 40)
+                    for col, cantidad in resumen_nulos.items():
+                        porcentaje = (cantidad / len(df_incendios)) * 100
+                        print(f" {col.ljust(20)} | {str(cantidad).rjust(7)} nulos ({porcentaje:.2f}%)")
+                    print("-" * 40)
+                
+            confirmar_limpieza = input("\n¿Quieres realizar ya la limpieza? (s/n): ").strip()
+            if confirmar_limpieza == "s":
+                print("\n Opciones de limpieza por categorías:")
+                print("  1. Físicas (Temperatura, Viento, Presión, etc.)")
+                print("  2. Pendiente (Grados, Elevación, etc.)")
+                print("  3. Suelo (Temperatura del suelo)")
+                print("  4. Vegetación (NDVI, NDWI)")
+                print("  5. Distancia a la civilización")
+                print("  6. Otras (especificar nombres de columnas)")
+
+                entrada = input("\nSelecciona números (separados por coma y sin espacios) o Enter para TODAS: ").strip()
+
+                mapeo_categorias = {
+                    "1": ['temp_mean', 'temp_max', 'temp_min', 'humidity_mean', 'precipitation', 'wind_speed_max', 'wind_gusts_max',
+                            'pressure_mean', 'cloud_cover', 'radiation', 'evapotranspiration',
+                            'sunshine_seconds'],
+                    "2": ['porcentaje', 'grados', 'elevacion_centro'],
+                    "3": ['soil_temp'],
+                    "4": ['NDVI', 'NDWI'],
+                    "5": ['dist_civ']
+                }
+
+                cols_finales = []
+                if entrada:
+                    selecciones = [s.strip() for s in entrada.split(",")]
+                    for s in selecciones:
+                        if s in mapeo_categorias:
+                            cols_finales.extend(mapeo_categorias[s])
+                        elif s == "6":
+                            entrada2 = input("\nEscribe las columnas que quieres eliminar para la opción 6 (separados por coma y sin espacios): ").strip()
+                            if entrada2:
+                                columnas = [s.strip() for s in entrada2.split(",")]
+                                cols_finales.extend(columnas) 
+                    cols_finales = list(set([c for c in cols_finales if c in df_incendios.columns]))
+                else:
+                    cols_finales = None
+
+                print(" Procesando limpieza...")
+                filas_antes = len(df_incendios)
+                
+                df_incendios = await asyncio.to_thread(limpieza.limpieza_nulos, df_incendios, cols_finales)
+                
+                filas_despues = len(df_incendios)
+                print(f"\n ¡Limpieza completada!")
+                print(f" Filas eliminadas: {filas_antes - filas_despues}")
+                print(f" Filas restantes: {filas_despues}")
+    
 
         elif opcion == "0":
             print("\n   ¡Adios! Pasa un buen día ")

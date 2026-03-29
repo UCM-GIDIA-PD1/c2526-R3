@@ -10,6 +10,7 @@ from extraccion import mascaras, minioFunctions
 from shapely.geometry import box
 import geopandas as gpd
 from limpieza import limpieza
+from modelos.evaluacion import evaluacion_final
 # Función encargada de unificar y facilitar el debug de cada módulo, avisar de imports faltantes y diferentes rutas
 
 
@@ -191,6 +192,7 @@ async def mostrar_menu():
         print("  13. Nueva variable civilizacion")
         print("  14. Extraer máscaras faltantes")
         print("  15. Limpieza de valores nulos")
+        print("  16. Evaluar modelo final")
     print("  0. Salir")
     print(" "*60)
 
@@ -316,7 +318,7 @@ async def main():
         await mostrar_menu()
         opcion = input("\n🔷 Selecciona una opción (0-13): ").strip()
 
-        if pregunta and opcion not in ["0", "5", "6", "8",'10', '11', '14']:
+        if pregunta and opcion not in ["0", "5", "6", "8",'10', '11', '14', '16']:
             resultado = pedirDatos()
             pregunta = False
 
@@ -521,6 +523,15 @@ async def main():
                 print(f" Filas eliminadas: {filas_antes - filas_despues}")
                 print(f" Filas restantes: {filas_despues}")
     
+        elif opcion == "16":
+            print("1.DecisionTree.")
+            print("2.XGBoost.")
+            print("3.BalancedRandomForest.")
+            print("4.RandomForest.")
+            print("5.Regresión logística.")
+            modelo = input("Indica el modelo que quieres evaluar (el número): ")
+            tipo_modelo = input("Indica si es para predicción del frp o de incendios (regresión o clasificación): ")
+            evaluacion_final.evaluacion_modelo(modelo, tipo_modelo)
 
         elif opcion == "0":
             print("\n   ¡Adios! Pasa un buen día ")

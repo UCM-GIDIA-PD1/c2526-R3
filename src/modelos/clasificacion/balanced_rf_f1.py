@@ -1,5 +1,3 @@
-import os
-import sys
 import numpy as np
 from pathlib import Path
 
@@ -10,7 +8,6 @@ from dotenv import load_dotenv
 from imblearn.ensemble import BalancedRandomForestClassifier
 from sklearn.metrics import fbeta_score, recall_score
 
-sys.path.append(os.path.join(os.path.dirname(__file__), "..", ".."))
 import modelos.utils.carga_datos as cg
 from modelos.utils.particiones import split_temporal, generador_cv
 from modelos.utils.metricas import evaluar_clasificacion

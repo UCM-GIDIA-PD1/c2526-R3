@@ -7,7 +7,8 @@ import matplotlib
 from datetime import timedelta
 from xgboost import XGBClassifier
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import confusion_matrix, f1_score 
+from sklearn.metrics import confusion_matrix, f1_score
+from sklearn.neighbors import BallTree
 import matplotlib.pyplot as plt
 from wandb.sklearn import (
     plot_class_proportions,
@@ -17,7 +18,6 @@ from wandb.sklearn import (
     plot_feature_importances,
 )
 
-# Para que haga todo en memoria y no se sincronicen (si lo hace colapsa)
 matplotlib.use('Agg')
 
 sys.path.append(os.path.join(os.path.dirname(__file__), "..", ".."))
@@ -30,8 +30,11 @@ os.environ["WANDB_MODE"] = "online"
 WANDB_ENTITY = "pd1-c2526-team3"
 WANDB_PROJECT = "ModelosTemporales"
 SEED = 42
+R = 6371
 
 def encontrar_mejor_umbral(y_true, y_prob):
+    if len(y_true) == 0:
+        return 0.5
     umbrales = np.arange(0.01, 1.0, 0.01)
     mejor_f1, mejor_umbral = 0, 0.5
     for umbral in umbrales:
@@ -41,47 +44,122 @@ def encontrar_mejor_umbral(y_true, y_prob):
             mejor_f1, mejor_umbral = f1, umbral
     return mejor_umbral
 
-def crear_features_temporales(df, radio_km=5, ventana_dias=7):
+def crear_features_temp_multiple(df, ventanas_dias, radio_km=None):
     df = df.sort_values('date').reset_index(drop=True)
-    df['incendios_recientes'] = 0
-    df['dias_ultimo_incendio'] = np.nan
+    n = len(df)
+    coords = np.radians(df[['lat', 'lon']].values)
     
-    R = 6371
-    df['lat_rad'] = np.radians(df['lat'])
-    df['lon_rad'] = np.radians(df['lon'])
+    incendios_mask = df['incendio'] == 1
+    incendios_idx = df[incendios_mask].index
+    incendios_coords = coords[incendios_idx]
+    fechas_ord = df['date'].values.astype('datetime64[s]').astype(int) // 10**9
+    incendios_fechas_ord = fechas_ord[incendios_idx]
     
-    for i, fila in df.iterrows():
-        fecha_actual = fila['date']
-        fecha_inicio_ventana = fecha_actual - timedelta(days=ventana_dias)
+    if radio_km is not None and len(incendios_coords) > 0:
+        radio_rad = np.radians(radio_km / R)
+        tree_inc = BallTree(incendios_coords, metric='haversine')
+    else:
+        tree_inc = None
+    
+    for w in ventanas_dias:
+        col_inc = f'incendios_recientes_{w}d'
+        col_dias = f'dias_ultimo_incendio_{w}d'
+        df[col_inc] = 0
+        df[col_dias] = np.nan
+    
+    for i in range(n):
+        fecha_actual_ord = fechas_ord[i]
         
-        mascota_temporal = (df['date'] >= fecha_inicio_ventana) & (df['date'] < fecha_actual) & (df['final'] == 1)
-        incendios_pasados = df[mascota_temporal]
+        if tree_inc is not None:
+            idx_rad = tree_inc.query_radius([coords[i]], r=radio_rad)[0]
+            if len(idx_rad) == 0:
+                continue
+            incendios_cercanos_idx = incendios_idx[idx_rad]
+            fechas_cercanas_ord = incendios_fechas_ord[idx_rad]
+        else:
+            incendios_cercanos_idx = incendios_idx
+            fechas_cercanas_ord = incendios_fechas_ord
         
-        if not incendios_pasados.empty:
-            lat1, lon1 = fila['lat_rad'], fila['lon_rad']
-            lat2s = incendios_pasados['lat_rad'].values
-            lon2s = incendios_pasados['lon_rad'].values
-            
-            dlat = lat2s - lat1
-            dlon = lon2s - lon1
-            a = np.sin(dlat/2)**2 + np.cos(lat1) * np.cos(lat2s) * np.sin(dlon/2)**2
-            c = 2 * np.arctan2(np.sqrt(a), np.sqrt(1-a))
-            distancias = R * c
-            
-            indices_cercanos = np.where(distancias <= radio_km)[0]
-            if len(indices_cercanos) > 0:
-                incendios_cercanos = incendios_pasados.iloc[indices_cercanos]
-                df.at[i, 'incendios_recientes'] = len(incendios_cercanos)
-                df.at[i, 'dias_ultimo_incendio'] = (fecha_actual - incendios_cercanos['date'].max()).days
-                
-    df = df.drop(['lat_rad', 'lon_rad'], axis=1)
+        for w in ventanas_dias:
+            fecha_limite = fecha_actual_ord - w * 86400
+            mask = (fechas_cercanas_ord >= fecha_limite) & (fechas_cercanas_ord < fecha_actual_ord)
+            if mask.any():
+                df.at[i, f'incendios_recientes_{w}d'] = mask.sum()
+                ultima_fecha = np.max(fechas_cercanas_ord[mask])
+                df.at[i, f'dias_ultimo_incendio_{w}d'] = (fecha_actual_ord - ultima_fecha) / 86400
     return df
 
-def split_temporal(X, y, test_size=0.2, val_size=0):
+def crear_features_temp(df, radio_km=None):
+    df = df.sort_values('date').reset_index(drop=True)
+    n = len(df)
+    coords = np.radians(df[['lat', 'lon']].values)
+    
+    incendios_mask = df['incendio'] == 1
+    incendios_idx = df[incendios_mask].index
+    incendios_coords = coords[incendios_idx]
+    incendios_fechas = df.loc[incendios_idx, 'date'].values
+    incendios_anios = incendios_fechas.astype('datetime64[Y]').astype(int) + 1970
+    incendios_meses = incendios_fechas.astype('datetime64[M]').astype(int) % 12 + 1
+    incendios_fechas_ord = incendios_fechas.astype('datetime64[s]').astype(int) // 10**9
+    
+    if radio_km is not None and len(incendios_coords) > 0:
+        radio_rad = np.radians(radio_km / R)
+        tree_inc = BallTree(incendios_coords, metric='haversine')
+    else:
+        tree_inc = None
+    
+    df['incendios_estacionales'] = 0
+    df['dias_ultimo_incendio_estacional'] = np.nan
+    fechas_ord = df['date'].values.astype('datetime64[s]').astype(int) // 10**9
+    
+    for i in range(n):
+        fecha_actual = df.loc[i, 'date']
+        mes_actual = fecha_actual.month
+        año_actual = fecha_actual.year
+        fecha_actual_ord = fechas_ord[i]
+        
+        mask_mes = (incendios_meses == mes_actual) & (incendios_anios < año_actual)
+        if not mask_mes.any():
+            continue
+        
+        idx_candidatos = incendios_idx[mask_mes]
+        fechas_candidatos_ord = incendios_fechas_ord[mask_mes]
+        coords_candidatos = incendios_coords[mask_mes]
+        
+        if tree_inc is not None:
+            if len(coords_candidatos) > 0:
+                tree_cand = BallTree(coords_candidatos, metric='haversine')
+                idx_rad = tree_cand.query_radius([coords[i]], r=radio_rad)[0]
+                if len(idx_rad) == 0:
+                    continue
+                idx_filtrados = idx_candidatos[idx_rad]
+                fechas_filtradas = fechas_candidatos_ord[idx_rad]
+            else:
+                continue
+        else:
+            idx_filtrados = idx_candidatos
+            fechas_filtradas = fechas_candidatos_ord
+        
+        if len(idx_filtrados) > 0:
+            df.at[i, 'incendios_estacionales'] = len(idx_filtrados)
+            ultima_fecha = np.max(fechas_filtradas)
+            df.at[i, 'dias_ultimo_incendio_estacional'] = (fecha_actual_ord - ultima_fecha) / 86400
+    return df
+
+def split_temporal(X, y, test_size=0.2, val_size=0.1):
     n_total = len(X)
-    n_test = int(n_total * test_size)
     n_val = int(n_total * val_size)
+    n_test = int(n_total * test_size)
+    
+    if n_val == 0:
+        n_val = 1
+    if n_test == 0:
+        n_test = 1
     n_train = n_total - n_test - n_val
+    if n_train <= 0:
+        n_train = 1
+        n_val = max(1, (n_total - n_train) // 2)
+        n_test = n_total - n_train - n_val
 
     X_train, y_train = X.iloc[:n_train], y.iloc[:n_train]
     X_val, y_val = X.iloc[n_train:n_train+n_val], y.iloc[n_train:n_train+n_val]
@@ -90,7 +168,7 @@ def split_temporal(X, y, test_size=0.2, val_size=0):
     return X_train, X_val, X_test, y_train, y_val, y_test
 
 def seleccionar_modelo(y_train):
-    print("\n--- Menú de Selección de Modelo ---")
+    print("\nMenú de Selección de Modelo")
     print("1. XGBoost (Estándar)")
     print("2. XGBoost (Con scale_pos_weight)")
     print("3. Random Forest (Balanceado)")
@@ -265,28 +343,128 @@ def seleccionar_modelo(y_train):
         )
         return [(clf, "XGBoost_Estandar")]
 
-def main():
-    print("\n--- Configuración de Tiempo ---")
-    entrada_dias = input("¿Cuántos días quieres? (Por defecto: 7): ")
-    try:
-        ventana_elegida = int(entrada_dias)
-    except ValueError:
-        print("Usando el valor por defecto de 7 días.")
-        ventana_elegida = 7
+def menu_ventanas_temporales(df):
+    print("\nConfiguración de ventanas espacio-temporales")
+    print("1. Temporal (días hacia atrás)")
+    print("2. Estacional (mismo mes en todos los años anteriores)")
+    print("3. Estacional - Temporal (combina ambas)")
+    
+    opcion_tipo = input("Opción (1/2/3): ").strip()
+    
+    if opcion_tipo == '1':
+        incluir_espacial = input("¿Incluir componente espacial? (s/n): ").strip().lower()
+        espacial = incluir_espacial == 's'
+        radio_km = None
+        if espacial:
+            radio_input = input("Radio en km (por defecto 10): ").strip()
+            radio_km = float(radio_input) if radio_input else 10.0
+        
+        opcion_ventanas = input("¿Una o más ventanas? (1/más): ").strip()
+        if opcion_ventanas == '1':
+            valor = input("Valor de la ventana (días): ").strip()
+            try:
+                ventanas = [int(valor)]
+            except:
+                print("Valor inválido. Se usará 7 días.")
+                ventanas = [7]
+        else:
+            valores = input("Ingrese los valores separados por coma (días) [180,365,730 recomendado]: ").strip()
+            try:
+                ventanas = [int(v.strip()) for v in valores.split(',') if v.strip()]
+            except:
+                print("Formato inválido. Se usarán [180, 365, 730].")
+                ventanas = [180, 365, 730]
+        
+        print(f"Generando características temporales con ventanas {ventanas} días y radio={radio_km if radio_km else 'sin espacial'}.")
+        df_resultado = crear_features_temp_multiple(df, ventanas, radio_km)
+        return df_resultado
+    
+    elif opcion_tipo == '2':
+        incluir_espacial = input("¿Incluir componente espacial? (s/n): ").strip().lower()
+        espacial = incluir_espacial == 's'
+        radio_km = None
+        if espacial:
+            radio_input = input("Radio en km (por defecto 10): ").strip()
+            radio_km = float(radio_input) if radio_input else 10.0
+        
+        print(f"Generando características estacionales con todos los años anteriores y radio={radio_km if radio_km else 'sin espacial'}.")
+        df_resultado = crear_features_temp(df, radio_km)
+        return df_resultado
+    
+    elif opcion_tipo == '3':
+        print("\nConfiguración TEMPORAL (días hacia atrás)")
+        incluir_espacial_temp = input("¿Incluir componente espacial? (s/n): ").strip().lower()
+        radio_temp = None
+        if incluir_espacial_temp == 's':
+            radio_input = input("Radio en km para parte temporal (por defecto 10): ").strip()
+            radio_temp = float(radio_input) if radio_input else 10.0
+        
+        opcion_ventanas_temp = input("¿Una o más ventanas temporales? (1/más): ").strip()
+        if opcion_ventanas_temp == '1':
+            valor = input("Valor de la ventana temporal (días): ").strip()
+            try:
+                ventanas_temp = [int(valor)]
+            except:
+                print("Valor inválido. Se usará 7 días.")
+                ventanas_temp = [7]
+        else:
+            valores = input("Ingrese los valores separados por coma (días) [180,365,730 recomendado]: ").strip()
+            try:
+                ventanas_temp = [int(v.strip()) for v in valores.split(',') if v.strip()]
+            except:
+                print("Formato inválido. Se usarán [180, 365, 730].")
+                ventanas_temp = [180, 365, 730]
+        
+        print("\nConfiguración ESTACIONAL (mismo mes en todos los años anteriores)")
+        incluir_espacial_est = input("¿Incluir componente espacial en la parte estacional? (s/n): ").strip().lower()
+        radio_est = None
+        if incluir_espacial_est == 's':
+            radio_input = input("Radio en km para parte estacional (por defecto 10): ").strip()
+            radio_est = float(radio_input) if radio_input else 10.0
+        
+        print("\nGenerando características temporales y estacionales combinadas...")
+        df_temp = crear_features_temp_multiple(df, ventanas_temp, radio_temp)
+        df_combined = crear_features_temp(df_temp, radio_est)
+        return df_combined
+    
+    else:
+        print("Opción no válida. Intente nuevamente.")
+        return menu_ventanas_temporales(df)
 
+def ventanas():
     X, y = cargar_dataset_general_con_tiempos(eliminar_correladas=False)
     
     df_completo = pd.concat([X, y.rename('incendio')], axis=1)
     print(df_completo.columns.to_list())
     df_completo['date'] = pd.to_datetime(df_completo['date'])
     
-    print(f"Calculando ventanas espacio-temporales ({ventana_elegida} días).")
-    df_features = crear_features_temporales(df_completo, radio_km=10, ventana_dias=ventana_elegida)
+    df_features = menu_ventanas_temporales(df_completo)
     
+    for col in df_features.columns:
+        if col.startswith('incendios_recientes_'):
+            w = col.split('_')[-1]  
+            df_features[f'hubo_incendio_{w}'] = (df_features[col] > 0).astype(int)
+            dias = int(w.replace('d',''))
+            df_features[f'frecuencia_incendios_{w}'] = df_features[col] / dias
+            df_features[f'log_incendios_{w}'] = np.log1p(df_features[col])
+        elif col.startswith('dias_ultimo_incendio_'):
+            df_features[f'log_{col}'] = np.log1p(df_features[col].clip(lower=0))
+    
+    if 'incendios_estacionales' in df_features.columns:
+        df_features['hubo_incendio_estacional'] = (df_features['incendios_estacionales'] > 0).astype(int)
+        df_features['log_incendios_estacional'] = np.log1p(df_features['incendios_estacionales'])
+    
+    if 'dias_ultimo_incendio_estacional' in df_features.columns:
+        df_features['log_dias_estacional'] = np.log1p(df_features['dias_ultimo_incendio_estacional'].clip(lower=0))
+        
     y_features = df_features['incendio']
-    X_features = df_features.drop(['incendio', 'date', 'lat', 'lon'], axis=1)
-
+    X_features = df_features.drop(['incendio', 'date'], axis=1)
+    
+    print(f"Nulos en X_features antes de split: {X_features.isna().sum().sum()}")
+    
     X_train, X_val, X_test, y_train, y_val, y_test = split_temporal(X_features, y_features)
+    print(f"Tamaños: train={X_train.shape[0]}, val={X_val.shape[0]}, test={X_test.shape[0]}")
+    print(f"Nulos en X_train después de procesar: {X_train.isna().sum().sum()}")
 
     modelos_a_entrenar = seleccionar_modelo(y_train)
     
@@ -302,7 +480,7 @@ def main():
             mejor_umbral = encontrar_mejor_umbral(y_val, y_prob_val)
             print(f"El umbral óptimo es {mejor_umbral}")
         else:
-            mejor_umbral = 0.5 
+            mejor_umbral = 0.5
             
         y_pred_val = (y_prob_val >= mejor_umbral).astype(int)
         metricas_val = evaluar_clasificacion(y_val, y_pred_val, y_prob_val, f"Validación — {model_name}")
@@ -311,21 +489,20 @@ def main():
         y_pred_test = (y_prob_test >= mejor_umbral).astype(int)
         metricas_test = evaluar_clasificacion(y_test, y_pred_test, y_prob_test, f"Test — {model_name}")
 
-        # Añadimos la ventana_elegida al nombre para verlo claro en W&B
+        config = {
+            **model_params,
+            "split": "temporal",
+            "eliminar_correladas": False,
+            "n_features": X_features.shape[1],
+            "arquitectura": model_name,
+            "umbral_utilizado": mejor_umbral
+        }
+
         run = wandb.init(
             entity=WANDB_ENTITY,
-            name=f"{model_name} - {ventana_elegida}d Temp",
+            name=f"{model_name}",
             project=WANDB_PROJECT,
-            config={
-                **model_params,
-                "split": "temporal",
-                "eliminar_correladas": False,
-                "n_features": X_features.shape[1],
-                "arquitectura": model_name,
-                "radio_km": 10,
-                "ventana_dias": ventana_elegida,
-                "umbral_utilizado": mejor_umbral 
-            },
+            config=config,
         )
 
         wandb.log({
@@ -355,7 +532,7 @@ def main():
             for j in range(cm.shape[1]):
                 ax.text(j, i, f"{cm[i, j]:.2%}", ha="center", va="center",
                         color="white" if cm[i, j] > thresh else "black")
-        ax.set_title(f'Matriz de Confusión Normalizada (Test)\n{model_name} - {ventana_elegida}d - Umbral: {mejor_umbral}')        
+        ax.set_title(f'Matriz de Confusión Normalizada (Test)\n{model_name} - Umbral: {mejor_umbral:.2f}')        
         wandb.log({"test/confusion_matrix_normalized": wandb.Image(fig)})
         plt.close(fig)
 
@@ -376,4 +553,4 @@ def main():
         run.finish()
 
 if __name__ == "__main__":
-    main()
+    ventanas()

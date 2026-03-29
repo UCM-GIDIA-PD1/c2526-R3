@@ -2,27 +2,43 @@ import limpieza.limpieza as clean
 import modelos.utils.carga_datos as cg
 import modelos.utils.anomalias as anom
 import extraccion.minioFunctions as mf
+import pandas as pd
 
-def pregunta_PCA():
+def pregunta_PCA(df=None):
     '''
-    Pide por pantalla si se quiere aplicar PCA a los datos o no y devuelve
-    X e y en función de la decisión del usuario.
+    Pide por pantalla si se quiere aplicar PCA. 
+    Si recibe un df, lo usa. Si no, lo descarga.
     '''
+
+    if df is None:
+        df = clean.bajar_df_final() 
+
+    df.columns = df.columns.str.lower().str.strip()
+    target_col = 'incendio' if 'incendio' in df.columns else 'fires'
+
     while True:
-         pca = input("¿Quieres aplicar PCA a los datos? (s/n) : ")
-         if pca.lower() == 's':
-            comps = int(input('Cuantos componentes quieres usar? '))
-            df = clean.bajar_df_final()
-            X = df.drop(columns = ['fires'])
-            y = df['fires']
+        pca_input = input("¿Quieres aplicar PCA a los datos? (s/n): ").lower()
+        
+        if pca_input == 's':
+            from sklearn.decomposition import PCA
+            n_components = int(input('¿Cuántos componentes quieres usar? '))
+            
+            X_raw = df.drop(columns=[target_col, 'date'], errors='ignore')
+            y = df[target_col]
+            
+            pca_model = PCA(n_components=n_components)
+            X_pca = pca_model.fit_transform(X_raw)
+            X = pd.DataFrame(X_pca, columns=[f'PC{i+1}' for i in range(n_components)])
             break
-         elif pca.lower() == 'n':
-             X,y = cg.cargar_dataset_general(eliminar_correladas=False)
-             break
-         else:
-             print("Entrada no válida. Por favor, ingresa 's' para sí o 'n' para no.")
+            
+        elif pca_input == 'n':
+            X = df.drop(columns=[target_col, 'date'], errors='ignore')
+            y = df[target_col]
+            break
+        else:
+            print("Entrada no válida. Por favor, ingresa 's' o 'n'.")
     
-    return X,y
+    return X, y
 
 def pregunta_iters_nombre():
     iters = int(input("¿Cuantas iteraciones quieres ejecutar? : "))

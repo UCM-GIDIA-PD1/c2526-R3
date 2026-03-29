@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 from extraccion import minioFunctions as mf
-import limpieza.limpieza as lp
+import limpieza as lp
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler 
 
@@ -83,7 +83,7 @@ def tranformar_date():
 
     # Subimos a minio
     cliente = mf.crear_cliente()
-    mf.subir_fichero(cliente, "grupo3/cleaned/final_date_transformado2.parquet", df)
+    mf.subir_fichero(cliente, "grupo3/cleaned/MINI.parquet", df)
 
 def obtener_df_date_transformado():
     '''

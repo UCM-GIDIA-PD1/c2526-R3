@@ -39,29 +39,3 @@ def generar_explicacion(explicador, modelo, X_test):
     )
     
     return exp
-
-'''
-if __name__ == "__main__":
-    cliente = mf.crear_cliente()
-    df = mf.bajar_fichero(cliente, "grupo3/cleaned/final_date_transformado.parquet")
-    
-    X = df.drop(["final"], axis=1)
-    y = df["final"]
-    class_names = ["No Incendio", "Incendio"]
-    feature_names = X.columns
-
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-
-    params_xgb = {
-            'random_state': 42,
-            'use_label_encoder': False,
-            'eval_metric': 'logloss'
-    }
-    clf = xgb.XGBClassifier(**params_xgb)
-    clf.fit(X_train, y_train, eval_set=[(X_test, y_test)], verbose=False)
-
-    explicador = inicializar_explicador(X_train)
-    exp = generar_explicacion(explicador, clf, X_test)
-    fig_lime = exp.as_pyplot_figure()
-    plt.show()
-'''

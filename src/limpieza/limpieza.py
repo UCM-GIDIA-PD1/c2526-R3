@@ -3,7 +3,7 @@ import pandas as pd
 
 def bajar_df_final():
     cliente = mf.crear_cliente()
-    df = mf.bajar_fichero(cliente, "grupo3/cleaned/pca/final_pca_date_transformado.parquet", "df")
+    df = mf.bajar_fichero(cliente, "grupo3/cleaned/MINI.parquet", "df")
     return df
 
 

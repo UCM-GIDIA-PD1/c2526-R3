@@ -1,16 +1,12 @@
-import os
-import sys
 from pathlib import Path
 import numpy as np
-import pandas as pd
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
 import wandb
 import xgboost as xgb
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import f1_score, recall_score, precision_score, fbeta_score
+from sklearn.metrics import f1_score, recall_score, fbeta_score
 
 from extraccion import minioFunctions 
 from modelos import parser
@@ -24,12 +20,21 @@ WANDB_PROJECT = "XGboost"
 SEED = 42
 
 def menu():
+    '''
+    Menú para elegir modelo XGBoost a ejecutar
+    '''
     print("Opciones: ")
-    print("1. XGBoost con configuraciones normales")
+    print("1. XGBoost con aplicación de ventanas temporales")
     print("2. XGBoost con aplicación de ventanas temporales y anomalías")
     opcion = int(input("Elige opcion [1,2]: "))
-    assert opcion in [1, 2], "Número no válido"
-    return opcion
+    assert opcion in [1, 2], "Número no válido, elige entre 1 y 2."
+
+    print("¿Qué dataframe quieres usar? (Si dejas vacío se usará el MINI por defecto)")
+    df = input("Nombre del dataframe en MinIO (p.e. 'MINI'): ")
+    if not df:
+        df = "MINI"
+
+    return opcion, df
 
 def funcionalidad_tags():
     args = parser.initialite_parser()
@@ -39,61 +44,102 @@ def funcionalidad_tags():
     tags = args.tags + [f"correladas_{args.eliminar_correladas}"]
     return tags
 
-def configuraciones_iniciales():
-    tags = funcionalidad_tags()
-    cliente = minioFunctions.crear_cliente()
-    df = minioFunctions.bajar_fichero(cliente, "grupo3/cleaned/MINI.parquet", "df")
+def configuraciones_iniciales(df):
+    '''
+    Configuración inicial para el modelo XGBoost
+    :param df: Nombre del dataframe en MinIO (p.e. "MINI"))
+    :return tags: Lista de tags para wandb
+    :return df: DataFrame con los datos'''
 
+    tags = funcionalidad_tags()
+    
+    #Conexion con MinIO (bajamos dataframe)
+    cliente = minioFunctions.crear_cliente()
+    df = minioFunctions.bajar_fichero(cliente, f"grupo3/cleaned/{df}.parquet", "df")
+    assert df is not None, f"Fallo en la descarga de {df} desde MinIO (conecta la VPN o revisa el nombre del dataframe)"
+
+    #Manipulación de columnas
     if 'final' in df.columns:
         df = df.rename(columns={'final': 'incendio'})
-
-    X = df.drop(["incendio"], axis=1)
-    y = df["incendio"]
-    
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=SEED)
-    
-    return tags, ["No Incendio", "Incendio"], X.columns, X_train, X_test, y_train, y_test
-
-def ventanas_temporales_y_anomalias():
-    tags = funcionalidad_tags()
-    cliente = minioFunctions.crear_cliente()
-    df = minioFunctions.bajar_fichero(cliente, "grupo3/cleaned/MINI.parquet", "df")
-    
-    if 'final' in df.columns:
-        df = df.rename(columns={'final': 'incendio'})
-
+    assert 'incendio' in df.columns, "La columna 'incendio' no se encuentra en el DataFrame."
     print("Columnas actuales en el DF:", df.columns.tolist())
-    df = vt.menu_ventanas_temporales(df)
-    X, y = per.pregunta_PCA(df) 
 
-    resultado_split = split_temporal(X, y)
-    X_train, X_test, y_train, y_test = resultado_split[0], resultado_split[1], resultado_split[2], resultado_split[3]
-    
-    X_train, X_test = per.anomalias(X_train, X_test)
+    return tags, df
 
+def ventanas_temporales(df):
+    '''
+    Modelo XGBoost con aplicación de ventanas temporales
+
+    :param df: Nombre del dataframe en MinIO (p.e. "MINI"))
+    :return tags: Lista de tags para wandb
+    :return feature_names: Lista de nombres de las variables
+    :return X_train, X_test, y_train, y_test: particion en test y train
+
+    '''
+    #Bajamos df, aplicamos ventanas temporales y PCA (si se desea)
+    tags, df_normal = configuraciones_iniciales(df)
+    df_transformado = vt.menu_ventanas_temporales(df_normal)
+    X, y = per.pregunta_PCA(df_transformado) 
+
+    #División de los datos
+    X_train, X_test, y_train, y_test = split_temporal(X, y)
     feature_names = [f"Var_{i}" for i in range(X_train.shape[1])]
-    return tags, ["No Incendio", "Incendio"], feature_names, X_train, X_test, y_train, y_test
+
+    return tags, feature_names, X_train, X_test, y_train, y_test
+
+def ventanas_temporales_y_anomalias(df):
+    '''
+    Modelo XGBoost con aplicación de ventanas temporales y análisis de anomalías
+
+    :param df: Nombre del dataframe en MinIO (p.e. "MINI"))
+    :return tags: Lista de tags para wandb
+    :return feature_names: Lista de nombres de las variables
+    :return X_train, X_test, y_train, y_test: particion en test y train
+    '''
+    #Aplicamos ventanas temporales 
+    tags, feature_names, X_train, X_test, y_train, y_test = ventanas_temporales(df)
+
+    #Aplicamos análisis de anomalías
+    X_train, X_test = per.anomalias(X_train, X_test)
+    feature_names = [f"Var_{i}" for i in range(X_train.shape[1])]
+
+    return tags, feature_names, X_train, X_test, y_train, y_test
 
 def explicabilidad_lime(clasificador, X_train, X_test):
+    '''
+    Genera explicaciones LIME para el modelo entrenado y las sube a wandb.
+
+    :param clasificador: Modelo entrenado
+    :param X_train, X_test: conjunto test y train de las variables explicativas
+    '''
+    #Parseamos los datos
     X_train_lime = X_train.fillna(0)
     X_test_lime = X_test.fillna(0)
     
+    #Generamos explicaciones LIME
     explicador = exp.inicializar_explicador(X_train_lime)
     explicacion_lime = exp.generar_explicacion(explicador, clasificador, X_test_lime)
     
+    #Guardamos la explicación LIME como imagen y la subimos a wandb
     fig_lime = explicacion_lime.as_pyplot_figure()
     plt.tight_layout()
     wandb.log({"explicabilidad/lime": wandb.Image(fig_lime)})
     plt.close(fig_lime)
 
 def train(tags, class_names, feature_names, X_train_full, X_test, y_train_full, y_test):
+    '''
+    Función principal de entrenamiento del modelo XGBoost
+    con validación cruzada estratificada y subida de métricas a wandb.
+    '''
     X_train_full = X_train_full.fillna(0)
     X_test = X_test.fillna(0)
 
+    # Entrenamos el modelo con validación cruzada estratificada y subimos métricas a wandb
     with wandb.init(settings=wandb.Settings(start_method="thread"), tags=tags) as run:
         config = wandb.config
         umbral = getattr(config, 'umbral_decision', 0.5)
         
+        # Creamos el modelo XGBoost con los hiperparámetros del sweep
         clf = xgb.XGBClassifier(
             n_estimators=getattr(config, 'n_estimators', 100),
             learning_rate=getattr(config, 'learning_rate', 0.1),
@@ -105,9 +151,11 @@ def train(tags, class_names, feature_names, X_train_full, X_test, y_train_full, 
             eval_metric='logloss'
         )
 
+        # Validación cruzada estratificada
         cv_generator = generador_cv(tipo_cv="estratificado", n_splits=4, seed=SEED)
         cv_f1, cv_f2, cv_recall = [], [], []
-
+    
+        # Aplicamos la validación cruzada estratificada 
         for t_idx, v_idx in cv_generator.split(X_train_full, y_train_full):
             x_full_train, x_full_validate = X_train_full.iloc[t_idx], X_train_full.iloc[v_idx]
             y_full_train, y_full_validate = y_train_full.iloc[t_idx], y_train_full.iloc[v_idx]
@@ -118,10 +166,12 @@ def train(tags, class_names, feature_names, X_train_full, X_test, y_train_full, 
             cv_f2.append(fbeta_score(y_full_validate, y_f_pred, beta=2, zero_division=0))
             cv_recall.append(recall_score(y_full_validate, y_f_pred, zero_division=0))
 
+        # Entrenamos el modelo con todo el conjunto de entrenamiento
         clf.fit(X_train_full, y_train_full)
         y_probas = clf.predict_proba(X_test)
         y_pred = (y_probas[:, 1] >= umbral).astype(int)
 
+        # Evaluamos el modelo del conjunto de test y subimos métricas a wandb
         metricas = evaluar_clasificacion(y_test, y_pred, y_probas[:, 1], "Test")
         wandb.log({
             "val/f1_mean_cv": np.mean(cv_f1),
@@ -135,24 +185,27 @@ def train(tags, class_names, feature_names, X_train_full, X_test, y_train_full, 
             "graficas/pr": wandb.plot.pr_curve(y_test, y_probas, labels=class_names)
         })
 
+        # Subimos gráficas a wandb
         wf.matriz_confusion_feature_importance(clf, y_pred, y_test.to_numpy(), feature_names)
         
         xgb.plot_importance(clf)
         wandb.log({"importancia_variables_xgb": wandb.Image(plt)})
         plt.close()
 
+        # Aplicamos explicabilidad LIME para este modelo de caja negra  
         explicabilidad_lime(clf, X_train_full, X_test)
 
 if __name__ == "__main__":
     assert wf.inicializar_apikey_wandb()
     wandb.login() 
 
-    opcion = menu()
+    opcion, df = menu()
     if opcion == 1:
-        tags, class_names, feat_names, X_tr, X_te, y_tr, y_te = configuraciones_iniciales()
-    else:
-        tags, class_names, feat_names, X_tr, X_te, y_tr, y_te = ventanas_temporales_y_anomalias()
+        tags, feature_names, X_train, X_test, y_train, y_test = ventanas_temporales(df)
+    elif opcion == 2:
+        tags, feature_names, X_train, X_test, y_train, y_test = ventanas_temporales_y_anomalias(df)
 
+    class_names = ["No Incendio", "Incendio"]
     configuraciones = {
         "sweep_xgboost_incendios": {
             'method': 'bayes',
@@ -169,4 +222,6 @@ if __name__ == "__main__":
 
     for nombre_config, config in configuraciones.items():
         sweep_id = wandb.sweep(config, project=WANDB_PROJECT, entity=WANDB_ENTITY)
-        wandb.agent(sweep_id, function=lambda: train(tags, class_names, feat_names, X_tr, X_te, y_tr, y_te), count=15)
+        wandb.agent(sweep_id, 
+                    function=lambda: train(tags, class_names, feature_names, 
+                                           X_train, X_test, y_train, y_test), count=15)

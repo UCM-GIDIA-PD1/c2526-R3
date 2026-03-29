@@ -34,8 +34,6 @@ LAS UNIFICADAS FINALMENTE USADAS COMO PRINCIPALES PARA NUESTROS MODELOS
 
 '''
 
-
-
 def split_temporal(X, y, date_col='date', test_size=0.2):
     """
     Se realiza un split teniendo en cuenta una repartición de manera cronológica
@@ -70,74 +68,6 @@ def generador_cv(tipo_cv='estratificado', n_splits=4, seed=42):
     else:
         print(f"Usando StratifiedKFold con {n_splits} splits.")
         return StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=seed)
-
-
-
-
-
-
-
-#________________________________________________________________________________
-
-
-# ── Clasificación ──────────────────────────────────────────────────────────────
-
-def split_simple(X, y):
-    """
-    División 80/10/10 sin ningún criterio adicional.
-    
-    Es el caso base (baseline de muestreo). Con clases tan desbalanceadas
-    (ratio 25.6x) es probable que algún split tenga muy pocos incendios,
-    pero se incluye para comparar con las otras estrategias.
-
-    Returns:
-        X_train, X_val, X_test, y_train, y_val, y_test
-    """
-    # Primer split: 90% train+val / 10% test
-    X_tv, X_test, y_tv, y_test = train_test_split(
-        X, y,
-        test_size=TEST_SIZE,
-        random_state=SEED,
-        shuffle=False
-    )
-    # Segundo split: 80% train / 10% val (= 0.111 del 90%)
-    X_train, X_val, y_train, y_val = train_test_split(
-        X_tv, y_tv,
-        test_size=VAL_SIZE / (1 - TEST_SIZE),
-        random_state=SEED, 
-        shuffle=False
-    )
-    _imprimir_resumen("SIMPLE", y_train, y_val, y_test)
-    return X_train, X_val, X_test, y_train, y_val, y_test
-
-
-def split_estratificado(X, y):
-    """
-    División 80/10/10 manteniendo la proporción de clases en cada split.
-
-    Con un ratio 25.6x entre clases, la estratificación garantiza que
-    train, val y test tengan aproximadamente el mismo 3.8% de incendios.
-    Es la estrategia recomendada como base para todos los modelos.
-
-    Returns:
-        X_train, X_val, X_test, y_train, y_val, y_test
-    """
-    X_tv, X_test, y_tv, y_test = train_test_split(
-        X, y,
-        test_size=TEST_SIZE,
-        random_state=SEED,
-        stratify=y,         # ← mantiene proporción de clases
-        shuffle=True
-    )
-    X_train, X_val, y_train, y_val = train_test_split(
-        X_tv, y_tv,
-        test_size=VAL_SIZE / (1 - TEST_SIZE),
-        random_state=SEED,
-        stratify=y_tv,       # ← también en el segundo split
-        shuffle=True
-    )
-    _imprimir_resumen("ESTRATIFICADO", y_train, y_val, y_test)
-    return X_train, X_val, X_test, y_train, y_val, y_test
 
 
 def get_pesos_clase(y_train):
@@ -176,35 +106,6 @@ def calcular_sample_weights(y_train):
     """
     pesos = get_pesos_clase(y_train)
     return np.array([pesos[int(yi)] for yi in y_train])
-
-
-# ── Regresión ──────────────────────────────────────────────────────────────────
-
-def split_regresion(X, y):
-    """
-    División 80/10/10 para el problema de regresión (FRP).
-
-    No se estratifica porque no hay clases — la variable objetivo es continua.
-    El dataset de incendios es pequeño (2.684 filas) así que se usan
-    todos los datos disponibles sin filtros adicionales.
-
-    Returns:
-        X_train, X_val, X_test, y_train, y_val, y_test
-    """
-    X_tv, X_test, y_tv, y_test = train_test_split(
-        X, y,
-        test_size=TEST_SIZE,
-        random_state=SEED,
-        shuffle=False
-    )
-    X_train, X_val, y_train, y_val = train_test_split(
-        X_tv, y_tv,
-        test_size=VAL_SIZE / (1 - TEST_SIZE),
-        random_state=SEED,
-        shuffle=False
-    )
-    _imprimir_resumen_regresion(y_train, y_val, y_test)
-    return X_train, X_val, X_test, y_train, y_val, y_test
 
 
 # ── Utilidades internas ────────────────────────────────────────────────────────

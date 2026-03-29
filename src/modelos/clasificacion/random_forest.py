@@ -1,22 +1,17 @@
 import os
 import sys
 from pathlib import Path
-
+import numpy as np
+import pandas as pd
 import wandb
-import yaml
-from dotenv import load_dotenv
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import fbeta_score
+from sklearn.metrics import fbeta_score, recall_score, f1_score
 
 sys.path.append(os.path.join(os.path.dirname(__file__), "..", ".."))
 import modelos.utils.carga_datos as cg
-from modelos.utils.particiones import split_estratificado
+from modelos.utils.particiones import split_temporal, generador_cv
 from modelos.utils.metricas import evaluar_clasificacion
-import modelos.utils.anomalias as anom
-import numpy as np
-import limpieza.limpieza as clean
 import modelos.utils.personalizacion as pers
-import extraccion.minioFunctions as mf
 import modelos.utils.wandbFunctions as wf
 
 WANDB_ENTITY = "pd1-c2526-team3"
@@ -24,22 +19,20 @@ WANDB_PROJECT = "sweep_random_forest_umbral_smote"
 SWEEP_PATH = Path(__file__).with_name("randomforest_sweep.yaml")
 SEED = 42
 NUM_IT = 0
+TIPO_CV = 'estratificado'
 
-def arboles_decision_clasificacion(X_train, X_val, X_test, y_train, y_val, y_test, detallados=False, nombre = None):
+def arboles_decision_clasificacion(X_train_full, X_test, y_train_full, y_test, detallados=False, nombre=None):
     global NUM_IT
-
     NUM_IT += 1
+
     run = wf.wandb_init(WANDB_PROJECT, nombre, NUM_IT)
     config = wandb.config
 
-    if config.max_features == "None": # Daba error sino porque el YAML devuelve un string
+    if config.max_features == "None":
         max_f = None
     else:
         max_f = config.max_features
 
-    #smote = SMOTE(random_state=SEED, sampling_strategy= config.sampling_strategy)
-    #X_train_2, y_train_2 = smote.fit_resample(X_train, y_train)
-    
     model = RandomForestClassifier(
         max_depth=config.max_depth,
         criterion=config.criterion,
@@ -52,129 +45,98 @@ def arboles_decision_clasificacion(X_train, X_val, X_test, y_train, y_val, y_tes
         n_jobs=-1,
     )
 
-    model.fit(X_train, y_train)
+    # 1. Validación Cruzada
+    cv_generator = generador_cv(tipo_cv=TIPO_CV, n_splits=4, seed=SEED)
+    f2_cv_scores = []
+    f1_cv_scores = []
+    recall_cv_scores = []
+    f1_5_cv_scores = []
 
+    for train_idx, val_idx in cv_generator.split(X_train_full, y_train_full):
+        X_fold_train = X_train_full.iloc[train_idx]
+        y_fold_train = y_train_full.iloc[train_idx]
+        X_fold_val = X_train_full.iloc[val_idx]
+        y_fold_val = y_train_full.iloc[val_idx]
 
-    # ---------------- Entrenamientos por split y evaluaciones -----------------
-    #y_pred_train = model.predict(X_train) estas son con el umbral por defecto de 0.5
-    y_prob_train = model.predict_proba(X_train)[:, 1]
-    y_pred_train = (y_prob_train >= config.umbral).astype(int) 
-    metricas_train = evaluar_clasificacion(
-        y_train, y_pred_train, y_prob_train, "Entrenamiento — Random Forest"
-    )
-    f1_5_train = fbeta_score(y_train, y_pred_train, beta=1.5, zero_division=0)
+        model.fit(X_fold_train, y_fold_train)
+        
+        y_fold_prob = model.predict_proba(X_fold_val)[:, 1]
+        y_fold_pred = (y_fold_prob >= config.umbral).astype(int)
 
-    #y_pred_val = model.predict(X_val)
-    y_prob_val = model.predict_proba(X_val)[:, 1]
-    y_pred_val = (y_prob_val >= config.umbral).astype(int)
-    metricas_val = evaluar_clasificacion(
-        y_val, y_pred_val, y_prob_val, "Validación — Random Forest"
-    )
-    f1_5_val = fbeta_score(y_val, y_pred_val, beta=1.5, zero_division=0)
+        f2_cv_scores.append(fbeta_score(y_fold_val, y_fold_pred, beta=2, zero_division=0))
+        f1_cv_scores.append(f1_score(y_fold_val, y_fold_pred, zero_division=0))
+        recall_cv_scores.append(recall_score(y_fold_val, y_fold_pred, zero_division=0))
+        f1_5_cv_scores.append(fbeta_score(y_fold_val, y_fold_pred, beta=1.5, zero_division=0))
 
-    #y_pred_test = model.predict(X_test)
+    f2_score_mean = np.mean(f2_cv_scores)
+    f1_score_mean = np.mean(f1_cv_scores)
+    recall_score_mean = np.mean(recall_cv_scores)
+    f1_5_score_mean = np.mean(f1_5_cv_scores)
+
+    # 2. Entrenamiento final con el full train
+    model.fit(X_train_full, y_train_full)
+
+    y_prob_train = model.predict_proba(X_train_full)[:, 1]
+    y_pred_train = (y_prob_train >= config.umbral).astype(int)
+    metricas_train = evaluar_clasificacion(y_train_full, y_pred_train, y_prob_train, "Entrenamiento — RF")
+
     y_prob_test = model.predict_proba(X_test)[:, 1]
     y_pred_test = (y_prob_test >= config.umbral).astype(int)
-    metricas_test = evaluar_clasificacion(
-        y_test, y_pred_test, y_prob_test, "Test — Random Forest"
-    )
-    f1_5_test = fbeta_score(y_test, y_pred_test, beta=1.5, zero_division=0)
+    metricas_test = evaluar_clasificacion(y_test, y_pred_test, y_prob_test, "Test — RF")
 
-    if detallados:
-        wandb.log({
-        "f1_5_score": f1_5_val,
-        
-        "overfitting_gap_f1_5": f1_5_train - f1_5_val,
+    f1_train_final = fbeta_score(y_train_full, y_pred_train, beta=1.5, zero_division=0)
+    f1_test_final = fbeta_score(y_test, y_pred_test, beta=1.5, zero_division=0)
 
-        "train/f1_5": f1_5_train,
+    # 3. Loggeo de métricas
+    log_dict = {
+        "f1_5_score": f1_5_score_mean,
+        "val/f1_mean_cv": f1_score_mean,
+        "val/f2_mean_cv": f2_score_mean,
+        "val/recall_mean_cv": recall_score_mean,
+        "val/f1_5_mean_cv": f1_5_score_mean,
+        "train/f1_5": f1_train_final,
         "train/f1": metricas_train["f1"],
         "train/precision": metricas_train["precision"],
         "train/recall": metricas_train["recall"],
         "train/accuracy": metricas_train["accuracy"],
-        "train/roc_auc": metricas_train.get("roc_auc", 0),
-
-        "val/f1_5": f1_5_val,
-        "val/f1": metricas_val["f1"],
-        "val/precision": metricas_val["precision"],
-        "val/recall": metricas_val["recall"],
-        "val/accuracy": metricas_val["accuracy"],
-        "val/roc_auc": metricas_val.get("roc_auc", 0),
-        
-        "test/f1_5": f1_5_test,
+        "test/f1_5": f1_test_final,
         "test/f1": metricas_test["f1"],
         "test/precision": metricas_test["precision"],
         "test/recall": metricas_test["recall"],
-        "test/accuracy": metricas_test["accuracy"],
-        "test/roc_auc": metricas_test.get("roc_auc", 0),
-        
-        "split": "estratificado",
-        "eliminar_correladas": False,
-        "n_features": X_train.shape[1],
-        })
+        "test/accuracy": metricas_test["accuracy"]
+    }
 
+    if detallados:
+        log_dict["overfitting_gap_f1_5"] = f1_train_final - f1_5_score_mean
+        wandb.log(log_dict)
         wandb.sklearn.plot_classifier(
-        model,
-        X_train,
-        X_val,
-        y_train,
-        y_val,
-        y_pred_val,
-        model.predict_proba(X_val),
-        labels=["no_incendio", "incendio"],
-        model_name="RandomForest",
-        feature_names=X_train.columns.tolist(),
+            model, X_train_full, X_test, y_train_full, y_test, y_pred_test,
+            model.predict_proba(X_test), labels=["no_incendio", "incendio"],
+            model_name="RandomForest", feature_names=X_train_full.columns.tolist()
         )
+    else:
+        wandb.log(log_dict)
+        wf.matriz_confusion_feature_importance(model, y_pred_test, y_test, X_train_full.columns.tolist())
 
-    else: # Muestra solo las métricas principales sin curvas ni gráficos
-        
-        wandb.log({
-        "f1_5_score": f1_5_val,
-
-        "train/f1_5": f1_5_train,
-        "train/f1": metricas_train["f1"],
-        "train/precision": metricas_train["precision"],
-        "train/recall": metricas_train["recall"],
-        "train/accuracy": metricas_train["accuracy"],
-
-        "val/f1_5": f1_5_val,
-        "val/f1": metricas_val["f1"],
-        "val/precision": metricas_val["precision"],
-        "val/recall": metricas_val["recall"],
-        "val/accuracy": metricas_val["accuracy"],
-
-        })
-
-        wf.matriz_confusion_feature_importance(model, y_pred_val, y_val, X_train.columns.tolist())
-        
     run.finish()
 
-
 def clasificacion():
-
     if not wf.inicializar_apikey_wandb():
         return
     
-    X, y = cg.cargar_dataset_clasificacion()
+    X, y = cg.cargar_dataset_general()
 
-    X_train, X_val, X_test, y_train, y_val, y_test = split_estratificado(X, y)
+    X_train_full, X_test, y_train_full, y_test = split_temporal(X, y)
 
-    # Se aplica las puntuaciones de anomalías al dataset que el usuario seleccione
-    X_train, X_val, X_test = pers.anomalias(X_train, X_val, X_test)
+    X_train_full, X_test = pers.anomalias(X_train_full, X_test)
 
     iters, nombre = pers.pregunta_iters_nombre()
 
-    detallado = input("¿Quieres ver los resultados detallados de cada iteración (curvas AUC, ROC, etc.)? (s/n) : ")
-    detallados = False
-
-    if detallado.lower() == "s":
-        detallados = True
-        print("Se mostrarán los resultados detallados de cada iteración.")
-    else:
-        print("No se mostrarán los resultados detallados de cada iteración.")
-
+    detallado = input("¿Quieres ver los resultados detallados (s/n) : ")
+    detallados = detallado.lower() == "s"
 
     def entrenamiento():
-        arboles_decision_clasificacion(X_train, X_val, X_test, y_train, y_val, y_test, detallados, nombre)
+        arboles_decision_clasificacion(X_train_full, X_test, y_train_full, y_test, detallados, nombre)
 
     sweep_id = wf.crear_sweep_id(WANDB_PROJECT, SWEEP_PATH)
 
@@ -185,9 +147,6 @@ def clasificacion():
         entity=WANDB_ENTITY,
         project=WANDB_PROJECT,
     )
-
-    print(f"Listo!! Ejecutadas {iters} iteraciones")
-
 
 if __name__ == "__main__":
     clasificacion()

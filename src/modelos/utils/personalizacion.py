@@ -13,11 +13,11 @@ def pregunta_PCA():
          if pca.lower() == 's':
             comps = int(input('Cuantos componentes quieres usar? '))
             df = clean.bajar_df_final()
-            X = df.drop(columns = ['final'])
-            y = df['final']
+            X = df.drop(columns = ['fires'])
+            y = df['fires']
             break
          elif pca.lower() == 'n':
-             X,y = cg.cargar_dataset_clasificacion(eliminar_correladas=False)
+             X,y = cg.cargar_dataset_general(eliminar_correladas=False)
              break
          else:
              print("Entrada no válida. Por favor, ingresa 's' para sí o 'n' para no.")
@@ -31,10 +31,10 @@ def pregunta_iters_nombre():
     
     return iters, nombre
 
-def anomalias(X_train, X_val, X_test):
+def anomalias(X_train_full, X_test):
     '''
     Pregunta al usuario qué análisis de anomalías quiere aplicar a los datos 
-    y se lo aplica, devolviendo los datasets actualizados.
+    y se lo aplica, devolviendo los datasets actualizados (Train y Test).
     '''
 
     print("\n--- Selección de Análisis de Anomalías ---")
@@ -48,26 +48,28 @@ def anomalias(X_train, X_val, X_test):
 
     if not entrada:
         print("No se aplicará ningún análisis de anomalías.")
-        return X_train, X_val, X_test
+        return X_train_full, X_test
 
     opciones = [opt.strip() for opt in entrada.split(",")]
 
     if '1' in opciones:
         print("Aplicando Isolation Forest...")
-        X_train, X_val, X_test = anom.isolationForest(X_train, X_val, X_test)
+        X_train_full, X_test = anom.isolationForest(X_train_full, X_test)
         print("Aplicado Isolation Forest!")
+        
     if '2' in opciones or '3' in opciones:
          print("Realizando escalado y PCA...")
-         X_train_PCA, X_val_PCA, X_test_PCA = anom.escalado_PCA(X_train, X_val, X_test)
+         X_train_PCA, X_test_PCA = anom.escalado_PCA(X_train_full, X_test)
          print("Escalado y PCA realizados!")
+         
     if '2' in opciones:
         print("Aplicando One Class SVM...")
-        X_train, X_val, X_test = anom.oneClassSVM(X_train_PCA, X_val_PCA, X_test_PCA, X_train, X_val, X_test)
+        X_train_full, X_test = anom.oneClassSVM(X_train_PCA, X_test_PCA, X_train_full, X_test)
         print("Aplicado One Class SVM!")
+        
     if '3' in opciones:
         print("Aplicando Local Outlier Factor (LOF)...")
-        X_train, X_val, X_test = anom.LOF(X_train_PCA, X_val_PCA, X_test_PCA, X_train, X_val, X_test)
+        X_train_full, X_test = anom.LOF(X_train_PCA, X_test_PCA, X_train_full, X_test)
         print("Aplicado Local Outlier Factor (LOF)!")
 
-    return X_train, X_val, X_test
-        
+    return X_train_full, X_test

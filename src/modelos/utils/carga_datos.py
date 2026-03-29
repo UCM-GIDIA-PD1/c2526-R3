@@ -71,7 +71,7 @@ def cargar_dataset_general(years=YEARS, eliminar_correladas=True):
     if eliminar_correladas:
         df = df.drop(columns=COLS_ELIMINAR, errors="ignore")
 
-    cols_no_features = [TARGET_CLASIFICACION, "lat", "lon", "date", "_year"]
+    cols_no_features = [TARGET_CLASIFICACION, "_year"]
     X = df.drop(columns=[c for c in cols_no_features if c in df.columns])
     y = df[TARGET_CLASIFICACION]
 
@@ -101,7 +101,7 @@ def cargar_dataset_general_con_tiempos(years=YEARS, eliminar_correladas=True):
     X = df.drop(columns=[c for c in cols_no_features if c in df.columns])
     y = df[TARGET_CLASIFICACION]
 
-    print(f"  ✅ Dataset cargado: {X.shape[0]:,} filas, {X.shape[1]} features")
+    print(f"  Dataset cargado: {X.shape[0]:,} filas, {X.shape[1]} features")
     print(f"  Incendios:     {y.sum():,} ({y.mean()*100:.1f}%)")
     print(f"  No incendios:  {(y==0).sum():,} ({(y==0).mean()*100:.1f}%)")
 

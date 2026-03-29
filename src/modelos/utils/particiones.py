@@ -15,7 +15,8 @@ Nota: para regresión solo se usa split_simple_regresion (no hay clases desbalan
 """
 
 import numpy as np
-from sklearn.model_selection import train_test_split
+import pandas as pd
+from sklearn.model_selection import train_test_split,StratifiedKFold, TimeSeriesSplit
 
 # Semilla fija para reproducibilidad (requerido por el profesor)
 SEED = 42
@@ -23,6 +24,60 @@ SEED = 42
 # Proporciones de partición
 TEST_SIZE = 0.10   # 10% test
 VAL_SIZE  = 0.10   # 10% validación → equivale a 0.111 del 90% restante
+
+
+'''
+
+
+LAS UNIFICADAS FINALMENTE USADAS COMO PRINCIPALES PARA NUESTROS MODELOS
+
+
+'''
+
+
+
+def split_temporal(X, y, date_col='date', test_size=0.2):
+    """
+    Se realiza un split teniendo en cuenta una repartición de manera cronológica
+    """
+    if date_col in X.columns:
+        X = X.sort_values(date_col)
+        y = y.loc[X.index]
+        X = X.drop(columns=[date_col])
+        print(f"Dataset ordenado temporalmente y columna '{date_col}' eliminada.")
+    else:
+        print(f"No se encontró la columna date.")
+
+    split_idx = int(len(X) * (1 - test_size))
+    
+    X_train = X.iloc[:split_idx]
+    X_test = X.iloc[split_idx:]
+    y_train = y.iloc[:split_idx]
+    y_test = y.iloc[split_idx:]
+    
+    return X_train, X_test, y_train, y_test
+
+
+def generador_cv(tipo_cv='estratificado', n_splits=4, seed=42):
+    
+    """
+    Nos devuelve las diferentes particiones
+    """
+
+    if tipo_cv == 'temporal':
+        print(f"Usando TimeSeriesSplit con {n_splits} splits.")
+        return TimeSeriesSplit(n_splits=n_splits)
+    else:
+        print(f"Usando StratifiedKFold con {n_splits} splits.")
+        return StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=seed)
+
+
+
+
+
+
+
+#________________________________________________________________________________
 
 
 # ── Clasificación ──────────────────────────────────────────────────────────────

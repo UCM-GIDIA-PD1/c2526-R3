@@ -1,5 +1,6 @@
 import os
 import sys
+import numpy as np
 from pathlib import Path
 
 import wandb
@@ -7,11 +8,11 @@ import yaml
 import pandas as pd
 from dotenv import load_dotenv
 from imblearn.ensemble import BalancedRandomForestClassifier
-from sklearn.metrics import f1_score
+from sklearn.metrics import fbeta_score, recall_score
 
 sys.path.append(os.path.join(os.path.dirname(__file__), "..", ".."))
 import modelos.utils.carga_datos as cg
-from modelos.utils.particiones import split_estratificado
+from modelos.utils.particiones import split_temporal, generador_cv
 from modelos.utils.metricas import evaluar_clasificacion
 
 import modelos.utils.personalizacion as pers
@@ -26,8 +27,10 @@ SWEEP_PATH = Path(__file__).with_name("balanced_random_forest.yaml")
 SEED = 42
 NUM_IT = 0
 
+TIPO_CV = 'estratificado'
+
 # Entrenamiento y evaluación
-def arboles_decision_clasificacion(X_train, X_val, X_test, y_train, y_val, y_test, detallados=False, nombre = None):
+def arboles_decision_clasificacion(X_train_full, X_test, y_train_full, y_test, detallados=False, nombre = None):
     
     global NUM_IT
 
@@ -47,18 +50,33 @@ def arboles_decision_clasificacion(X_train, X_val, X_test, y_train, y_val, y_tes
         n_jobs=-1,
     )
 
-    # 2. Validación
-    model.fit(X_train, y_train)
-    y_pred_val = model.predict(X_val)
-    # y_probas_val_full = model.predict_proba(X_val)
-    # y_prob_val_positivo = y_probas_val_full[:, 1]
+    # 2. Validación Cruzada
+    cv_generator = generador_cv(tipo_cv=TIPO_CV, n_splits=4, seed=SEED)
+    f2_val_scores = []
+    recall_val_scores = []
 
-    # metricas_val = evaluar_clasificacion(y_val, y_pred_val, y_prob_val_positivo, "Validación")
-    f1_val = f1_score(y_val, y_pred_val, zero_division=0)
+    for train_idx, val_idx in cv_generator.split(X_train_full, y_train_full):
+        
+        X_fold_train = X_train_full.iloc[train_idx]
+        y_fold_train = y_train_full.iloc[train_idx]
+        X_fold_val = X_train_full.iloc[val_idx]
+        y_fold_val = y_train_full.iloc[val_idx]
 
-    # 3. Re-entrenamiento con train + validation
-    X_train_full = pd.concat([X_train, X_val])
-    y_train_full = pd.concat([y_train, y_val])
+        # Entrenar n - 1 grupos y predecimos el otro
+        model.fit(X_fold_train, y_fold_train)
+        y_fold_pred = model.predict(X_fold_val)
+        
+        # Guardamos los valores de f2-score y del recall 
+        f2_fold = fbeta_score(y_fold_val, y_fold_pred, beta=2, zero_division=0)
+        recall_fold = recall_score(y_fold_val, y_fold_pred, zero_division=0)
+        f2_val_scores.append(f2_fold)
+        recall_val_scores.append(recall_fold)
+
+    # Creamos el valor medio para saber la efectividad
+    f2_val_mean = np.mean(f2_val_scores)
+    recall_val_mean = np.mean(recall_val_scores)
+
+    # 3. Entrenamos el modelo final con el 80%
     model.fit(X_train_full, y_train_full)
 
     # 4. Test Final
@@ -67,13 +85,13 @@ def arboles_decision_clasificacion(X_train, X_val, X_test, y_train, y_val, y_tes
     y_prob_test_positivo = y_probas_test_full[:, 1]
 
     metricas_test = evaluar_clasificacion(y_test, y_pred_test, y_prob_test_positivo, "Test Final")
-    f1_test = f1_score(y_test, y_pred_test, zero_division=0)
+    f2_test = fbeta_score(y_test, y_pred_test, beta=2, zero_division=0)
 
     # 5. Log de métricas en WandB
     wandb.log({
-        "f1_score_test": f1_test,  # Métrica objetivo
-        "val/f1": f1_val,
-        "test/f1": f1_test,
+        "val/f2_mean_cv": f2_val_mean,
+        "val/recall_mean_cv": recall_val_mean,
+        "test/f2_score": f2_test,
         "test/recall": metricas_test["recall"],
         "test/precision": metricas_test["precision"],
     })
@@ -93,7 +111,7 @@ def arboles_decision_clasificacion(X_train, X_val, X_test, y_train, y_val, y_tes
             feature_names=X_train_full.columns.tolist()
         )
 
-    wf.matriz_confusion_feature_importance(model, y_pred_val, y_val, X_train.columns.tolist())
+    wf.matriz_confusion_feature_importance(model, y_pred_test, y_test, X_train_full.columns.tolist())
     
     run.finish()
 
@@ -105,9 +123,9 @@ def clasificacion():
     
     X, y = pers.pregunta_PCA()
 
-    X_train, X_val, X_test, y_train, y_val, y_test = split_estratificado(X, y)
+    X_train_full, X_test, y_train_full, y_test = split_temporal(X, y)
 
-    X_train, X_val, X_test = pers.anomalias(X_train, X_val, X_test)
+    X_train_full, X_test = pers.anomalias(X_train_full, X_test)
 
     iters, nombre = pers.pregunta_iters_nombre()
 
@@ -122,7 +140,7 @@ def clasificacion():
 
 
     def entrenamiento():
-        arboles_decision_clasificacion(X_train, X_val, X_test, y_train, y_val, y_test, detallados, nombre)
+        arboles_decision_clasificacion(X_train_full, X_test, y_train_full, y_test, detallados, nombre)
 
     sweep_id = wf.crear_sweep_id(WANDB_PROJECT, SWEEP_PATH)
 

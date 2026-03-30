@@ -25,7 +25,13 @@ NUM_IT = 0
 
 def evaluacion_final(config, X_train_full, X_test, y_train_full, y_test, metodo):
 
-    run = wandb.init(project=WANDB_PROJECT, entity=WANDB_ENTITY, tags=["Evaluacion Final", metodo])
+   run = wandb.init(
+        project=WANDB_PROJECT, 
+        entity=WANDB_ENTITY, 
+        name="Mejor Modelo Test", 
+        tags=["Evaluacion Final", metodo],
+        reinit=True 
+    )
     
     ratio = calcular_ratio_clases(y_train_full)
     umbral = config.get("umbral", 0.5)
@@ -193,7 +199,7 @@ def clasificacion(metodo_elegido, metrica_elegida):
             "colsample_bytree": {"values": [0.5, 0.7, 1.0]},
             "umbral": {"values": [0.1, 0.2, 0.3, 0.4, 0.5]},
         }
-    else: 
+    elif metodo_elegido == "random":
         params = {
             "n_estimators": {"values": [2000, 5000]},
             "learning_rate": {"distribution": "uniform", "min": 0.01, "max": 0.2},

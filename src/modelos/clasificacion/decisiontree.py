@@ -27,7 +27,7 @@ NUM_IT = 0
 
 def evaluacion_final(hiperparametros, metodo, X_train_full, X_test, y_train_full, y_test):
     config_final = {
-        "method": "grid",
+        "method": metodo,
         "parameters": {
             "max_depth": {"values": [hiperparametros["max_depth"]]},
             "min_samples_split": {"values": [hiperparametros["min_samples_split"]]},
@@ -98,11 +98,10 @@ def entrenamiento(X_train_full, y_train_full, nombre=None):
         f2_cv_scores.append(fbeta_score(y_fold_val, y_v_pred, beta=2, zero_division=0))
         f1_5_cv_scores.append(fbeta_score(y_fold_val, y_v_pred, beta=1.5, zero_division=0))
 
-        # Train con umbral (Diagnóstico)
         y_t_prob = clf.predict_proba(X_fold_train)[:, 1]
         y_t_pred = (y_t_prob >= config.umbral).astype(int)
         f2_cv_train.append(fbeta_score(y_fold_train, y_t_pred, beta=2, zero_division=0))
-        f1_5_cv_train.append(fbeta_score(y_fold_train))
+        f1_5_cv_train.append(fbeta_score(y_fold_train, y_t_pred, beta=1.5))
 
     wandb.log({
         "train/f2_mean_cv": np.mean(f2_cv_train),

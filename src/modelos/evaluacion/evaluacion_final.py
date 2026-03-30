@@ -1,8 +1,6 @@
 from modelos.clasificacion import balanced_random_forest, decisiontree, m_xgboost, random_forest, regresion_logistica
 from modelos.generico import modelo_xgboost
-# from modelos.regresion import frp_rdForest, frp_xgBoost
-from modelos.utils.particiones import split_temporal
-from modelos.utils.carga_datos import cargar_dataset_general, cargar_dataset_frp
+from modelos.regresion import frp_rdForest, frp_xgBoost
 
 
 def evaluacion_modelo(modelo, tipo_modelo):
@@ -12,7 +10,7 @@ def evaluacion_modelo(modelo, tipo_modelo):
     metodo = input("Indica el método empleado (grid/random/bayes): ").lower()
     hiperparametros = pedir_hiperparametros(modelo)
     
-    if modelo == "XGBoost":
+    if modelo == "XGBoostClassifier":
         m_xgboost.evaluacion_final(hiperparametros, metodo)
 
     elif modelo == "BalancedRandomForest":
@@ -26,6 +24,12 @@ def evaluacion_modelo(modelo, tipo_modelo):
 
     elif modelo == "Regresión logística":
         regresion_logistica.evaluacion_final(hiperparametros, metodo)
+
+    elif modelo == 'RandomForestFRP':
+        frp_rdForest.evaluacion_final(hiperparametros, metodo)
+
+    elif modelo == 'XGBoostFRP':
+        frp_xgBoost.evaluacion_final(hiperparametros, metodo)
 
 
 def pedir_hiperparametros(modelo):

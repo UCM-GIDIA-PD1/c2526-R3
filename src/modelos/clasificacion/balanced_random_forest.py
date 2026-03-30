@@ -38,7 +38,7 @@ def evaluacion_final(hiperparametros, metodo):
             }
         }
         
-    sweep_id_final = wandb.sweep(config_final, project=WANDB_PROJECT)
+    sweep_id_final = wandb.sweep(config_final, entity=WANDB_ENTITY, project=WANDB_PROJECT)
 
     def agente_final():
         evaluacion(X_train_full, X_test, y_train_full, y_test, metodo)
@@ -105,7 +105,7 @@ def entrenamiento(X_train_full, y_train_full, nombre = None):
         n_jobs=-1,
     )
 
-    cv_generator = generador_cv(tipo_cv="estratificado", n_splits=4, seed=SEED)
+    cv_generator = generador_cv(tipo_cv="temporal", n_splits=4, seed=SEED)
     f2_cv_scores, f1_cv_scores, recall_cv_scores = [], [], []
     f2_cv_scores_train, f1_cv_scores_train, recall_cv_scores_train = [], [], []
 
@@ -168,7 +168,7 @@ def inicializar():
     return X_train_full, X_test, y_train_full, y_test
 
 
-def clasificacion():
+def clasificacion(metodo_elegido):
     X_train_full, X_test, y_train_full, y_test = inicializar()
     
     iters, nombre = pers.pregunta_iters_nombre()
@@ -176,7 +176,40 @@ def clasificacion():
     def ent():
         entrenamiento(X_train_full, y_train_full, nombre)
 
-    sweep_id = wf.crear_sweep_id(WANDB_PROJECT, SWEEP_PATH)
+    if metodo_elegido == "grid":
+        params = {
+            "n_estimators": {"values": [100, 300, 500, 800]},
+            "max_depth": {"values": [5, 10, 15, 25]},
+            "min_samples_split": {"values": [2, 10, 20]},
+            "min_samples_leaf": {"values": [1, 5, 15]},
+            "criterion": {"values": ["gini", "entropy"]},
+            "max_features": {"values": ["sqrt", "log2", None]},
+            "umbral": {"values": [0.25, 0.35, 0.45]}
+        }
+    else: 
+        params = {
+            "n_estimators": {"values": [100, 300, 500, 800]},
+            "max_depth": {"distribution": "int_uniform", "min": 5, "max": 25},
+            "min_samples_split": {"distribution": "int_uniform", "min": 2, "max": 20},
+            "min_samples_leaf": {"distribution": "int_uniform", "min": 1, "max": 15},
+            "criterion": {"values": ["gini", "entropy"]},
+            "max_features": {"values": ["sqrt", "log2", None]},
+            "umbral": {"distribution": "uniform", "min": 0.23, "max": 0.6}
+        }
+
+    if metrica == "f2":
+        metric_name = "val/f2_mean_cv"
+    else:
+        metric_name = "val/f1_mean_cv"
+
+    sweep_config = {
+        "name": f"BRF-{metodo_elegido}-{metrica}-Sweep",
+        "method": metodo_elegido, 
+        "metric": {"name": metric_name, "goal": "maximize"},
+        "parameters": params
+    }
+
+    sweep_id = wandb.sweep(sweep_config, entity=WANDB_ENTITY, project=WANDB_PROJECT)
 
     wandb.agent(
         sweep_id=sweep_id,
@@ -187,4 +220,7 @@ def clasificacion():
     )
 
 if __name__ == "__main__":
-    clasificacion()
+    metodo = input("\n Selecciona el metodo (grid o random) para la búsqueda de hiperparámetros:" )
+    metrica = input("\n Selecciona la métrica que quieres optimizar (f1/f2):" )
+    clasificacion(metodo, metrica)
+

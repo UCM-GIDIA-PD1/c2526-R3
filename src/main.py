@@ -11,6 +11,9 @@ from shapely.geometry import box
 import geopandas as gpd
 from limpieza import limpieza
 from modelos.evaluacion import evaluacion_final
+from modelos.clasificacion import decisiontree, balanced_random_forest, random_forest, m_xgboost,  regresion_logistica
+from modelos.generico import modelo_xgboost
+from modelos.regresion import frp_rdForest, frp_xgBoost
 # Función encargada de unificar y facilitar el debug de cada módulo, avisar de imports faltantes y diferentes rutas
 
 
@@ -318,7 +321,7 @@ async def main():
         await mostrar_menu()
         opcion = input("\n🔷 Selecciona una opción (0-16): ").strip()
 
-        if pregunta and opcion not in ["0", "5", "6", "8",'10', '11', '14', '16']:
+        if pregunta and opcion not in ["0", "5", "6", "8",'10', '11', '14', '16', '17']:
             resultado = pedirDatos()
             pregunta = False
 
@@ -530,9 +533,40 @@ async def main():
             print("4.RandomForest.")
             print("5.Regresión logística.")
             modelos = ["DecisionTree", "BalancedRandomForest", "RandomForest", "Regresión logística"]
-            modelo = input("Indica el modelo que quieres evaluar (el número): ")
-            tipo_modelo = input("Indica si es para predicción del frp o de incendios (regresión o clasificación): ")
+            modelo = input("/nIndica el modelo que quieres evaluar (el número): ")
+            tipo_modelo = input("/nIndica si es para predicción del frp o de incendios (regresión o clasificación): ")
             evaluacion_final.evaluacion_modelo(modelos[int(modelo) - 1], tipo_modelo)
+
+        elif opcion == "17":
+            print("1.DecisionTree (para clasificación).")
+            print("2.XGBoost.")
+            print("3.BalancedRandomForest (para clasificación).")
+            print("4.RandomForest.")
+            print("5.Regresión logística.")
+
+            modelo = input("/nIndica el modelo que quieres evaluar (el número): ")
+            tipo_modelo = input("/nIndica si es para predicción del frp o de incendios (regresión o clasificación): ")
+
+            metodo = input("\n Selecciona el metodo (grid o random) para la búsqueda de hiperparámetros:" )
+            metrica = input("\n Selecciona la métrica que quieres optimizar (f1/f2):" )
+
+            if modelo == "1":
+                decisiontree.clasificacion(metodo, metrica)
+            elif modelo == "2":
+                if tipo_modelo == "regresión":
+                    frp_xgBoost.xg_regresion() #Habrá que cambiarlo
+                else:
+                    ventanas_temporales = input("/nIndica si quieres ventanas temporales (s/n): ")
+                    if ventanas_temporales == "s":
+                        modelo_xgboost.train() #Habrá que cambiarlo
+                    else:
+                        m_xgboost.clasificacion(metodo, metrica)
+            elif modelo == "3":
+                balanced_random_forest.clasificacion(metodo, metrica) 
+            elif modelo == "4":
+                random_forest.clasificacion(metodo, metrica)
+            elif modelo == "5":
+                regresion_logistica.entrenar() #Habrá que cambiarlo
 
         elif opcion == "0":
             print("\n   ¡Adios! Pasa un buen día ")

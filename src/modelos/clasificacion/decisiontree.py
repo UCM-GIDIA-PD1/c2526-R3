@@ -62,7 +62,7 @@ def evaluacion(X_train_full, X_test, y_train_full, y_test, metodo):
     wandb.log({
         "test/f1": float(metricas_test["f1"]), "test/recall": float(metricas_test["recall"]),
         "test/f2_score": fbeta_score(y_test, y_pred_test, beta=2, zero_division=0),
-        "test/f1_5_score": fbeta_score(y_test, y_pred_test, beta=1.5, zero_division=0)
+        "test/f1_score": fbeta_score(y_test, y_pred_test, zero_division=0)
     })
     plot_roc(y_test, y_prob_test)
     plot_precision_recall(y_test, y_prob_test)
@@ -83,9 +83,9 @@ def entrenamiento(X_train_full, y_train_full, nombre=None):
         min_samples_leaf=config.min_samples_leaf, criterion=config.criterion,
         max_features=max_f, class_weight=config.class_weight, random_state=SEED
     )
-    cv_generator = part.generador_cv(tipo_cv='estratificado', n_splits=4, seed=SEED)
-    f2_cv_scores, f1_5_cv_scores = [], []
-    f2_cv_train, f1_5_cv_train = [], []
+    cv_generator = part.generador_cv(tipo_cv='temporal', n_splits=4, seed=SEED)
+    f2_cv_scores, f1_cv_scores = [], []
+    f2_cv_train, f1_cv_train = [], []
 
     for train_idx, val_idx in cv_generator.split(X_train_full, y_train_full):
         X_fold_train, X_fold_val = X_train_full.iloc[train_idx], X_train_full.iloc[val_idx]
@@ -96,18 +96,18 @@ def entrenamiento(X_train_full, y_train_full, nombre=None):
         y_v_prob = clf.predict_proba(X_fold_val)[:, 1]
         y_v_pred = (y_v_prob >= config.umbral).astype(int)
         f2_cv_scores.append(fbeta_score(y_fold_val, y_v_pred, beta=2, zero_division=0))
-        f1_5_cv_scores.append(fbeta_score(y_fold_val, y_v_pred, beta=1.5, zero_division=0))
+        f1_cv_scores.append(fbeta_score(y_fold_val, y_v_pred, zero_division=0))
 
         y_t_prob = clf.predict_proba(X_fold_train)[:, 1]
         y_t_pred = (y_t_prob >= config.umbral).astype(int)
         f2_cv_train.append(fbeta_score(y_fold_train, y_t_pred, beta=2, zero_division=0))
-        f1_5_cv_train.append(fbeta_score(y_fold_train, y_t_pred, beta=1.5))
+        f1_cv_train.append(fbeta_score(y_fold_train, y_t_pred))
 
     wandb.log({
         "train/f2_mean_cv": np.mean(f2_cv_train),
-        "train/f1_5_mean_cv": np.mean(f1_5_cv_train),
+        "train/f1_mean_cv": np.mean(f1_cv_train),
         "val/f2_mean_cv": np.mean(f2_cv_scores), 
-        "val/f1_5_mean_cv": np.mean(f1_5_cv_scores)
+        "val/f1_mean_cv": np.mean(f1_cv_scores)
     })
     run.finish()
 
@@ -119,12 +119,80 @@ def inicializar():
     X_train_full, X_test = pers.anomalias(X_train_full, X_test)
     return X_train_full, X_test, y_train_full, y_test
 
-def clasificacion():
+def clasificacion(metodo_elegido):
     X_train_full, X_test, y_train_full, y_test = inicializar()
+    
     iters, nombre = pers.pregunta_iters_nombre()
-    def ent(): entrenamiento(X_train_full, y_train_full, nombre)
-    sweep_id = wf.crear_sweep_id(WANDB_PROJECT, SWEEP_PATH)
-    wandb.agent(sweep_id, function=ent, count=iters, entity=WANDB_ENTITY, project=WANDB_PROJECT)
+
+    def ent():
+        entrenamiento(X_train_full, y_train_full, nombre)
+
+    if metodo_elegido == "grid":
+        params = {
+            "max_depth": {"values": [5, 15, 25, 35]},
+            "min_samples_leaf": {"values": [1, 5, 10, 20]},
+            "min_samples_split": {"values": [2, 8, 18]},
+            "criterion": {"values": ["gini", "entropy"]},
+            "max_features": {"values": ["sqrt", "log2", None]},
+            "umbral": {"values": [0.3, 0.45, 0.6]},
+            "class_weight": {"values": ["balanced", None]}
+        }
+    else: 
+        params = {
+            "max_depth": {
+                "distribution": "int_uniform", 
+                "min": 5, 
+                "max": 35
+            },
+            "min_samples_leaf": {
+                "distribution": "int_uniform", 
+                "min": 1, 
+                "max": 20
+            },
+            "min_samples_split": {
+                "distribution": "int_uniform", 
+                "min": 2, 
+                "max": 18
+            },
+            "criterion": {
+                "values": ["gini", "entropy"]
+            },
+            "max_features": {
+                "values": ["sqrt", "log2", None]
+            },
+            "umbral": {
+                "distribution": "uniform", 
+                "min": 0.3, 
+                "max": 0.6
+            },
+            "class_weight": {
+                "values": ["balanced", None]
+            }
+        }
+
+    if metrica == "f2":
+        metric_name = "val/f2_mean_cv"
+    else:
+        metric_name = "val/f1_mean_cv"
+
+    sweep_config = {
+        "name": f"DecisionTree-{metodo_elegido}-{metrica}-Sweep",
+        "method": metodo_elegido, 
+        "metric": {"name": metric_name, "goal": "maximize"},
+        "parameters": params
+    }
+
+    sweep_id = wandb.sweep(sweep_config, entity=WANDB_ENTITY, project=WANDB_PROJECT)
+
+    wandb.agent(
+        sweep_id=sweep_id,
+        function=ent,
+        count=iters,
+        entity=WANDB_ENTITY,
+        project=WANDB_PROJECT,
+    )
 
 if __name__ == "__main__":
-    clasificacion()
+    metodo = input("\n Selecciona el metodo (grid o random) para la búsqueda de hiperparámetros:" )
+    metrica = input("\n Selecciona la métrica que quieres optimizar (f1/f2):" )
+    clasificacion(metodo, metrica)

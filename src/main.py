@@ -13,7 +13,7 @@ from limpieza import limpieza
 from modelos.evaluacion import evaluacion_final
 from modelos.clasificacion import decisiontree, balanced_random_forest, random_forest, m_xgboost,  regresion_logistica
 from modelos.generico import modelo_xgboost
-from modelos.regresion import frp_rdForest, frp_xgBoost
+#from modelos.regresion import frp_rdForest, frp_xgBoost
 # Función encargada de unificar y facilitar el debug de cada módulo, avisar de imports faltantes y diferentes rutas
 
 
@@ -196,6 +196,7 @@ async def mostrar_menu():
         print("  14. Extraer máscaras faltantes")
         print("  15. Limpieza de valores nulos")
         print("  16. Evaluar modelo final")
+        print("  17. Entrenar modelo")
     print("  0. Salir")
     print(" "*60)
 
@@ -319,7 +320,7 @@ async def main():
 
     while True:
         await mostrar_menu()
-        opcion = input("\n🔷 Selecciona una opción (0-16): ").strip()
+        opcion = input("\n🔷 Selecciona una opción (0-17): ").strip()
 
         if pregunta and opcion not in ["0", "5", "6", "8",'10', '11', '14', '16', '17']:
             resultado = pedirDatos()
@@ -462,7 +463,7 @@ async def main():
             mascaras.extraer_mascaras_faltantes()
 
         elif opcion == "15" and MODULOS_CARGADOS:
-            nulos = input("\n¿Quieres ver los valores nulos? (s/n): ").strip()
+            nulos = input("¿Quieres ver los valores nulos? (s/n): ").strip()
 
             if nulos == "s":
                 print("\n Analizando valores nulos...")
@@ -547,8 +548,8 @@ async def main():
             modelo = input("/nIndica el modelo que quieres evaluar (el número): ")
             tipo_modelo = input("/nIndica si es para predicción del frp o de incendios (regresión o clasificación): ")
 
-            metodo = input("\n Selecciona el metodo (grid o random) para la búsqueda de hiperparámetros:" )
-            metrica = input("\n Selecciona la métrica que quieres optimizar (f1/f2):" )
+            metodo = input("Selecciona el metodo (grid o random) para la búsqueda de hiperparámetros:" )
+            metrica = input("Selecciona la métrica que quieres optimizar (f1/f2):" )
 
             if modelo == "1":
                 decisiontree.clasificacion(metodo, metrica)

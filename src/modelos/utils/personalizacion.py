@@ -14,7 +14,7 @@ def pregunta_PCA(df=None):
         df = clean.bajar_df_final() 
 
     df.columns = df.columns.str.lower().str.strip()
-    target_col = 'incendio' if 'incendio' in df.columns else 'fires'
+    target_col = 'incendio' if 'incendio' in df.columns else 'final'
 
     while True:
         pca_input = input("¿Quieres aplicar PCA a los datos? (s/n): ").lower()

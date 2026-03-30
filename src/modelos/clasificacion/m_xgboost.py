@@ -53,7 +53,8 @@ def evaluacion_final(config, X_train_full, X_test, y_train_full, y_test, metodo)
         eval_metric="aucpr",
         n_jobs=-1,
     )
-    
+
+    clf.fit(X_train_full, y_train_full)
     y_prob_train = clf.predict_proba(X_train_full)[:, 1]
     umbral_optimo = ventana.encontrar_mejor_umbral(y_train_full, y_prob_train)
     print(f"\n Umbral óptimo calculado para el Test: {umbral_optimo:.2f}")
@@ -198,7 +199,6 @@ def inicializar():
 
     return X_train_full, X_test, y_train_full, y_test
 
-    return X_train_full, X_test, y_train_full, y_test
 
 def calcular_ratio_clases(y):
     counts = y.value_counts()
@@ -252,13 +252,14 @@ def clasificacion(metodo_elegido, metrica_elegida):
     else:
         params = {
         "n_estimators": {"values": [2000, 3000]}, 
-        "learning_rate": {"distribution": "log_uniform_values", "min": 0.005, "max": 0.05}, 
-        "max_depth": {"values": [5, 6, 8, 10]}, 
-        "min_child_weight": {"distribution": "int_uniform", "min": 3, "max": 8},
-        "gamma": {"distribution": "uniform", "min": 0.5, "max": 3.0},
+        "learning_rate": {"distribution": "log_uniform_values", "min": 0.005, "max": 0.03}, 
+        "max_depth": {"values": [4, 5, 6, 8]}, 
+        "min_child_weight": {"distribution": "int_uniform", "min": 5, "max": 15}, 
+        "gamma": {"distribution": "uniform", "min": 1.0, "max": 5.0}, 
         "subsample": {"distribution": "uniform", "min": 0.6, "max": 0.9},
         "colsample_bytree": {"distribution": "uniform", "min": 0.5, "max": 0.9},
-        "umbral": {"distribution": "uniform", "min": 0.5, "max": 0.95} 
+        "umbral": {"distribution": "uniform", "min": 0.6, "max": 0.95} 
+    
     }
 
     metrica_limpia = metrica_elegida.lower().strip()

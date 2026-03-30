@@ -106,6 +106,7 @@ def entrenamiento(X_train_full, y_train_full, nombre=None):
 
     cv_generator = generador_cv(tipo_cv="temporal", n_splits=4, seed=SEED)
     f2_cv_scores, f2_cv_train = [], []
+    f1_cv_scores, f1_cv_train = [], []
 
     for train_idx, val_idx in cv_generator.split(X_train_full, y_train_full):
         X_fold_train, X_fold_val = X_train_full.iloc[train_idx], X_train_full.iloc[val_idx]
@@ -124,14 +125,18 @@ def entrenamiento(X_train_full, y_train_full, nombre=None):
         y_val_prob = clf.predict_proba(X_fold_val_sc)[:, 1]
         y_fold_pred = (y_val_prob >= config.umbral).astype(int)
         f2_cv_scores.append(fbeta_score(y_fold_val, y_fold_pred, beta=2, zero_division=0))
+        f1_cv_scores.append(fbeta_score(y_fold_val, y_fold_pred, beta=1, zero_division=0))
 
         y_train_prob = clf.predict_proba(X_fold_train_sc)[:, 1]
         y_train_pred = (y_train_prob >= config.umbral).astype(int)
         f2_cv_train.append(fbeta_score(y_fold_train, y_train_pred, beta=2, zero_division=0))
+        f1_cv_train.append(fbeta_score(y_fold_val, y_fold_pred, beta=1, zero_division=0))
 
     wandb.log({
         "train/f2_mean_cv": float(np.mean(f2_cv_train)),
-        "val/f2_mean_cv": float(np.mean(f2_cv_scores))
+        "val/f2_mean_cv": float(np.mean(f2_cv_scores)),
+        "train/f1_mean_cv": float(np.mean(f2_cv_train)),
+        "val/f1_mean_cv": float(np.mean(f2_cv_scores))
     })
     run.finish()
 

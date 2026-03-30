@@ -1,0 +1,23 @@
+method: bayes
+metric:
+  name: val/f1_mean_cv
+  goal: maximize
+parameters:
+  learning_rate:
+    distribution: uniform
+    min: 0.01
+    max: 0.15
+  max_depth:
+    values: [3, 6, 9, 12]
+  n_estimators:
+    values: [200, 500, 800]
+  scale_pos_weight:
+    distribution: uniform
+    min: 10
+    max: 60
+  subsample:
+    values: [0.7, 0.8, 1.0]
+  gamma:
+    values: [0, 1, 5]
+  min_child_weight:
+    values: [1, 5, 10]

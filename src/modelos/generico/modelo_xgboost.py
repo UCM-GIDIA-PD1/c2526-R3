@@ -11,7 +11,7 @@ from sklearn.metrics import f1_score, recall_score, fbeta_score
 from extraccion import minioFunctions 
 from modelos import parser
 from modelos.utils import personalizacion as per, wandbFunctions as wf, explicabilidad as exp
-from modelos.utils.particiones import split_temporal, generador_cv
+from modelos.utils.particiones import split_temporal, generador_cv, oversampling
 from modelos.utils.metricas import evaluar_clasificacion
 from modelos.clasificacion import ventanas_temporales as vt
 
@@ -83,6 +83,10 @@ def ventanas_temporales(df):
 
     #División de los datos
     X_train, X_test, y_train, y_test = split_temporal(X, y)
+    
+    #Aplicamos oversampling para balancear las clases en el conjunto de entrenamiento
+    X_train, y_train = oversampling(X_train, y_train, proporcion_incendios=0.33)
+
     feature_names = [f"Var_{i}" for i in range(X_train.shape[1])]
 
     return tags, feature_names, X_train, X_test, y_train, y_test
@@ -207,7 +211,7 @@ if __name__ == "__main__":
 
     class_names = ["No Incendio", "Incendio"]
     configuraciones = {
-        "sweep_xgboost_incendios": {
+        "sweep_oversampling": {
             'method': 'bayes',
             'metric': {'name': 'val/f1_mean_cv', 'goal': 'maximize'},
             'parameters': {

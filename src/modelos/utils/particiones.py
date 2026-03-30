@@ -8,6 +8,9 @@ Implementa las tres estrategias de muestreo requeridas.
 import numpy as np
 import pandas as pd
 from sklearn.model_selection import train_test_split,StratifiedKFold, TimeSeriesSplit
+from imblearn.over_sampling import SMOTE
+from extraccion import minioFunctions as mf
+from modelos.utils import personalizacion as per
 
 # Semilla fija para reproducibilidad
 SEED = 42
@@ -104,3 +107,28 @@ def _imprimir_resumen_regresion(y_train, y_val, y_test):
         n = len(y_split)
         print(f"  {nombre}: {n:>5,} filas ({n/total*100:.0f}%)  "
               f"| log_frp media: {y_split.mean():.3f}")
+        
+
+def oversampling(X_train, y_train, proporcion_incendios=0.5):
+    '''
+    Realiza oversampling para balancear las clases en el conjunto de entrenamiento.
+    
+    :param X_train, y_train: Conjunto de train original
+    :param proporcion_incendios: Proporción deseada de incendios para el oversampling 
+    :return: X_train_oversampled, y_train_oversampled
+    '''
+    X_train = X_train.fillna(0)
+
+    print("Proporción de clases antes de oversampling:")
+    print(f"Proporción incendios: {round((y_train == 1).sum() / len(y_train) * 100, 2)}%")
+    print(f"Proporción no incendios: {round((y_train == 0).sum() / len(y_train) * 100, 2)}%") 
+
+    smote = SMOTE(sampling_strategy=proporcion_incendios, random_state=42)
+    X_train_oversampled, y_train_oversampled = smote.fit_resample(X_train, y_train)
+
+    print("\nProporción de clases después de oversampling:")
+    print(f"Proporción incendios: {round((y_train_oversampled == 1).sum() / len(y_train_oversampled) * 100, 2)}%")
+    print(f"Proporción no incendios: {round((y_train_oversampled == 0).sum() / len(y_train_oversampled) * 100, 2)}%")
+
+    return X_train_oversampled, y_train_oversampled
+

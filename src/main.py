@@ -528,12 +528,14 @@ async def main():
                 print(f" Filas restantes: {filas_despues}")
     
         elif opcion == "16":
-            print("1.DecisionTree.")
-            print("2.XGBoost.")
-            print("3.BalancedRandomForest.")
+            print("1.XGBoostClassifier.")
+            print("2.BalancedRandomForest.")
+            print("3.DecisionTree.")
             print("4.RandomForest.")
             print("5.Regresión logística.")
-            modelos = ["DecisionTree", "BalancedRandomForest", "RandomForest", "Regresión logística"]
+            print("6.RandomForestFRP.")
+            print("7.XGBoostFRP.")
+            modelos = ["XGBoostClassifier", "BalancedRandomForest", "DecisionTree", "RandomForest", "Regresión logística", "RandomForestFRP", "XGBoostFRP"]
             modelo = input("/nIndica el modelo que quieres evaluar (el número): ")
             tipo_modelo = input("/nIndica si es para predicción del frp o de incendios (regresión o clasificación): ")
             evaluacion_final.evaluacion_modelo(modelos[int(modelo) - 1], tipo_modelo)

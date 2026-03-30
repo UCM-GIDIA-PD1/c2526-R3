@@ -1,9 +1,10 @@
+from matplotlib.pylab import Literal
 from modelos.clasificacion import balanced_random_forest, decisiontree, m_xgboost, random_forest, regresion_logistica
 from modelos.generico import modelo_xgboost
 from modelos.regresion import frp_rdForest, frp_xgBoost
 
 
-def evaluacion_modelo(modelo, tipo_modelo):
+def evaluacion_modelo(modelo:Literal["XGBoostClassifier", "BalancedRandomForest", "DecisionTree", "RandomForest", "Regresión logística", "RandomForestFRP", "XGBoostFRP"], tipo_modelo):
     '''
     Función para evaluar los modelos finales en nuestro conjunto de validación
     '''
@@ -42,6 +43,8 @@ def pedir_hiperparametros(modelo):
     if modelo != "Regresión logística":
         hiperparametros["max_depth"] = int(input("max_depth: "))
         hiperparametros["n_estimators"] = int(input("n_estimators: "))
+    
+    if modelo != "Regresión logística" and 'FRP' not in modelo:
         hiperparametros["umbral"] = float(input("umbral (float, ej 0.35): "))
 
     if modelo in ["RandomForest", "DecisionTree", "BalancedRandomForest"]:
@@ -53,10 +56,14 @@ def pedir_hiperparametros(modelo):
         hiperparametros["max_features"] = None if mf.lower() == "none" else mf
 
   
-    if modelo == "XGBoost":
+    if modelo == "XGBoostClassifier" or modelo == "XGBoostFRP":
         hiperparametros["learning_rate"] = float(input("learning_rate (float): "))
         hiperparametros["subsample"] = float(input("subsample (0.5-1): "))
         hiperparametros["colsample_bytree"] = float(input("colsample_bytree (0.5-1): "))
+
+    if modelo == "XGBoostFRP":
+        hiperparametros["min_child_weight"] = int(input("min_child_weight: "))
+        hiperparametros["gamma"] = float(input("gamma (float): "))
 
     
     if modelo == "Regresión logística":

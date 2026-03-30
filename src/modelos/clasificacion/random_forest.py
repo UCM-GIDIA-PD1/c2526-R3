@@ -142,10 +142,10 @@ def entrenamiento(X_train_full, y_train_full, nombre=None):
         y_t_prob = clf.predict_proba(X_fold_train)[:, 1]
         y_t_pred = (y_t_prob >= config.umbral).astype(int)
         f2_cv_train.append(fbeta_score(y_fold_train, y_t_pred, beta=2, zero_division=0))
-        f1_cv_train.append(fbeta_score(y_fold_train, y_t_pred, zero_division=0))
+        f1_cv_train.append(fbeta_score(y_fold_train, y_t_pred, beta = 1, zero_division=0))
 
         f2_cv_scores.append(fbeta_score(y_fold_val, y_val_pred, beta=2, zero_division=0))
-        f1_cv_scores.append(fbeta_score(y_fold_val, y_val_pred, zero_division=0))
+        f1_cv_scores.append(fbeta_score(y_fold_val, y_val_pred, beta = 1, zero_division=0))
 
     wandb.log({
         "train/f2_mean_cv": np.mean(f2_cv_train),

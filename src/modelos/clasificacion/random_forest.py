@@ -29,7 +29,7 @@ def evaluacion_final(hiperparametros, metodo):
     X_train_full, X_test, y_train_full, y_test = inicializar()
     
     config_final = {
-        "method": "grid",
+        "method": metodo,
         "parameters": {
             "max_depth": {"values": [hiperparametros["max_depth"]]},
             "n_estimators": {"values": [hiperparametros["n_estimators"]]},

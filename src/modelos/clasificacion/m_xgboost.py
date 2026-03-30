@@ -1,5 +1,3 @@
-import os
-import sys
 import numpy as np
 import pandas as pd
 from pathlib import Path
@@ -13,43 +11,100 @@ from wandb.sklearn import (
     plot_feature_importances,
 )
 
-# Configuración de rutas para importar módulos locales
-sys.path.append(os.path.join(os.path.dirname(__file__), "..", ".."))
 from modelos.utils.carga_datos import cargar_dataset_general
 from modelos.utils.particiones import split_temporal, generador_cv
 from modelos.utils.metricas import evaluar_clasificacion
 import modelos.utils.wandbFunctions as wf
 import modelos.utils.personalizacion as pers
 
-# Clave W&B — Juanan usa WANDB_KEY en el .env
-# os.environ["WANDB_API_KEY"] = os.getenv("WANDB_KEY", "")
-
 WANDB_ENTITY = "pd1-c2526-team3"
 WANDB_PROJECT = "XGboost"
+SWEEP_PATH = Path(__file__).with_name("m_xgboost.yaml")
 SEED = 42
+NUM_IT = 0
 
-def main():
-    if not wf.inicializar_apikey_wandb():
-        return
+def evaluacion_final(hiperparametros, metodo):
+    X_train_full, X_test, y_train_full, y_test = inicializar()
     
-    # Todas las variables: no eliminar correladas por ahora
-    X, y = cargar_dataset_general(eliminar_correladas=False)
+    config_final = {
+        "method": metodo,
+        "parameters": {
+            "max_depth": {"values": [hiperparametros["max_depth"]]},
+            "n_estimators": {"values": [hiperparametros["n_estimators"]]},
+            "learning_rate": {"values": [hiperparametros["learning_rate"]]},
+            "subsample": {"values": [hiperparametros["subsample"]]},
+            "colsample_bytree": {"values": [hiperparametros["colsample_bytree"]]},
+            "umbral": {"values": [hiperparametros["umbral"]]}
+        }
+    }
+        
+    sweep_id_final = wandb.sweep(config_final, project=WANDB_PROJECT)
 
-    # Split temporal 80/20
-    X_train_full, X_val, y_train_full, y_val = split_temporal(X, y)
-    
-    # 2. Validación Cruzada
-    cv_generator = generador_cv(tipo_cv="estratificado", n_splits=4, seed=SEED)
-    f2_cv_scores = []
-    f1_cv_scores = []
-    recall_cv_scores = []
+    def agente_final():
+        evaluacion(X_train_full, X_test, y_train_full, y_test, metodo)
 
-    clf_cv = xgb.XGBClassifier(
-        n_estimators=10000,
-        learning_rate=0.1,
+    wandb.agent(sweep_id_final, function=agente_final, count=1)
+
+
+def evaluacion(X_train_full, X_test, y_train_full, y_test, metodo):
+    run = wandb.init(tags=["Evaluacion Final", metodo]) 
+    config = wandb.config
+
+    clf = xgb.XGBClassifier(
+        n_estimators=config.n_estimators,
+        learning_rate=config.learning_rate,
+        max_depth=config.max_depth,
+        subsample=config.subsample,
+        colsample_bytree=config.colsample_bytree,
         random_state=SEED,
         eval_metric="logloss",
+        n_jobs=-1,
     )
+    clf.fit(X_train_full, y_train_full)
+
+    y_prob_test = clf.predict_proba(X_test)
+    y_pred_test = (y_prob_test[:, 1] >= config.umbral).astype(int)
+
+    metricas_test = evaluar_clasificacion(y_test, y_pred_test, y_prob_test[:, 1], "Test — XGBoost")
+
+    wandb.log({
+        "test/f1": float(metricas_test["f1"]),
+        "test/precision": float(metricas_test["precision"]),
+        "test/recall": float(metricas_test["recall"]),
+        "test/accuracy": float(metricas_test["accuracy"]),
+        "test/f2_score": fbeta_score(y_test, y_pred_test, beta=2, zero_division=0)
+    })
+
+    plot_roc(y_test, y_prob_test)
+    plot_precision_recall(y_test, y_prob_test)
+    
+    plot_feature_importances(clf)
+    wf.matriz_confusion_feature_importance(clf, y_pred_test, y_test, X_train_full.columns.tolist())
+
+    run.finish()
+
+
+def entrenamiento(X_train_full, y_train_full, nombre = None):
+    global NUM_IT
+    NUM_IT += 1
+
+    run = wf.wandb_init(WANDB_PROJECT, nombre, NUM_IT)
+    config = wandb.config
+
+    clf = xgb.XGBClassifier(
+        n_estimators=config.n_estimators,
+        learning_rate=config.learning_rate,
+        max_depth=config.max_depth,
+        subsample=config.subsample,
+        colsample_bytree=config.colsample_bytree,
+        random_state=SEED,
+        eval_metric="logloss",
+        n_jobs=-1,
+    )
+
+    cv_generator = generador_cv(tipo_cv="estratificado", n_splits=4, seed=SEED)
+    f2_cv_scores, f1_cv_scores, recall_cv_scores = [], [], []
+    f2_cv_scores_train, f1_cv_scores_train, recall_cv_scores_train = [], [], []
 
     for train_idx, val_idx in cv_generator.split(X_train_full, y_train_full):
         X_fold_train = X_train_full.iloc[train_idx]
@@ -57,80 +112,72 @@ def main():
         X_fold_val = X_train_full.iloc[val_idx]
         y_fold_val = y_train_full.iloc[val_idx]
 
-        # Entrenar n - 1 grupos y predecimos el otro
-        clf_cv.fit(X_fold_train, y_fold_train)
-        
-        y_fold_pred = clf_cv.predict(X_fold_val)
+        clf.fit(X_fold_train, y_fold_train)
 
-        # Guardamos los valores de f1-score y del recall 
+        y_val_prob = clf.predict_proba(X_fold_val)[:, 1]
+        y_fold_pred = (y_val_prob >= config.umbral).astype(int)
+
         f2_cv_scores.append(fbeta_score(y_fold_val, y_fold_pred, beta=2, zero_division=0))
         f1_cv_scores.append(f1_score(y_fold_val, y_fold_pred, zero_division=0))
         recall_cv_scores.append(recall_score(y_fold_val, y_fold_pred, zero_division=0))
 
-    # Creamos el valor medio para saber la efectividad
-    f2_score_mean = np.mean(f2_cv_scores)
-    f1_score_mean = np.mean(f1_cv_scores)
-    recall_score_mean = np.mean(recall_cv_scores)
+        y_train_prob = clf.predict_proba(X_fold_train)[:, 1]
+        y_fold_pred_train = (y_train_prob >= config.umbral).astype(int)
 
-    # 3. Entrenamos el modelo final con el 80% (train_full)
-    clf = xgb.XGBClassifier(
-        n_estimators=10000,
-        learning_rate=0.1,
-        random_state=SEED,
-        eval_metric="logloss",
-    )
-    clf.fit(X_train_full, y_train_full)
-    model_params = clf.get_params()
+        f2_cv_scores_train.append(fbeta_score(y_fold_train, y_fold_pred_train, beta=2, zero_division=0))
+        f1_cv_scores_train.append(f1_score(y_fold_train, y_fold_pred_train, zero_division=0))
+        recall_cv_scores_train.append(recall_score(y_fold_train, y_fold_pred_train, zero_division=0))
+        
 
-    # 4. Predecimos el 20% inicial (val)
-    y_pred_val = clf.predict(X_val)
-    y_prob_val = clf.predict_proba(X_val)[:, 1]
-    metricas_val = evaluar_clasificacion(y_val, y_pred_val, y_prob_val, "Validación — XGBoost")
-
-    # Inicializar Run
-    run = wandb.init(
-        entity=WANDB_ENTITY,
-        name="XGBoost Experimento 2 (más iteraciones)",
-        project=WANDB_PROJECT,
-        config={
-            **model_params,
-            "split": "estratificado",
-            "eliminar_correladas": False,
-            "n_features": X.shape[1],
-        },
-    )
-
-    # 5. Métricas (Loggeo explícito de floats para W&B)
     wandb.log({
-        "val/f1": metricas_val["f1"],
-        "val/precision": metricas_val["precision"],
-        "val/recall": metricas_val["recall"],
-        "val/accuracy": metricas_val["accuracy"],
-        "val/roc_auc": metricas_val.get("roc_auc", 0),
-        "val/f1_mean_cv": f1_score_mean,
-        "val/f2_mean_cv": f2_score_mean,
-        "val/recall_mean_cv": recall_score_mean,
+        "train/f1_mean_cv": float(np.mean(f1_cv_scores_train)),
+        "train/f2_mean_cv": float(np.mean(f2_cv_scores_train)),
+        "train/recall_mean_cv": float(np.mean(recall_cv_scores_train)),
+        "val/f1_mean_cv": float(np.mean(f1_cv_scores)),
+        "val/f2_mean_cv": float(np.mean(f2_cv_scores)),
+        "val/recall_mean_cv": float(np.mean(recall_cv_scores)),
     })
 
-    # Visualizaciones detalladas
-    wandb.sklearn.plot_classifier(
-        clf,
-        X_train_full,
-        X_val,
-        y_train_full,
-        y_val,
-        y_pred_val,
-        clf.predict_proba(X_val),
-        labels=["no_incendio", "incendio"],
-        model_name="XGBoostClassifier",
-        feature_names=X.columns.tolist(),
-    )
-
-    plot_roc(y_val, clf.predict_proba(X_val), ["no_incendio", "incendio"])
-    plot_precision_recall(y_val, clf.predict_proba(X_val), ["no_incendio", "incendio"])
+    clf.fit(X_train_full, y_train_full)
     plot_feature_importances(clf)
+
+    y_prob_train = clf.predict_proba(X_train_full)
+    y_pred_train = (y_prob_train[:, 1] >= config.umbral).astype(int)
+
+    plot_roc(y_train_full, y_prob_train)
+    plot_precision_recall(y_train_full, y_prob_train)
+    wf.matriz_confusion_feature_importance(clf, y_pred_train, y_train_full, X_train_full.columns.tolist())
 
     run.finish()
 
+
+def inicializar():
+    if not wf.inicializar_apikey_wandb():
+        return
+    
+    X, y = cargar_dataset_general(eliminar_correladas=False)
+    X, y = pers.pregunta_PCA()
+    X_train_full, X_test, y_train_full, y_test = split_temporal(X, y, date_col='date', test_size=0.2)
+    X_train_full, X_test = pers.anomalias(X_train_full, X_test)
+
+    return X_train_full, X_test, y_train_full, y_test
+
+
+def clasificacion():
+    X_train_full, X_test, y_train_full, y_test = inicializar()
+    iters, nombre = pers.pregunta_iters_nombre()
+
+    def ent():
+        entrenamiento(X_train_full, y_train_full, nombre)
+
+    sweep_id = wf.crear_sweep_id(WANDB_PROJECT, SWEEP_PATH)
+    wandb.agent(
+        sweep_id=sweep_id,
+        function=ent,
+        count=iters,
+        entity=WANDB_ENTITY,
+        project=WANDB_PROJECT,
+    )
+
 if __name__ == "__main__":
-    main()
+    clasificacion()

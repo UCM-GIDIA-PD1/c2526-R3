@@ -316,7 +316,7 @@ async def main():
 
     while True:
         await mostrar_menu()
-        opcion = input("\n🔷 Selecciona una opción (0-13): ").strip()
+        opcion = input("\n🔷 Selecciona una opción (0-16): ").strip()
 
         if pregunta and opcion not in ["0", "5", "6", "8",'10', '11', '14', '16']:
             resultado = pedirDatos()
@@ -529,9 +529,10 @@ async def main():
             print("3.BalancedRandomForest.")
             print("4.RandomForest.")
             print("5.Regresión logística.")
+            modelos = ["DecisionTree", "BalancedRandomForest", "RandomForest", "Regresión logística"]
             modelo = input("Indica el modelo que quieres evaluar (el número): ")
             tipo_modelo = input("Indica si es para predicción del frp o de incendios (regresión o clasificación): ")
-            evaluacion_final.evaluacion_modelo(modelo, tipo_modelo)
+            evaluacion_final.evaluacion_modelo(modelos[int(modelo) - 1], tipo_modelo)
 
         elif opcion == "0":
             print("\n   ¡Adios! Pasa un buen día ")

@@ -5,6 +5,7 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import wandb
 import xgboost as xgb
+import yaml
 from sklearn.metrics import f1_score, recall_score, fbeta_score
 from extraccion import minioFunctions 
 from modelos import parser
@@ -149,18 +150,9 @@ if __name__ == "__main__":
         tags, feature_names, X_train, X_test, y_train, y_test = ventanas_temporales_y_anomalias(df)
     
     class_names = ["No Incendio", "Incendio"]
-    configuraciones = {
-        "sweep_oversampling": {
-            'method': 'bayes',
-            'metric': {'name': 'val/f1_mean_cv', 'goal': 'maximize'},
-            'parameters': {
-                'learning_rate': {'distribution': 'uniform', 'min': 0.01, 'max': 0.2},
-                'max_depth': {'values': [3, 6, 9]},
-                'n_estimators': {'values': [100, 300, 500]},
-                'scale_pos_weight': {'values': [1, 5, 10]}
-            }
-        }
-    }
-    for nombre_config, config in configuraciones.items():
-        sweep_id = wandb.sweep(config, project=WANDB_PROJECT, entity=WANDB_ENTITY)
-        wandb.agent(sweep_id, function=lambda: train(tags, class_names, feature_names, X_train, X_test, y_train, y_test), count=15)
+
+    with open("sweep_config.yaml", "r") as f:
+        sweep_config = yaml.safe_load(f)
+
+    sweep_id = wandb.sweep(sweep_config, project=WANDB_PROJECT, entity=WANDB_ENTITY)
+    wandb.agent(sweep_id, function=lambda: train(tags, class_names, feature_names, X_train, X_test, y_train, y_test), count=15)

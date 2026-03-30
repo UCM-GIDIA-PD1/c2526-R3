@@ -25,14 +25,14 @@ NUM_IT = 0
 
 def evaluacion_final(config, X_train_full, X_test, y_train_full, y_test, metodo):
 
-   run = wandb.init(
+    run = wandb.init(
         project=WANDB_PROJECT, 
         entity=WANDB_ENTITY, 
         name="Mejor Modelo Test", 
         tags=["Evaluacion Final", metodo],
         reinit=True 
     )
-    
+
     ratio = calcular_ratio_clases(y_train_full)
     umbral = config.get("umbral", 0.5)
 
@@ -44,7 +44,7 @@ def evaluacion_final(config, X_train_full, X_test, y_train_full, y_test, metodo)
         colsample_bytree=config.get("colsample_bytree"),
         scale_pos_weight=ratio,
         random_state=SEED,
-        eval_metric="logloss",
+        eval_metric="aucpr",
         n_jobs=-1,
     )
     
@@ -101,7 +101,7 @@ def entrenamiento(X_train_full, y_train_full, nombre = None):
             colsample_bytree=config.colsample_bytree,
             scale_pos_weight=ratio,
             random_state=SEED,
-            eval_metric="logloss",
+            eval_metric="aucpr",
             early_stopping_rounds=50, 
             n_jobs=-1,
         )
@@ -208,6 +208,17 @@ def clasificacion(metodo_elegido, metrica_elegida):
             "colsample_bytree": {"distribution": "uniform", "min": 0.5, "max": 1.0},
             "umbral": {"distribution": "uniform", "min": 0.05, "max": 0.5},
         }
+    else:
+        params = {
+        "n_estimators": {"values": [2000, 3000]}, 
+        "learning_rate": {"distribution": "log_uniform_values", "min": 0.01, "max": 0.1},
+        "max_depth": {"values": [3, 4, 5]}, 
+        "min_child_weight": {"distribution": "int_uniform", "min": 3, "max": 10},
+        "gamma": {"distribution": "uniform", "min": 1.0, "max": 5.0},
+        "subsample": {"distribution": "uniform", "min": 0.6, "max": 0.9},
+        "colsample_bytree": {"distribution": "uniform", "min": 0.5, "max": 0.9},
+        "umbral": {"distribution": "uniform", "min": 0.6, "max": 0.95}
+    }
 
     metrica_limpia = metrica_elegida.lower().strip()
     metric_name = "val/f2_mean_cv" if "f2" in metrica_limpia else "val/f1_mean_cv"
@@ -231,6 +242,6 @@ def clasificacion(metodo_elegido, metrica_elegida):
     evaluacion_final(mejor_config, X_train_full, X_test, y_train_full, y_test, metodo_elegido)
 
 if __name__ == "__main__":
-    metodo = input("\n Selecciona el metodo (grid o random) para la búsqueda de hiperparámetros:" )
+    metodo = input("\n Selecciona el metodo (grid, random o bayes) para la búsqueda de hiperparámetros:" )
     metrica = input("\n Selecciona la métrica que quieres optimizar (f1/f2):" )
     clasificacion(metodo, metrica)

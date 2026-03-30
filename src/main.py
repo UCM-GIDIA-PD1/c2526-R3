@@ -13,7 +13,7 @@ from limpieza import limpieza
 from modelos.evaluacion import evaluacion_final
 from modelos.clasificacion import decisiontree, balanced_random_forest, random_forest, m_xgboost,  regresion_logistica
 from modelos.generico import modelo_xgboost
-#from modelos.regresion import frp_rdForest, frp_xgBoost
+from modelos.regresion import frp_rdForest, frp_xgBoost
 # Función encargada de unificar y facilitar el debug de cada módulo, avisar de imports faltantes y diferentes rutas
 
 
@@ -555,7 +555,7 @@ async def main():
                 decisiontree.clasificacion(metodo, metrica)
             elif modelo == "2":
                 if tipo_modelo == "regresión":
-                    frp_xgBoost.xg_regresion() #Habrá que cambiarlo
+                    frp_xgBoost.regresion(metodo, metrica) 
                 else:
                     ventanas_temporales = input("/nIndica si quieres ventanas temporales (s/n): ")
                     if ventanas_temporales == "s":
@@ -563,11 +563,14 @@ async def main():
                     else:
                         m_xgboost.clasificacion(metodo, metrica)
             elif modelo == "3":
-                balanced_random_forest.clasificacion(metodo, metrica) 
+                if tipo_modelo == "regresión":
+                    frp_rdForest.regresion(metodo, metrica) 
+                else:
+                    random_forest.clasificacion(metodo, metrica) 
             elif modelo == "4":
                 random_forest.clasificacion(metodo, metrica)
             elif modelo == "5":
-                regresion_logistica.entrenar() #Habrá que cambiarlo
+                regresion_logistica.clasificacion() 
 
         elif opcion == "0":
             print("\n   ¡Adios! Pasa un buen día ")

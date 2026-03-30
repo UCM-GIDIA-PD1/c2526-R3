@@ -566,7 +566,7 @@ async def main():
                 if tipo_modelo == "regresión":
                     frp_rdForest.regresion(metodo, metrica) 
                 else:
-                    random_forest.clasificacion(metodo, metrica) 
+                    balanced_random_forest.clasificacion(metodo, metrica) 
             elif modelo == "4":
                 random_forest.clasificacion(metodo, metrica)
             elif modelo == "5":

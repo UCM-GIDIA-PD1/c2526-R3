@@ -50,6 +50,12 @@ def evaluacion(X_train_full, X_test, y_train_full, y_test, metodo):
     run = wandb.init(tags=["Evaluacion Final", metodo]) 
     config = wandb.config
 
+     # Hago esto para ver si le puedo dar más peso a la clase minoritaria (Incendios)
+
+    counts = y_train_full.value_counts()
+
+    ratio = counts[0] / counts[1]
+
     clf = xgb.XGBClassifier(
         n_estimators=config.n_estimators,
         learning_rate=config.learning_rate,
@@ -57,9 +63,11 @@ def evaluacion(X_train_full, X_test, y_train_full, y_test, metodo):
         subsample=config.subsample,
         colsample_bytree=config.colsample_bytree,
         random_state=SEED,
+        scale_pos_weight=ratio,
         eval_metric="logloss",
         n_jobs=-1,
     )
+    
     clf.fit(X_train_full, y_train_full)
 
     y_prob_test = clf.predict_proba(X_test)
@@ -68,6 +76,7 @@ def evaluacion(X_train_full, X_test, y_train_full, y_test, metodo):
     metricas_test = evaluar_clasificacion(y_test, y_pred_test, y_prob_test[:, 1], "Test — XGBoost")
 
     wandb.log({
+        
         "test/f1": float(metricas_test["f1"]),
         "test/precision": float(metricas_test["precision"]),
         "test/recall": float(metricas_test["recall"]),
@@ -91,6 +100,12 @@ def entrenamiento(X_train_full, y_train_full, nombre = None):
     run = wf.wandb_init(WANDB_PROJECT, nombre, NUM_IT)
     config = wandb.config
 
+    # Hago esto para ver si le puedo dar más peso a la clase minoritaria (Incendios)
+
+    counts = y_train_full.value_counts()
+
+    ratio = counts[0] / counts[1]
+
     clf = xgb.XGBClassifier(
         n_estimators=config.n_estimators,
         learning_rate=config.learning_rate,
@@ -98,6 +113,7 @@ def entrenamiento(X_train_full, y_train_full, nombre = None):
         subsample=config.subsample,
         colsample_bytree=config.colsample_bytree,
         random_state=SEED,
+        scale_pos_weight=ratio,
         eval_metric="logloss",
         n_jobs=-1,
     )
@@ -112,7 +128,14 @@ def entrenamiento(X_train_full, y_train_full, nombre = None):
         X_fold_val = X_train_full.iloc[val_idx]
         y_fold_val = y_train_full.iloc[val_idx]
 
-        clf.fit(X_fold_train, y_fold_train)
+        # Modifico el clf.fit para que el entrenamiento se detenga si no mejora en 50 árboels (a ver si se evita así el overfitting)
+
+        clf.fit(
+        X_fold_train, y_fold_train,
+        eval_set=[(X_fold_val, y_fold_val)],
+        early_stopping_rounds=50, 
+        verbose=False
+        )
 
         y_val_prob = clf.predict_proba(X_fold_val)[:, 1]
         y_fold_pred = (y_val_prob >= config.umbral).astype(int)
@@ -130,6 +153,9 @@ def entrenamiento(X_train_full, y_train_full, nombre = None):
         
 
     wandb.log({
+        "val/f1_mean_cv": float(np.mean(f1_cv_scores)),
+        "train/f1_mean_cv": float(np.mean(f1_cv_scores_train)),
+        "diff/f1_overfit": float(np.mean(f1_cv_scores_train) - np.mean(f1_cv_scores)),
         "train/f1_mean_cv": float(np.mean(f1_cv_scores_train)),
         "train/f2_mean_cv": float(np.mean(f2_cv_scores_train)),
         "train/recall_mean_cv": float(np.mean(recall_cv_scores_train)),
@@ -187,7 +213,7 @@ def clasificacion(metodo_elegido, metrica_elegida):
             "max_depth": {"values": [3, 6, 9, 12]},
             "subsample": {"distribution": "uniform", "min": 0.6, "max": 1.0},
             "colsample_bytree": {"distribution": "uniform", "min": 0.5, "max": 1.0},
-            "umbral": {"distribution": "uniform", "min": 0.1, "max": 0.5},
+            "umbral": {"distribution": "uniform", "min": 0.05, "max": 0.5},
         }
 
     metrica_limpia = metrica_elegida.lower().strip()

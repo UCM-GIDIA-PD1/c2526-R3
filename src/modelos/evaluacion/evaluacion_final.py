@@ -1,5 +1,4 @@
-from modelos.clasificacion import balanced_random_forest, balanced_rf_f1, decisiontree, m_xgboost, random_forest
-# , regresion_logistica
+from modelos.clasificacion import balanced_random_forest, balanced_rf_f1, decisiontree, m_xgboost, random_forest, regresion_logistica
 from modelos.generico import modelo_xgboost
 # from modelos.regresion import frp_rdForest, frp_xgBoost
 from modelos.utils.particiones import split_temporal
@@ -10,57 +9,62 @@ def evaluacion_modelo(modelo, tipo_modelo):
     '''
     Función para evaluar los modelos finales en nuestro conjunto de validación
     '''
-    metodo = input("Indica el método que has empleado en la búsqueda de hiperparámetros: ")
-
-    hiperparametros = pedir_hiperparametros(modelo, tipo_modelo)
+    metodo = input("Indica el método empleado (grid/random/bayes): ").lower()
+    hiperparametros = pedir_hiperparametros(modelo)
     
     if modelo == "XGBoost":
-        m_xgboost.evaluacion_final(hiperparametros)
+        m_xgboost.evaluacion_final(hiperparametros, metodo)
 
-    elif modelo == "BalancedRandomForest" and tipo_modelo == "clasificación":
+    elif modelo == "BalancedRandomForest":
         balanced_random_forest.evaluacion_final(hiperparametros, metodo)
 
-    elif modelo == "DecisionTree" and tipo_modelo == "clasificación":
+    elif modelo == "DecisionTree":
         decisiontree.evaluacion_final(hiperparametros, metodo)
 
-    elif modelo == "RandomForest" and tipo_modelo == "clasificación":
+    elif modelo == "RandomForest":
         random_forest.evaluacion_final(hiperparametros, metodo)
 
-    elif modelo == "BalancedRandomForest" and tipo_modelo == "clasificación":
-        balanced_random_forest.evaluacion_final(hiperparametros)
-
     elif modelo == "Regresión logística":
-        print("Hiperparámetros:", '\n')
-        # regresion_logistica.evaluacion_final(hiperparametros)
+        regresion_logistica.evaluacion_final(hiperparametros, metodo)
 
 
-def pedir_hiperparametros(modelo, tipo_modelo):
+def pedir_hiperparametros(modelo):
     '''
-    Función que solicita los hiperparámetros óptimos
+    Función que solicita los hiperparámetros y los convierte al tipo correcto
     '''
-    
     hiperparametros = {}
-    print("Hiperparámetros:", '\n')
+    print(f"\n--- Introduciendo hiperparámetros para {modelo} ---")
 
     if modelo != "Regresión logística":
-        hiperparametros["max_depth"] = input("max_depth: ")
-        hiperparametros["n_estimators"] = input("n_estimators: ")
-        hiperparametros["umbral"] = input("umbral: ")
+        hiperparametros["max_depth"] = int(input("max_depth: "))
+        hiperparametros["n_estimators"] = int(input("n_estimators: "))
+        hiperparametros["umbral"] = float(input("umbral (float, ej 0.35): "))
 
-    if modelo == "RandomForest" or modelo == "DecisionTree" or modelo == "BalancedRandomForest":
-        hiperparametros["min_samples_split"] = input("min_samples_split: ")
-        hiperparametros["min_samples_leaf"] = input("min_samples_leaf: ")
-        hiperparametros["criterion"] = input("criterion: ")
-        hiperparametros["max_features"] = input("max_features: ")
+    if modelo in ["RandomForest", "DecisionTree", "BalancedRandomForest"]:
+        hiperparametros["min_samples_split"] = int(input("min_samples_split: "))
+        hiperparametros["min_samples_leaf"] = int(input("min_samples_leaf: "))
+        hiperparametros["criterion"] = input("criterion (gini/entropy): ")
+        
+        mf = input("max_features (sqrt/log2/None): ")
+        hiperparametros["max_features"] = None if mf.lower() == "none" else mf
 
+  
     if modelo == "XGBoost":
-        hiperparametros["learning_rate"] = input("learning_rate: ")
-        hiperparametros["subsample"] = input("subsample: ")
-        hiperparametros["colsample_bytree"] = input("colsample_bytree: ")
+        hiperparametros["learning_rate"] = float(input("learning_rate (float): "))
+        hiperparametros["subsample"] = float(input("subsample (0.5-1): "))
+        hiperparametros["colsample_bytree"] = float(input("colsample_bytree (0.5-1): "))
 
-    elif modelo == "RandomForest" or modelo == "DecisionTree":
-        hiperparametros["class_weight"] = input("class_weight: ")
+    
+    if modelo == "Regresión logística":
+        hiperparametros["penalty"] = input("penalty (l1/l2/None): ")
+       
+        if str(hiperparametros["penalty"]).lower() == "none":
+            hiperparametros["penalty"] = None
+        hiperparametros["umbral"] = float(input("umbral (float): "))
 
+    if modelo in ["RandomForest", "DecisionTree", "Regresión logística"]:
+        cw = input("class_weight (balanced/None): ")
+        hiperparametros["class_weight"] = None if cw.lower() == "none" else cw
 
     return hiperparametros
 

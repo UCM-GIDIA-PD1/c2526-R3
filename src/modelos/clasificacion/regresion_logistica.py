@@ -1,234 +1,179 @@
-import sys
 import os
-import argparse
-from modelos import parser
+import sys
 import numpy as np
 import pandas as pd
-import matplotlib
-matplotlib.use("Agg")
-import matplotlib.pyplot as plt
-import matplotlib.gridspec as gridspec
+from pathlib import Path
+from sklearn.metrics import fbeta_score, recall_score, f1_score
 from sklearn.linear_model import LogisticRegression
 from sklearn.preprocessing import StandardScaler
-from dotenv import load_dotenv
-import wandb
 
-sys.path.append(os.path.join(os.path.dirname(__file__), "..", ".."))
-from modelos.utils.carga_datos import cargar_dataset_general
-from modelos.utils.particiones import (
-    split_simple, split_estratificado, get_pesos_clase
+import wandb
+from wandb.sklearn import (
+    plot_roc,
+    plot_precision_recall,
 )
+
+from modelos.utils.carga_datos import cargar_dataset_general
+from modelos.utils.particiones import split_temporal, generador_cv
 from modelos.utils.metricas import evaluar_clasificacion
 import modelos.utils.wandbFunctions as wf
+import modelos.utils.personalizacion as pers
 
-load_dotenv()
+# Configuración
+WANDB_ENTITY = "pd1-c2526-team3"
+WANDB_PROJECT = "Regresion_Logistica"
+SEED = 42
+NUM_IT = 0
 
-SEED       = 42
-MAX_ITER   = 1000
-SOLVER     = "lbfgs"
-OUTPUT_DIR = "outputs"
+def evaluacion_final(hiperparametros, metodo):
+    """
+    Ejecuta la evaluación definitiva sobre el conjunto de TEST 
+    usando los mejores parámetros encontrados en el Sweep.
+    """
+    X_train_full, X_test, y_train_full, y_test = inicializar()
+    
+    config_final = {
+        "method": "grid",
+        "parameters": {
+            "penalty": {"values": [hiperparametros["penalty"]]},
+            "class_weight": {"values": [hiperparametros["class_weight"]]},
+            "umbral": {"values": [hiperparametros["umbral"]]}
+        }
+    }
+        
+    sweep_id_final = wandb.sweep(config_final, entity=WANDB_ENTITY, project=WANDB_PROJECT)
 
-WANDB_ENTITY  = "pd1-c2526-team3"
-WANDB_PROJECT = "clasificacion"
+    def agente_final():
+        evaluacion(X_train_full, X_test, y_train_full, y_test, metodo)
+
+    wandb.agent(sweep_id_final, function=agente_final, count=1)
 
 
-# ──────────────────────────────────────────────────────────────────────────────
+def evaluacion(X_train_full, X_test, y_train_full, y_test, metodo):
+    run = wandb.init(tags=["Evaluacion Final", metodo]) 
+    config = wandb.config
 
-def entrenar(X_train, y_train, class_weight=None):
     scaler = StandardScaler()
-    X_sc = scaler.fit_transform(X_train)
+    X_train_sc = scaler.fit_transform(X_train_full)
+    X_test_sc = scaler.transform(X_test)
 
-    modelo = LogisticRegression(
-        class_weight=class_weight,
-        max_iter=MAX_ITER,
-        solver=SOLVER,
-        random_state=SEED
+    clf = LogisticRegression(
+        penalty=config.penalty,
+        class_weight=config.class_weight,
+        solver='saga', 
+        max_iter=5000,
+        random_state=SEED,
+        n_jobs=-1
     )
-    modelo.fit(X_sc, y_train)
-    return modelo, scaler
+    clf.fit(X_train_sc, y_train_full)
 
+    y_prob_test = clf.predict_proba(X_test_sc)
+    y_pred_test = (y_prob_test[:, 1] >= config.umbral).astype(int)
 
-def evaluar(modelo, scaler, X, y, nombre="Validación"):
-    X_sc   = scaler.transform(X)
-    y_pred = modelo.predict(X_sc)
-    y_prob = modelo.predict_proba(X_sc)[:, 1]
-    return evaluar_clasificacion(y, y_pred, y_prob, nombre)
+    metricas_test = evaluar_clasificacion(y_test, y_pred_test, y_prob_test[:, 1], "Test — Logística")
 
-
-def analizar_coeficientes(modelo, feature_names):
-    coefs = pd.Series(modelo.coef_[0], index=feature_names)
-    print("\n── Coeficientes (mayor influencia primero) ──────────")
-    for var in coefs.abs().sort_values(ascending=False).index:
-        signo = "↑ incendio" if coefs[var] > 0 else "↓ incendio"
-        print(f"  {var:25s}: {coefs[var]:+.4f}  ({signo})")
-    return coefs
-
-
-def registrar_wandb(modelo, scaler, metricas_val, metricas_test, coefs,
-                    X_train, X_val, y_train, y_val):
     wandb.log({
-        "val/f1":        metricas_val["f1"],
-        "val/precision": metricas_val["precision"],
-        "val/recall":    metricas_val["recall"],
-        "val/roc_auc":   metricas_val.get("roc_auc", 0),
-        "test/f1":        metricas_test["f1"],
-        "test/precision": metricas_test["precision"],
-        "test/recall":    metricas_test["recall"],
-        "test/roc_auc":   metricas_test.get("roc_auc", 0),
+        "test/f1": float(metricas_test["f1"]),
+        "test/precision": float(metricas_test["precision"]),
+        "test/recall": float(metricas_test["recall"]),
+        "test/accuracy": float(metricas_test["accuracy"]),
+        "test/f2_score": fbeta_score(y_test, y_pred_test, beta=2, zero_division=0)
     })
 
-    wandb.log({f"coef/{var}": val for var, val in coefs.items()})
-
-    X_train_sc = scaler.transform(X_train)
-    X_val_sc   = scaler.transform(X_val)
-    y_pred_val = modelo.predict(X_val_sc)
-    y_prob_val = modelo.predict_proba(X_val_sc)
+    coefs = pd.Series(clf.coef_[0], index=X_train_full.columns.tolist())
+    for name, val in coefs.items():
+        wandb.log({f"coef/{name}": val})
 
     wandb.sklearn.plot_classifier(
-        modelo,
-        X_train_sc, X_val_sc,
-        y_train, y_val,
-        y_pred_val, y_prob_val,
+        clf, X_train_sc, X_test_sc, y_train_full, y_test, y_pred_test, y_prob_test,
         labels=["no_incendio", "incendio"],
         model_name="LogisticRegression",
-        feature_names=list(coefs.index)
+        feature_names=X_train_full.columns.tolist(),
     )
 
-
-def run_experimento(nombre, X, y, eliminar_correladas):
-    print(f"\n{'='*60}")
-    print(f"EXPERIMENTO — Split {nombre}")
-    print('='*60)
-
-    if nombre == "simple":
-        X_train, X_val, X_test, y_train, y_val, y_test = split_simple(X, y)
-        class_weight = None
-    elif nombre == "estratificado":
-        X_train, X_val, X_test, y_train, y_val, y_test = split_estratificado(X, y)
-        class_weight = None
-    else:
-        X_train, X_val, X_test, y_train, y_val, y_test = split_estratificado(X, y)
-        class_weight = get_pesos_clase(y_train)
-
-    # Entrenamiento y evaluación en validación
-    modelo, scaler = entrenar(X_train, y_train, class_weight)
-    metricas_val = evaluar(modelo, scaler, X_val, y_val, f"Validación — {nombre}")
-    coefs = analizar_coeficientes(modelo, X.columns.tolist())
-
-    # Reentrenamiento con train+val para evaluación final en test
-    X_trainval = pd.concat([X_train, X_val])
-    y_trainval = pd.concat([y_train, y_val])
-    modelo_final, scaler_final = entrenar(X_trainval, y_trainval, class_weight)
-    metricas_test = evaluar(modelo_final, scaler_final, X_test, y_test, f"Test — {nombre}")
-
-    config = {
-        "modelo":              "regresion_logistica",
-        "solver":              SOLVER,
-        "max_iter":            MAX_ITER,
-        "class_weight":        str(class_weight),
-        "split":               nombre,
-        "n_features":          X.shape[1],
-        "eliminar_correladas": eliminar_correladas,
-        "seed":                SEED,
-    }
-    run = wandb.init(
-        entity=WANDB_ENTITY,
-        project=WANDB_PROJECT,
-        name=f"logistica_{nombre}",
-        config=config,
-        reinit=True
-    )
-    registrar_wandb(modelo, scaler, metricas_val, metricas_test, coefs,
-                    X_train, X_val, y_train, y_val)
+    plot_roc(y_test, y_prob_test)
+    plot_precision_recall(y_test, y_prob_test)
+    wf.matriz_confusion_feature_importance(clf, y_pred_test, y_test, X_train_full.columns.tolist())
+    
     run.finish()
 
-    return metricas_val, coefs
 
+def entrenamiento(X_train_full, y_train_full, nombre=None):
+    global NUM_IT
+    NUM_IT += 1
+    run = wf.wandb_init(WANDB_PROJECT, nombre, NUM_IT)
+    config = wandb.config
 
-def generar_graficas(resultados, coefs_dict):
-    os.makedirs(OUTPUT_DIR, exist_ok=True)
+    cv_generator = generador_cv(tipo_cv="temporal", n_splits=4, seed=SEED)
+    f2_cv_scores, f2_cv_train = [], []
 
-    fig = plt.figure(figsize=(16, 10))
-    fig.suptitle("Regresión Logística — Clasificación de incendios",
-                 fontsize=13, fontweight="bold")
-    gs = gridspec.GridSpec(2, 3, figure=fig, hspace=0.45, wspace=0.4)
+    for train_idx, val_idx in cv_generator.split(X_train_full, y_train_full):
+        X_fold_train, X_fold_val = X_train_full.iloc[train_idx], X_train_full.iloc[val_idx]
+        y_fold_train, y_fold_val = y_train_full.iloc[train_idx], y_train_full.iloc[val_idx]
 
-    splits  = list(resultados.keys())
-    colores = ["steelblue", "darkorange", "tomato"]
+        scaler = StandardScaler()
+        X_fold_train_sc = scaler.fit_transform(X_fold_train)
+        X_fold_val_sc = scaler.transform(X_fold_val)
 
-    for i, metrica in enumerate(["f1", "precision", "recall"]):
-        ax   = fig.add_subplot(gs[0, i])
-        vals = [resultados[s].get(metrica, 0) for s in splits]
-        bars = ax.bar(splits, vals, color=colores)
-        ax.set_title(metrica.upper())
-        ax.set_ylim(0, 1)
-        for bar, val in zip(bars, vals):
-            ax.text(bar.get_x() + bar.get_width() / 2, val + 0.01,
-                    f"{val:.3f}", ha="center", fontsize=9)
+        clf = LogisticRegression(
+            C=config.C, penalty=config.penalty, class_weight=config.class_weight,
+            solver='saga', max_iter=5000, random_state=SEED
+        )
+        clf.fit(X_fold_train_sc, y_fold_train)
 
-    ax4  = fig.add_subplot(gs[1, 0])
-    rocs = [resultados[s].get("roc_auc", 0) for s in splits]
-    bars = ax4.bar(splits, rocs, color=colores)
-    ax4.set_title("ROC-AUC")
-    ax4.set_ylim(0, 1)
-    for bar, val in zip(bars, rocs):
-        ax4.text(bar.get_x() + bar.get_width() / 2, val + 0.01,
-                 f"{val:.3f}", ha="center", fontsize=9)
+        y_val_prob = clf.predict_proba(X_fold_val_sc)[:, 1]
+        y_fold_pred = (y_val_prob >= config.umbral).astype(int)
+        f2_cv_scores.append(fbeta_score(y_fold_val, y_fold_pred, beta=2, zero_division=0))
 
-    mejor     = max(resultados, key=lambda s: resultados[s].get("f1", 0))
-    ax5       = fig.add_subplot(gs[1, 1:])
-    coefs     = coefs_dict[mejor].sort_values()
-    colores_c = ["tomato" if v > 0 else "steelblue" for v in coefs]
-    ax5.barh(coefs.index, coefs.values, color=colores_c)
-    ax5.axvline(0, color="black", linewidth=0.8)
-    ax5.set_title(f"Coeficientes — {mejor} (mejor F1)")
-    ax5.set_xlabel("Coeficiente  (rojo = ↑ incendio, azul = ↓ incendio)")
+        y_train_prob = clf.predict_proba(X_fold_train_sc)[:, 1]
+        y_train_pred = (y_train_prob >= config.umbral).astype(int)
+        f2_cv_train.append(fbeta_score(y_fold_train, y_train_pred, beta=2, zero_division=0))
 
-    ruta = os.path.join(OUTPUT_DIR, "logistica_resultados.png")
-    plt.savefig(ruta, dpi=150, bbox_inches="tight")
-    print(f"\n Gráficas guardadas en: {ruta}")
-    plt.close()
+    wandb.log({
+        "train/f2_mean_cv": float(np.mean(f2_cv_train)),
+        "val/f2_mean_cv": float(np.mean(f2_cv_scores))
+    })
+    run.finish()
 
+def inicializar():
+    if not wf.inicializar_apikey_wandb(): return
+    X, y = cargar_dataset_general(eliminar_correladas=False)
+    X, y = pers.pregunta_PCA()
+    X_train_full, X_test, y_train_full, y_test = split_temporal(X, y, test_size=0.2)
+    X_train_full, X_test = pers.anomalias(X_train_full, X_test)
+    return X_train_full, X_test, y_train_full, y_test
 
-# ──────────────────────────────────────────────────────────────────────────────
+def clasificacion(metodo_elegido, metrica_elegida):
+    X_train_full, X_test, y_train_full, y_test = inicializar()
+    iters, nombre = pers.pregunta_iters_nombre()
 
-def main():
-    args = parser.initialite_parser()
+    if metodo_elegido == "grid":
+        params = {
+            "penalty": {"values": ["l1", "l2"]},
+            "class_weight": {"values": ["balanced", None]},
+            "umbral": {"values": [0.25, 0.35, 0.45]}
+        }
+    else: 
+        params = {
+            "penalty": {"values": ["l1", "l2", None]},
+            "class_weight": {"values": ["balanced", None]},
+            "umbral": {"distribution": "uniform", "min": 0.1, "max": 0.5}
+        }
 
-    if not wf.inicializar_apikey_wandb():
-        return
+    metric_name = "val/f2_mean_cv" if "f2" in metrica_elegida.lower() else "val/f1_mean_cv"
 
-    eliminar = args.eliminar_correladas
-    X, y = cargar_dataset_general(eliminar_correladas=eliminar)
+    sweep_config = {
+        "name": f"Logistica-{metodo_elegido}-{metrica_elegida}-Sweep",
+        "method": metodo_elegido, 
+        "metric": {"name": metric_name, "goal": "maximize"},
+        "parameters": params
+    }
 
-    resultados = {}
-    coefs_dict = {}
-
-    splits_a_ejecutar = (
-        ["simple", "estratificado", "pesos"] if args.split == "todos"
-        else [args.split]
-    )
-
-    for split in splits_a_ejecutar:
-        m, c = run_experimento(split, X, y, eliminar)
-        resultados[split] = m
-        coefs_dict[split] = c
-
-    if len(resultados) > 1:
-        print(f"\n{'='*60}")
-        print("RESUMEN COMPARATIVO — Validación")
-        print('='*60)
-        print(f"  {'Split':<20} {'F1':>8} {'Precision':>10} {'Recall':>8} {'ROC-AUC':>9}")
-        print("  " + "-"*57)
-        for s, m in resultados.items():
-            print(f"  {s:<20} {m['f1']:>8.4f} {m['precision']:>10.4f} "
-                  f"{m['recall']:>8.4f} {m.get('roc_auc', 0):>9.4f}")
-        mejor = max(resultados, key=lambda s: resultados[s]["f1"])
-        print(f"\n  Mejor F1: {mejor}  ({resultados[mejor]['f1']:.4f})")
-
-    if not args.no_graficas:
-        generar_graficas(resultados, coefs_dict)
-
+    sweep_id = wandb.sweep(sweep_config, entity=WANDB_ENTITY, project=WANDB_PROJECT)
+    
+    wandb.agent(sweep_id, function=lambda: entrenamiento(X_train_full, y_train_full, nombre), count=iters)
 
 if __name__ == "__main__":
-    main()
+    metodo = input("\n Método (grid o random): ").lower()
+    metrica = input("\n Métrica a optimizar (f1 o f2): ").lower()
+    clasificacion(metodo, metrica)

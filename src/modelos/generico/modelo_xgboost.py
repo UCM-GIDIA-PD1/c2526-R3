@@ -152,7 +152,7 @@ def train(tags, class_names, feature_names, X_train_full, X_test, y_train_full, 
         )
 
         # Validación cruzada estratificada
-        cv_generator = generador_cv(tipo_cv="estratificado", n_splits=4, seed=SEED)
+        cv_generator = generador_cv(tipo_cv="temporal", n_splits=4, seed=SEED)
         cv_f1, cv_f2, cv_recall = [], [], []
     
         # Aplicamos la validación cruzada estratificada 

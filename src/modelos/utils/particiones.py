@@ -3,36 +3,18 @@ particiones.py
 --------------
 Funciones de partición de datos para los modelos de IgnisAI.
 Implementa las tres estrategias de muestreo requeridas.
-
-No ejecutar directamente — importar desde los scripts de modelado.
-
-Estrategias disponibles:
-    - split_simple:        División 80/10/10 sin ningún criterio adicional
-    - split_estratificado: Mantiene proporción incendios/no incendios en cada split
-    - split_con_pesos:     Split estratificado + pesos de clase para compensar desbalanceo
-
-Nota: para regresión solo se usa split_simple_regresion (no hay clases desbalanceadas).
 """
 
 import numpy as np
 import pandas as pd
 from sklearn.model_selection import train_test_split,StratifiedKFold, TimeSeriesSplit
 
-# Semilla fija para reproducibilidad (requerido por el profesor)
+# Semilla fija para reproducibilidad
 SEED = 42
 
 # Proporciones de partición
 TEST_SIZE = 0.10   # 10% test
 VAL_SIZE  = 0.10   # 10% validación → equivale a 0.111 del 90% restante
-
-
-'''
-
-
-LAS UNIFICADAS FINALMENTE USADAS COMO PRINCIPALES PARA NUESTROS MODELOS
-
-
-'''
 
 def split_temporal(X, y, date_col='date', test_size=0.2):
     """
@@ -46,12 +28,8 @@ def split_temporal(X, y, date_col='date', test_size=0.2):
     else:
         print(f"No se encontró la columna date.")
 
-    split_idx = int(len(X) * (1 - test_size))
-    
-    X_train = X.iloc[:split_idx]
-    X_test = X.iloc[split_idx:]
-    y_train = y.iloc[:split_idx]
-    y_test = y.iloc[split_idx:]
+    # Realizamos el split temporal sin shuffle (mantiene el orden cronológico)
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size, shuffle=False, random_state=SEED)
     
     return X_train, X_test, y_train, y_test
 
@@ -106,9 +84,6 @@ def calcular_sample_weights(y_train):
     """
     pesos = get_pesos_clase(y_train)
     return np.array([pesos[int(yi)] for yi in y_train])
-
-
-# ── Utilidades internas ────────────────────────────────────────────────────────
 
 def _imprimir_resumen(nombre, y_train, y_val, y_test):
     """Imprime un resumen de la partición para verificación rápida."""

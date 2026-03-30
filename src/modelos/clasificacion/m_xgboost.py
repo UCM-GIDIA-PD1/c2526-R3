@@ -145,9 +145,9 @@ def entrenamiento(X_train_full, y_train_full, nombre = None):
         "train/f2_mean_cv": float(np.mean(f2_cv_scores_train)),
         "val/f1_mean_cv": float(np.mean(f1_cv_scores)),
         "val/f2_mean_cv": float(np.mean(f2_cv_scores)),
-        "val/f1_std_cv": float(np.std(f1_cv_scores)), # Para ver si el modelo es estable
+        "val/f1_std_cv": float(np.std(f1_cv_scores)), 
         "val/recall_mean_cv": float(np.mean(recall_cv_scores)),
-        "diff/f1_overfit": float(np.mean(f1_cv_scores_train) - np.mean(f1_cv_scores)), # Control de memorización
+        "diff/f1_overfit": float(np.mean(f1_cv_scores_train) - np.mean(f1_cv_scores)),
         "best_iteration_mean": float(np.mean(best_iterations)),
         "scale_pos_weight": ratio
     })

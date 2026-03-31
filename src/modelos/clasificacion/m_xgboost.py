@@ -20,12 +20,34 @@ from modelos.utils.metricas import evaluar_clasificacion
 import modelos.utils.wandbFunctions as wf
 import modelos.utils.personalizacion as pers
 import modelos.clasificacion.ventanas_temporales as ventana
+import modelos.utils.explicabilidad as exp
 
 WANDB_ENTITY = "pd1-c2526-team3"
 WANDB_PROJECT = "XGboost"
 SWEEP_PATH = Path(__file__).with_name("m_xgboost.yaml")
 SEED = 42
 NUM_IT = 0
+
+def explicabilidad_lime(clasificador, X_train, X_test):
+    '''
+    Función para generar la explicación LIME de un clasificador dado y subirla a wandb.
+    
+    :param clasificador: clasificador entrenado (xgboost)
+    :param X_train, X_test: conjunto de variables explicativas de train y test
+    '''
+    # Saneamos los valores nulos porque Lime no los acepta
+    X_train_lime = X_train.fillna(0)
+    X_test_lime = X_test.fillna(0)
+
+    # Inicializamos el explicador LIME (con X_train)y generamos la explicación (con X_test)
+    explicador = exp.inicializar_explicador(X_train_lime)
+    explicacion_lime = exp.generar_explicacion(explicador, clasificador, X_test_lime)
+
+    # Ajustes para que el gráfico de LIME se vea bien en wandb
+    fig_lime = explicacion_lime.as_pyplot_figure()
+    plt.tight_layout()
+    wandb.log({"explicabilidad/lime": wandb.Image(fig_lime)})
+    plt.close(fig_lime)
 
 def evaluacion_final(config, X_train_full, X_test, y_train_full, y_test, metodo):
 
@@ -76,6 +98,7 @@ def evaluacion_final(config, X_train_full, X_test, y_train_full, y_test, metodo)
     plot_precision_recall(y_test, y_prob_test)
     plot_feature_importances(clf)
     wf.matriz_confusion_feature_importance(clf, y_pred_test, y_test, X_train_full.columns.tolist())
+    explicabilidad_lime(clf, X_train_full, X_test)
 
     run.finish()
 

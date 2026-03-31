@@ -12,6 +12,7 @@ dependencies = [
     "geemap>=0.37.1",
     "geodatasets>=2026.1.0",
     "geopandas>=1.1.2",
+    "h3>=4.4.2",
     "h3pandas>=0.3.0",
     "imbalanced-learn>=0.14.1",
     "imblearn>=0.0",

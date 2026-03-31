@@ -4,7 +4,7 @@ from modelos.generico import modelo_xgboost
 from modelos.regresion import frp_rdForest, frp_xgBoost
 
 
-def evaluacion_modelo(modelo:Literal["XGBoostClassifier", "BalancedRandomForest", "DecisionTree", "RandomForest", "Regresión logística", "RandomForestFRP", "XGBoostFRP"], tipo_modelo):
+def evaluacion_modelo(modelo:Literal["XGBoostClassifier", "BalancedRandomForest", "DecisionTree", "RandomForestClassifier", "Regresión logística", "RandomForestFRP", "XGBoostFRP"], tipo_modelo):
     '''
     Función para evaluar los modelos finales en nuestro conjunto de validación
     '''
@@ -20,7 +20,7 @@ def evaluacion_modelo(modelo:Literal["XGBoostClassifier", "BalancedRandomForest"
     elif modelo == "DecisionTree":
         decisiontree.evaluacion_final(hiperparametros, metodo)
 
-    elif modelo == "RandomForest":
+    elif modelo == "RandomForestClassifier":
         random_forest.evaluacion_final(hiperparametros, metodo)
 
     elif modelo == "Regresión logística":
@@ -47,7 +47,7 @@ def pedir_hiperparametros(modelo):
     if modelo != "Regresión logística" and 'FRP' not in modelo:
         hiperparametros["umbral"] = float(input("umbral (float, ej 0.35): "))
 
-    if modelo in ["RandomForest", "DecisionTree", "BalancedRandomForest"]:
+    if any(model in modelo for model in ["RandomForest", "DecisionTree", "BalancedRandomForest"]):
         hiperparametros["min_samples_split"] = int(input("min_samples_split: "))
         hiperparametros["min_samples_leaf"] = int(input("min_samples_leaf: "))
         hiperparametros["criterion"] = input("criterion (gini/entropy): ")
@@ -73,7 +73,7 @@ def pedir_hiperparametros(modelo):
             hiperparametros["penalty"] = None
         hiperparametros["umbral"] = float(input("umbral (float): "))
 
-    if modelo in ["RandomForest", "DecisionTree", "Regresión logística"]:
+    if modelo in ["RandomForestClassifier", "DecisionTree", "Regresión logística"]:
         cw = input("class_weight (balanced/None): ")
         hiperparametros["class_weight"] = None if cw.lower() == "none" else cw
 

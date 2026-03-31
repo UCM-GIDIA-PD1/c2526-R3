@@ -536,8 +536,8 @@ async def main():
             print("6.RandomForestFRP.")
             print("7.XGBoostFRP.")
             modelos = ["XGBoostClassifier", "BalancedRandomForest", "DecisionTree", "RandomForest", "Regresión logística", "RandomForestFRP", "XGBoostFRP"]
-            modelo = input("/nIndica el modelo que quieres evaluar (el número): ")
-            tipo_modelo = input("/nIndica si es para predicción del frp o de incendios (regresión o clasificación): ")
+            modelo = input("\n Indica el modelo que quieres evaluar (el número): ")
+            tipo_modelo = input("\n Indica si es para predicción del frp o de incendios (regresion o clasificacion): ")
             evaluacion_final.evaluacion_modelo(modelos[int(modelo) - 1], tipo_modelo)
 
         elif opcion == "17":
@@ -547,30 +547,30 @@ async def main():
             print("4.RandomForest.")
             print("5.Regresión logística.")
 
-            modelo = input("Indica el modelo que quieres evaluar (el número): ")
-            tipo_modelo = input("Indica si es para predicción del frp o de incendios (regresión o clasificación): ")
+            modelo = input("\nIndica el modelo que quieres evaluar (el número): ")
+            tipo_modelo = input("\nIndica si es para predicción del frp o de incendios (regresión o clasificación): ")
 
             metodo = input("Selecciona el metodo (grid o random) para la búsqueda de hiperparámetros:" )
-            metrica = input("Selecciona la métrica que quieres optimizar (f1/f2):" )
+            metrica = input("Selecciona la métrica que quieres optimizar (f1/f2 para clasificacion) (r2, mse, rmse para regresion):" )
 
             if modelo == "1":
                 decisiontree.clasificacion(metodo, metrica)
             elif modelo == "2":
-                if tipo_modelo == "regresión":
+                if tipo_modelo == "regresion":
                     frp_xgBoost.regresion(metodo, metrica) 
                 else:
-                    ventanas_temporales = input("/nIndica si quieres ventanas temporales (s/n): ")
+                    ventanas_temporales = input("\nIndica si quieres ventanas temporales (s/n): ")
                     if ventanas_temporales == "s":
                         modelo_xgboost.train() #Habrá que cambiarlo
                     else:
                         m_xgboost.clasificacion(metodo, metrica)
             elif modelo == "3":
-                if tipo_modelo == "regresión":
+                balanced_random_forest.clasificacion(metodo, metrica) 
+            elif modelo == "4":
+                if tipo_modelo == "regresion":
                     frp_rdForest.regresion(metodo, metrica) 
                 else:
-                    balanced_random_forest.clasificacion(metodo, metrica) 
-            elif modelo == "4":
-                random_forest.clasificacion(metodo, metrica)
+                    random_forest.clasificacion(metodo, metrica)
             elif modelo == "5":
                 regresion_logistica.clasificacion() 
 

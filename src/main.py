@@ -547,8 +547,8 @@ async def main():
             print("4.RandomForest.")
             print("5.Regresión logística.")
 
-            modelo = input("/nIndica el modelo que quieres evaluar (el número): ")
-            tipo_modelo = input("/nIndica si es para predicción del frp o de incendios (regresión o clasificación): ")
+            modelo = input("Indica el modelo que quieres evaluar (el número): ")
+            tipo_modelo = input("Indica si es para predicción del frp o de incendios (regresión o clasificación): ")
 
             metodo = input("Selecciona el metodo (grid o random) para la búsqueda de hiperparámetros:" )
             metrica = input("Selecciona la métrica que quieres optimizar (f1/f2):" )

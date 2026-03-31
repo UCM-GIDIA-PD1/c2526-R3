@@ -1,4 +1,4 @@
-from matplotlib.pylab import Literal
+from typing import Literal
 from modelos.clasificacion import balanced_random_forest, decisiontree, m_xgboost, random_forest, regresion_logistica
 from modelos.generico import modelo_xgboost
 from modelos.regresion import frp_rdForest, frp_xgBoost

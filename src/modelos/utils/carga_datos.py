@@ -17,7 +17,7 @@ from extraccion.minioFunctions import crear_cliente, bajar_fichero
 
 # ── Configuración ──────────────────────────────────────────────────────────────
 
-PREFIX_GENERAL   = "grupo3/cleaned/MINI"
+PREFIX_GENERAL   = "grupo3/cleaned/MINI_h3"
 PREFIX_INCENDIOS = "grupo3/cleaned/MI"
 YEARS            = [2022, 2023, 2024, 2025]
 

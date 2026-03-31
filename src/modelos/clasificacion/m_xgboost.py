@@ -212,6 +212,10 @@ def inicializar():
         df_features['log_dias_estacional'] = np.log1p(df_features['dias_ultimo_incendio_estacional'].clip(lower=0))
 
     y_final = df_features['incendio']
+    
+    if "id_hexagono" in df_features.columns:
+        df_features = df_features.drop(columns=['id_hexagono'])
+        
     X_final = df_features.drop(['incendio', 'date'], axis=1, errors='ignore')
 
     df_para_limpieza = pd.concat([X_final, y_final.rename('incendio')], axis=1)

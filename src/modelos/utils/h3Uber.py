@@ -30,7 +30,7 @@ def transformacion_h3(df, resolucion = 7):
 
     df_agrupado = df.groupby(['id_hexagono', 'date']).agg(
         #Variable respuesta: si en el hexágono hay al menos un incendio, se marca como 1
-        incendio=('final', 'max'),
+        final=('final', 'max'),
         
         # Coordenadas: Media 
         lat=('lat', 'mean'),

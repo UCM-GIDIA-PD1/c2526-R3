@@ -550,7 +550,7 @@ async def main():
             modelo = input("\nIndica el modelo que quieres evaluar (el número): ")
             tipo_modelo = input("\nIndica si es para predicción del frp o de incendios (regresión o clasificación): ")
 
-            metodo = input("Selecciona el metodo (grid o random) para la búsqueda de hiperparámetros:" )
+            metodo = input("Selecciona el metodo (grid, random o bayes) para la búsqueda de hiperparámetros:" )
             metrica = input("Selecciona la métrica que quieres optimizar (f1/f2 para clasificacion) (r2, mse, rmse para regresion):" )
 
             if modelo == "1":

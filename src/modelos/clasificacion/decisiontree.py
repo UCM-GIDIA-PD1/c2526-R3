@@ -109,6 +109,8 @@ def entrenamiento(X_train_full, y_train_full, nombre=None):
         "val/f2_mean_cv": np.mean(f2_cv_scores), 
         "val/f1_mean_cv": np.mean(f1_cv_scores)
     })
+
+    wf.matriz_confusion_feature_importance(clf, y_v_pred, y_fold_val, X_train_full.columns.tolist())
     run.finish()
 
 def inicializar():
@@ -119,7 +121,7 @@ def inicializar():
     X_train_full, X_test = pers.anomalias(X_train_full, X_test)
     return X_train_full, X_test, y_train_full, y_test
 
-def clasificacion(metodo_elegido):
+def clasificacion(metodo_elegido, metrica):
     X_train_full, X_test, y_train_full, y_test = inicializar()
     
     iters, nombre = pers.pregunta_iters_nombre()
@@ -193,6 +195,6 @@ def clasificacion(metodo_elegido):
     )
 
 if __name__ == "__main__":
-    metodo = input("\n Selecciona el metodo (grid o random) para la búsqueda de hiperparámetros:" )
+    metodo = input("\n Selecciona el metodo (grid, random o bayes) para la búsqueda de hiperparámetros:" )
     metrica = input("\n Selecciona la métrica que quieres optimizar (f1/f2):" )
     clasificacion(metodo, metrica)

@@ -206,6 +206,6 @@ def clasificacion(metodo_elegido):
     )
 
 if __name__ == "__main__":
-    metodo = input("\n Selecciona el metodo (grid o random) para la búsqueda de hiperparámetros:" )
+    metodo = input("\n Selecciona el metodo (grid, random o bayes) para la búsqueda de hiperparámetros:" )
     metrica = input("\n Selecciona la métrica que quieres optimizar (f1/f2):" )
     clasificacion(metodo, metrica)

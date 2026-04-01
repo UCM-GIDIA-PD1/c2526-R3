@@ -194,6 +194,6 @@ def clasificacion(metodo_elegido, metrica_elegida):
     wandb.agent(sweep_id, function=lambda: entrenamiento(X_train_full, y_train_full, nombre), count=iters)
 
 if __name__ == "__main__":
-    metodo = input("\n Método (grid o random): ").lower()
+    metodo = input("\n Método (grid, random o bayes): ").lower()
     metrica = input("\n Métrica a optimizar (f1 o f2): ").lower()
     clasificacion(metodo, metrica)

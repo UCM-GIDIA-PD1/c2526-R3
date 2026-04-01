@@ -4,17 +4,20 @@ import modelos.utils.anomalias as anom
 import extraccion.minioFunctions as mf
 import pandas as pd
 
-def pregunta_PCA(df=None):
+def pregunta_PCA(clasificacion = True, df=None):
     '''
     Pide por pantalla si se quiere aplicar PCA. 
     Si recibe un df, lo usa. Si no, lo descarga.
     '''
 
     if df is None:
-        df = clean.bajar_df_final() 
+        df = clean.bajar_df_final(clasificacion) 
 
     df.columns = df.columns.str.lower().str.strip()
-    target_col = 'incendio' if 'incendio' in df.columns else 'final'
+    if clasificacion:
+        target_col = 'incendio' if 'incendio' in df.columns else 'final'
+    else:
+        target_col = 'frp_mean'
 
     while True:
         pca_input = input("¿Quieres aplicar PCA a los datos? (s/n): ").lower()

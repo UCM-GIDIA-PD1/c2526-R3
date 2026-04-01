@@ -149,11 +149,11 @@ def inicializar():
     if not wf.inicializar_apikey_wandb():
         return None, None, None, None
     
-    X, y = cg.cargar_dataset_frp()
+    # X, y = cg.cargar_dataset_frp()
     
-    # X, y = per.pregunta_PCA() 
+    X, y = per.pregunta_PCA(False) 
     X_train, X_test, y_train, y_test = split_temporal(X, y, date_col='date', test_size=0.2)
-    # X_train, X_test = per.anomalias(X_train, X_test)
+    X_train, X_test = per.anomalias(X_train, X_test)
 
     return X_train, X_test, y_train, y_test
 

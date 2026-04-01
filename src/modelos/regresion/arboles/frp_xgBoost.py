@@ -181,8 +181,8 @@ def inicializar():
     if not wf.inicializar_apikey_wandb():
         return
     
-    X, y = cg.cargar_dataset_frp()
-    X, y = pers.pregunta_PCA()
+    # X, y = cg.cargar_dataset_frp()
+    X, y = pers.pregunta_PCA(False)
     X_train_full, X_test, y_train_full, y_test = split_temporal(X, y, date_col='date', test_size=0.2)
     X_train_full, X_test = pers.anomalias(X_train_full, X_test)
 

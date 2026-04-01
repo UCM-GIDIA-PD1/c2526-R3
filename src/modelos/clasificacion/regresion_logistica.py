@@ -146,10 +146,7 @@ def entrenamiento(X_train_full, y_train_full, nombre=None):
         "train/f2_mean_cv": float(np.mean(f2_cv_train)),
         "val/f2_mean_cv": float(np.mean(f2_cv_scores)),
         "train/f1_mean_cv": float(np.mean(f1_cv_train)),
-        "val/f1_mean_cv": float(np.mean(f1_cv_scores))
-    })
-
-    wandb.log({
+        "val/f1_mean_cv": float(np.mean(f1_cv_scores)),
         "val/tn_mean": np.mean(tns),
         "val/fp_mean": np.mean(fps),
         "val/fn_mean": np.mean(fns),

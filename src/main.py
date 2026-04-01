@@ -561,7 +561,7 @@ async def main():
                 else:
                     ventanas_temporales = input("\nIndica si quieres ventanas temporales (s/n): ")
                     if ventanas_temporales == "s":
-                        modelo_xgboost.train() #Habrá que cambiarlo
+                        modelo_xgboost.entrenar() 
                     else:
                         m_xgboost.clasificacion(metodo, metrica)
             elif modelo == "3":

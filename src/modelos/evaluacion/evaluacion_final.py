@@ -1,7 +1,8 @@
 from typing import Literal
 from modelos.clasificacion import balanced_random_forest, decisiontree, m_xgboost, random_forest, regresion_logistica
 from modelos.generico import modelo_xgboost
-from modelos.regresion import frp_rdForest, frp_xgBoost
+from modelos.regresion.arboles import frp_xgBoost
+from modelos.regresion.arboles import frp_rdForest
 
 
 def evaluacion_modelo(modelo:Literal["XGBoostClassifier", "BalancedRandomForest", "DecisionTree", "RandomForestClassifier", "Regresión logística", "RandomForestFRP", "XGBoostFRP"], tipo_modelo):

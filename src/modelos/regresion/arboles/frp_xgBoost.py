@@ -5,6 +5,7 @@ from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
 
 import wandb
 import xgboost as xgb
+from xgboost import callback
 from wandb.sklearn import (
     plot_residuals,
     plot_feature_importances,
@@ -33,7 +34,9 @@ def evaluacion_final(hiperparametros, metodo):
             "subsample": {"values": [hiperparametros["subsample"]]},
             "colsample_bytree": {"values": [hiperparametros["colsample_bytree"]]},
             "min_child_weight": {"values": [hiperparametros.get("min_child_weight", 1)]},
-            "gamma": {"values": [hiperparametros.get("gamma", 0)]}
+            "gamma": {"values": [hiperparametros.get("gamma", 0)]},
+            "reg_alpha": {"values": [hiperparametros["reg_alpha"]]},
+            "reg_lambda": {"values": [hiperparametros["reg_lambda"]]}
         }
     }
         
@@ -50,18 +53,26 @@ def evaluacion(X_train_full, X_test, y_train_full, y_test, metodo):
     config = wandb.config
 
     model = xgb.XGBRegressor(
-        n_estimators=config.n_estimators,
-        learning_rate=config.learning_rate,
-        max_depth=config.max_depth,
-        subsample=config.subsample,
-        colsample_bytree=config.colsample_bytree,
-        min_child_weight=config.min_child_weight,
-        gamma=config.gamma,
-        random_state=SEED,
-        eval_metric="rmse",
-        n_jobs=-1,
+            n_estimators=config.n_estimators,
+            learning_rate=config.learning_rate,
+            max_depth=config.max_depth,
+            subsample=config.subsample,
+            colsample_bytree=config.colsample_bytree,
+            min_child_weight=config.min_child_weight,
+            gamma=config.gamma,
+            reg_alpha = config.reg_alpha,
+            reg_lambda = config.reg_lambda,
+            random_state=SEED,
+            eval_metric="rmse",
+            early_stopping_rounds=50,
+            n_jobs=-1,
+        )
+
+    model.fit(
+        X_train_full, y_train_full,
+        eval_set=[(X_test, y_test)], 
+        verbose=False                      
     )
-    model.fit(X_train_full, y_train_full)
 
     y_pred_test = model.predict(X_test)
 
@@ -87,22 +98,10 @@ def entrenamiento(X_train_full, y_train_full, nombre=None):
     run = wf.wandb_init(WANDB_PROJECT, nombre, NUM_IT)
     config = wandb.config
 
-    model = xgb.XGBRegressor(
-        n_estimators=config.n_estimators,
-        learning_rate=config.learning_rate,
-        max_depth=config.max_depth,
-        subsample=config.subsample,
-        colsample_bytree=config.colsample_bytree,
-        min_child_weight=config.min_child_weight,
-        gamma=config.gamma,
-        random_state=SEED,
-        eval_metric="rmse",
-        n_jobs=-1,
-    )
-
     cv_generator = generador_cv(tipo_cv="temporal", n_splits=4, seed=SEED)
     rmse_cv_scores, mae_cv_scores, r2_cv_scores = [], [], []
     rmse_cv_scores_train, mae_cv_scores_train, r2_cv_scores_train = [], [], []
+    best_iterations = []
 
     for train_idx, val_idx in cv_generator.split(X_train_full, y_train_full):
         X_fold_train = X_train_full.iloc[train_idx]
@@ -110,7 +109,29 @@ def entrenamiento(X_train_full, y_train_full, nombre=None):
         X_fold_val = X_train_full.iloc[val_idx]
         y_fold_val = y_train_full.iloc[val_idx]
 
-        model.fit(X_fold_train, y_fold_train)
+        model = xgb.XGBRegressor(
+            n_estimators=config.n_estimators,
+            learning_rate=config.learning_rate,
+            max_depth=config.max_depth,
+            subsample=config.subsample,
+            colsample_bytree=config.colsample_bytree,
+            min_child_weight=config.min_child_weight,
+            gamma=config.gamma,
+            reg_alpha = config.reg_alpha,
+            reg_lambda = config.reg_lambda,
+            random_state=SEED,
+            eval_metric="rmse",
+            early_stopping_rounds=50,
+            n_jobs=-1,
+        )
+
+        model.fit(
+            X_fold_train, y_fold_train,
+            eval_set=[(X_fold_val, y_fold_val)], 
+            verbose=False                      
+        )
+
+        best_iterations.append(model.best_iteration)
 
         y_val_pred = model.predict(X_fold_val)
         rmse_cv_scores.append(np.sqrt(mean_squared_error(y_fold_val, y_val_pred)))
@@ -121,7 +142,9 @@ def entrenamiento(X_train_full, y_train_full, nombre=None):
         rmse_cv_scores_train.append(np.sqrt(mean_squared_error(y_fold_train, y_train_pred)))
         mae_cv_scores_train.append(mean_absolute_error(y_fold_train, y_train_pred))
         r2_cv_scores_train.append(r2_score(y_fold_train, y_train_pred))
-        
+
+    avg_best_trees = int(np.mean(best_iterations)) + 1
+
     wandb.log({
         "train/rmse_mean_cv": float(np.mean(rmse_cv_scores_train)),
         "train/mae_mean_cv": float(np.mean(mae_cv_scores_train)),
@@ -131,6 +154,21 @@ def entrenamiento(X_train_full, y_train_full, nombre=None):
         "val/r2_mean_cv": float(np.mean(r2_cv_scores)),
         "overfitting_gap_rmse_cv": float(np.mean(rmse_cv_scores) - np.mean(rmse_cv_scores_train))
     })
+
+    model = xgb.XGBRegressor(
+        n_estimators=avg_best_trees,
+        learning_rate=config.learning_rate,
+        max_depth=config.max_depth,
+        subsample=config.subsample,
+        colsample_bytree=config.colsample_bytree,
+        min_child_weight=config.min_child_weight,
+        gamma=config.gamma,
+        reg_alpha=config.reg_alpha,
+        reg_lambda=config.reg_lambda,
+        random_state=SEED,
+        n_jobs=-1,
+        eval_metric="rmse"
+    )
 
     model.fit(X_train_full, y_train_full)
     plot_feature_importances(model)
@@ -143,8 +181,8 @@ def inicializar():
     if not wf.inicializar_apikey_wandb():
         return
     
-    X, y = cg.cargar_dataset_frp()
-    X, y = pers.pregunta_PCA()
+    # X, y = cg.cargar_dataset_frp()
+    X, y = pers.pregunta_PCA(False)
     X_train_full, X_test, y_train_full, y_test = split_temporal(X, y, date_col='date', test_size=0.2)
     X_train_full, X_test = pers.anomalias(X_train_full, X_test)
 
@@ -163,21 +201,25 @@ def regresion(metodo_elegido, metrica_elegida):
         params = {
             "n_estimators": {"values": [100, 500, 1000, 2000]},
             "learning_rate": {"values": [0.01, 0.05, 0.1, 0.2]},
-            "max_depth": {"values": [3, 6, 9]},
+            "max_depth": {"values": [3, 6]},
             "subsample": {"values": [0.6, 0.8, 1.0]},
             "colsample_bytree": {"values": [0.5, 0.7, 1.0]},
-            "min_child_weight": {"values": [1, 3, 5]},
-            "gamma": {"values": [0, 0.1, 0.3]}
+            "min_child_weight": {"values": [5, 10, 15, 20]},
+            "gamma": {"values": [0, 0.1, 0.3, 0.5, 0.7]},
+            "reg_alpha": {"values": [0, 0.5, 0.9]},
+            "reg_lambda": {"values": [0.5, 1, 3, 5]}
         }
     else: 
         params = {
             "n_estimators": {"values": [100, 500, 1000, 2000]},
             "learning_rate": {"distribution": "uniform", "min": 0.01, "max": 0.2},
-            "max_depth": {"values": [3, 6, 9, 12]},
+            "max_depth": {"values": [3, 6]},
             "subsample": {"distribution": "uniform", "min": 0.6, "max": 1.0},
             "colsample_bytree": {"distribution": "uniform", "min": 0.5, "max": 1.0},
-            "min_child_weight": {"distribution": "uniform", "min": 1, "max": 10},
-            "gamma": {"distribution": "uniform", "min": 0, "max": 0.5}
+            "min_child_weight": {"distribution": "uniform", "min": 5, "max": 20},
+            "gamma": {"distribution": "uniform", "min": 0, "max": 0.7},
+            "reg_alpha": {"distribution": "uniform", "min": 0, "max": 1},
+            "reg_lambda": {"distribution": "uniform", "min": 0.5, "max": 5}
         }
 
     metrica_limpia = metrica_elegida.lower().strip()

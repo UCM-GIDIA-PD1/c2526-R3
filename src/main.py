@@ -572,7 +572,7 @@ async def main():
                 else:
                     random_forest.clasificacion(metodo, metrica)
             elif modelo == "5":
-                regresion_logistica.clasificacion() 
+                regresion_logistica.clasificacion(metodo, metrica) 
 
         elif opcion == "0":
             print("\n   ¡Adios! Pasa un buen día ")

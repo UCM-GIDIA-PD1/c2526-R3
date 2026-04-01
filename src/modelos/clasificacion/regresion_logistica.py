@@ -1,9 +1,7 @@
-import os
-import sys
 import numpy as np
 import pandas as pd
 from pathlib import Path
-from sklearn.metrics import fbeta_score, recall_score, f1_score
+from sklearn.metrics import fbeta_score
 from sklearn.linear_model import LogisticRegression
 from sklearn.preprocessing import StandardScaler
 
@@ -117,8 +115,11 @@ def entrenamiento(X_train_full, y_train_full, nombre=None):
         X_fold_val_sc = scaler.transform(X_fold_val)
 
         clf = LogisticRegression(
-            C=config.C, penalty=config.penalty, class_weight=config.class_weight,
-            solver='saga', max_iter=5000, random_state=SEED
+            penalty=config.penalty, 
+            class_weight=config.class_weight,
+            solver='saga', 
+            max_iter=5000, 
+            random_state=SEED
         )
         clf.fit(X_fold_train_sc, y_fold_train)
 

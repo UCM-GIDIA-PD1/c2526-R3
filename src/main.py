@@ -1,6 +1,7 @@
 import sys
 import os
 from pathlib import Path
+from modelos.regresion.arboles import frp_rdForest
 import pandas as pd
 import numpy as np
 import asyncio
@@ -13,7 +14,7 @@ from limpieza import limpieza
 from modelos.evaluacion import evaluacion_final
 from modelos.clasificacion import decisiontree, balanced_random_forest, random_forest, m_xgboost,  regresion_logistica
 from modelos.generico import modelo_xgboost
-from modelos.regresion import frp_rdForest, frp_xgBoost
+from modelos.regresion.arboles import frp_xgBoost
 # Función encargada de unificar y facilitar el debug de cada módulo, avisar de imports faltantes y diferentes rutas
 
 

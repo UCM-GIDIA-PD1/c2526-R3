@@ -174,7 +174,7 @@ def cargar_dataset_frp():
     ruta = 'grupo3/cleaned/MI.parquet'
     df = bajar_fichero(cliente, ruta)
 
-    X = df.drop(columns = ['frp_mean', 'date'])
+    X = df.drop(columns = ['frp_mean'])
     y = df['frp_mean']
 
     return X, y

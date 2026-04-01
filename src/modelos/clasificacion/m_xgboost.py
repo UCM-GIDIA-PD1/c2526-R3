@@ -17,6 +17,7 @@ from wandb.sklearn import (
 from modelos.utils.carga_datos import cargar_dataset_general, cargar_dataset_general_con_tiempos
 from modelos.utils.particiones import split_temporal, generador_cv
 from modelos.utils.metricas import evaluar_clasificacion
+from sklearn.metrics import confusion_matrix
 import modelos.utils.wandbFunctions as wf
 import modelos.utils.personalizacion as pers
 import modelos.clasificacion.ventanas_temporales as ventana
@@ -118,6 +119,7 @@ def entrenamiento(X_train_full, y_train_full, nombre = None):
     f2_cv_scores, f1_cv_scores, recall_cv_scores = [], [], []
     f2_cv_scores_train, f1_cv_scores_train= [], []
     best_iterations = []
+    tns, fps, fns, tps = [], [], [], []
 
     for train_idx, val_idx in cv_generator.split(X_train_full, y_train_full):
         X_fold_train = X_train_full.iloc[train_idx]
@@ -163,6 +165,12 @@ def entrenamiento(X_train_full, y_train_full, nombre = None):
         f1_cv_scores_train.append(f1_score(y_fold_train, y_fold_pred_train, zero_division=0))
         f2_cv_scores_train.append(fbeta_score(y_fold_train, y_fold_pred_train, beta=2, zero_division=0))
         
+        cm = confusion_matrix(y_fold_val, y_fold_pred)
+
+        tns.append(cm[0,0])
+        fps.append(cm[0,1])
+        fns.append(cm[1,0])
+        tps.append(cm[1,1])
 
     wandb.log({
         "train/f1_mean_cv": float(np.mean(f1_cv_scores_train)),
@@ -173,7 +181,11 @@ def entrenamiento(X_train_full, y_train_full, nombre = None):
         "val/recall_mean_cv": float(np.mean(recall_cv_scores)),
         "diff/f1_overfit": float(np.mean(f1_cv_scores_train) - np.mean(f1_cv_scores)),
         "best_iteration_mean": float(np.mean(best_iterations)),
-        "scale_pos_weight": ratio
+        "scale_pos_weight": ratio,
+        "val/tn_mean": np.mean(tns),
+        "val/fp_mean": np.mean(fps),
+        "val/fn_mean": np.mean(fns),
+        "val/tp_mean": np.mean(tps)
     })
 
     run.finish()

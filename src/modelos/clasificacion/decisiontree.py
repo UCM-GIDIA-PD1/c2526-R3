@@ -5,6 +5,7 @@ import pandas as pd
 from pathlib import Path
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.metrics import fbeta_score, recall_score, f1_score
+from sklearn.metrics import confusion_matrix
 
 import wandb
 from wandb.sklearn import (
@@ -86,6 +87,7 @@ def entrenamiento(X_train_full, y_train_full, nombre=None):
     cv_generator = part.generador_cv(tipo_cv='temporal', n_splits=4, seed=SEED)
     f2_cv_scores, f1_cv_scores = [], []
     f2_cv_train, f1_cv_train = [], []
+    tns, fps, fns, tps = [], [], [], []
 
     for train_idx, val_idx in cv_generator.split(X_train_full, y_train_full):
         X_fold_train, X_fold_val = X_train_full.iloc[train_idx], X_train_full.iloc[val_idx]
@@ -103,11 +105,22 @@ def entrenamiento(X_train_full, y_train_full, nombre=None):
         f2_cv_train.append(fbeta_score(y_fold_train, y_t_pred, beta=2, zero_division=0))
         f1_cv_train.append(fbeta_score(y_fold_train, y_t_pred, beta = 1))
 
+        cm = confusion_matrix(y_fold_val, y_v_pred)
+
+        tns.append(cm[0,0])
+        fps.append(cm[0,1])
+        fns.append(cm[1,0])
+        tps.append(cm[1,1])
+
     wandb.log({
         "train/f2_mean_cv": np.mean(f2_cv_train),
         "train/f1_mean_cv": np.mean(f1_cv_train),
         "val/f2_mean_cv": np.mean(f2_cv_scores), 
-        "val/f1_mean_cv": np.mean(f1_cv_scores)
+        "val/f1_mean_cv": np.mean(f1_cv_scores),
+        "val/tn_mean": np.mean(tns),
+        "val/fp_mean": np.mean(fps),
+        "val/fn_mean": np.mean(fns),
+        "val/tp_mean": np.mean(tps)
     })
     run.finish()
 

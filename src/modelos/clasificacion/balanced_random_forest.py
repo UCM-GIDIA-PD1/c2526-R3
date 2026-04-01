@@ -181,7 +181,7 @@ def inicializar():
     return X_train_full, X_test, y_train_full, y_test
 
 
-def clasificacion(metodo_elegido):
+def clasificacion(metodo_elegido, metrica):
     X_train_full, X_test, y_train_full, y_test = inicializar()
     
     iters, nombre = pers.pregunta_iters_nombre()
@@ -201,10 +201,10 @@ def clasificacion(metodo_elegido):
         }
     else: 
         params = {
-            "n_estimators": {"values": [100, 300, 500, 800]},
+            "n_estimators": {"values": [100, 200, 300, 400, 500, 750, 800, 900]},
             "max_depth": {"distribution": "int_uniform", "min": 5, "max": 25},
-            "min_samples_split": {"distribution": "int_uniform", "min": 2, "max": 20},
-            "min_samples_leaf": {"distribution": "int_uniform", "min": 1, "max": 15},
+            "min_samples_split": {"distribution": "int_uniform", "min": 1, "max": 30},
+            "min_samples_leaf": {"distribution": "int_uniform", "min": 1, "max": 30},
             "criterion": {"values": ["gini", "entropy"]},
             "max_features": {"values": ["sqrt", "log2", None]},
             "umbral": {"distribution": "uniform", "min": 0.23, "max": 0.6}

@@ -195,7 +195,7 @@ def regresion(metodo_elegido, metrica_elegida):
     iters, nombre = pers.pregunta_iters_nombre()
 
     def ent():
-        entrenamiento(X_train_full, y_train_full, nombre, metrica_elegida)
+        entrenamiento(X_train_full, y_train_full, metrica_elegida, nombre)
 
     if metodo_elegido == "grid":
         params = {

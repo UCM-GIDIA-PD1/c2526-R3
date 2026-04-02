@@ -509,51 +509,69 @@ async def main():
                 print(f" Filas restantes: {filas_despues}")
     
         elif opcion == "13":
-            print("1.XGBoostClassifier.")
-            print("2.BalancedRandomForest.")
-            print("3.DecisionTree.")
-            print("4.RandomForest.")
-            print("5.Regresión logística.")
-            print("6.RandomForestFRP.")
-            print("7.XGBoostFRP.")
-            modelos = ["XGBoostClassifier", "BalancedRandomForest", "DecisionTree", "RandomForest", "Regresión logística", "RandomForestFRP", "XGBoostFRP"]
-            modelo = input("\n Indica el modelo que quieres evaluar (el número): ")
-            tipo_modelo = input("\n Indica si es para predicción del frp o de incendios (regresion o clasificacion): ")
-            evaluacion_final.evaluacion_modelo(modelos[int(modelo) - 1], tipo_modelo)
+            print("\n--- Evaluación de Modelos Finales ---")
+            print('Selecciona el tipo de modelo que quieres evaluar:')
+            print("1. Modelos de clasificación (predicción de incendios)")
+            print("2. Modelos de regresión (predicción del FRP)")
+            tipo_modelo = input("\nIndica el tipo de modelo (1 para clasificación, 2 para regresión): ").strip()
+            if tipo_modelo == "1":
+                print("1.XGBoostClassifier.")
+                print("2.BalancedRandomForest.")
+                print("3.DecisionTree.")
+                print("4.RandomForestClassifier")
+                print("5.Regresión logística.")
+
+                modelos = ["XGBoostClassifier", "BalancedRandomForest", "DecisionTree", "RandomForest", "Regresión logística"]
+                modelo = input("\n Indica el modelo que quieres evaluar (el número): ")
+                evaluacion_final.evaluacion_modelo(modelos[int(modelo) - 1])
+            else:
+                print("1.RandomForestFRP.")
+                print("2.XGBoostFRP.")
+                modelos = ["RandomForestFRP", "XGBoostFRP"]
+                modelo = input("\n Indica el modelo que quieres evaluar (el número): ")
+                evaluacion_final.evaluacion_modelo(modelos[int(modelo) - 1])
+            
 
         elif opcion == "14":
-            print("1.DecisionTree (para clasificación).")
-            print("2.XGBoost.")
-            print("3.BalancedRandomForest (para clasificación).")
-            print("4.RandomForest.")
-            print("5.Regresión logística.")
+            print("\n--- Entrenamiento de modelos ---")
+            print('Selecciona el tipo de modelo que quieres entrenar:')
+            print("1. Modelos de clasificación (predicción de incendios)")
+            print("2. Modelos de regresión (predicción del FRP)")
+            tipo_modelo = input("\nIndica el tipo de modelo (1 para clasificación, 2 para regresión): ").strip()
 
-            modelo = input("\nIndica el modelo que quieres evaluar (el número): ")
-            tipo_modelo = input("\nIndica si es para predicción del frp o de incendios (regresión o clasificación): ")
-
-            metodo = input("Selecciona el metodo (grid, random o bayes) para la búsqueda de hiperparámetros:" )
-            metrica = input("Selecciona la métrica que quieres optimizar (f1/f2 para clasificacion) (r2, mse, rmse para regresion):" )
-
-            if modelo == "1":
-                decisiontree.clasificacion(metodo, metrica)
-            elif modelo == "2":
-                if tipo_modelo == "regresion":
-                    frp_xgBoost.regresion(metodo, metrica) 
-                else:
+            if tipo_modelo == '1':
+                print("1.XGBoostClassifier.")
+                print("2.BalancedRandomForest.")
+                print("3.DecisionTree.")
+                print("4.RandomForestClassifier")
+                print("5.Regresión logística.")
+                modelo = input("\n Indica el modelo que quieres entrenar (el número): ")
+                metodo = input("Selecciona el metodo (grid, random o bayes) para la búsqueda de hiperparámetros:" )
+                metrica = input("Selecciona la métrica que quieres optimizar (f1/f2):" )
+                if modelo == '1':
+                    decisiontree.clasificacion(metodo, metrica)
+                elif modelo == '2':
                     ventanas_temporales = input("\nIndica si quieres ventanas temporales (s/n): ")
                     if ventanas_temporales == "s":
                         modelo_xgboost.entrenar() 
                     else:
                         m_xgboost.clasificacion(metodo, metrica)
-            elif modelo == "3":
-                balanced_random_forest.clasificacion(metodo, metrica) 
-            elif modelo == "4":
-                if tipo_modelo == "regresion":
+                elif modelo == '3':
+                    balanced_random_forest.clasificacion(metodo, metrica)
+                elif modelo == '4':
+                    random_forest.clasificacion(metodo, metrica)
+                else:
+                    regresion_logistica.clasificacion(metodo, metrica)
+            else:
+                print("1.RandomForestFRP.")
+                print("2.XGBoostFRP.")
+                modelo = input("\n Indica el modelo que quieres entrenar (el número): ")
+                metodo = input("Selecciona el metodo (grid, random o bayes) para la búsqueda de hiperparámetros:" )
+                metrica = input("Selecciona la métrica que quieres optimizar (RMSE/MAE/R2):" )
+                if modelo == '1':
                     frp_rdForest.regresion(metodo, metrica) 
                 else:
-                    random_forest.clasificacion(metodo, metrica)
-            elif modelo == "5":
-                regresion_logistica.clasificacion(metodo, metrica) 
+                    frp_xgBoost.regresion(metodo, metrica) 
 
         elif opcion == "15":
             print("\n" + " "*60)

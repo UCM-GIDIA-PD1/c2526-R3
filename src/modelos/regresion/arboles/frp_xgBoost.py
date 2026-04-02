@@ -186,6 +186,7 @@ def inicializar():
     
     # X, y = cg.cargar_dataset_frp()
     X, y = pers.pregunta_PCA(clasificacion=False)
+    X = X.drop(columns = ['log_frp'])
     X_train_full, X_test, y_train_full, y_test = split_temporal(X, y, date_col='date', test_size=0.2)
     X_train_full, X_test = pers.anomalias(X_train_full, X_test)
 

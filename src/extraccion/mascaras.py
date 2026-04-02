@@ -63,8 +63,7 @@ def extraer_biogeografica_raw():
     Extracción automática de las máscaras de las biogeoregiones desde MinIO
     :return bio_mascaras: 12 máscaras con las bioregiones en Europa tipo GeoDataFrame
     '''
-    cliente = minioFunctions.crear_cliente()
-    #minio_a_local(carpeta_local = "BiogeoRegiones_raw", path_minio = "grupo3/raw/Biogeoregiones")
+    minio_a_local(carpeta_local = "BiogeoRegiones_raw", path_minio = "grupo3/raw/Biogeoregiones")
     
     #Extracción de los archivos desde local
     actual_p = Path(__file__).resolve()
@@ -191,9 +190,7 @@ def extraer_mascaras_faltantes():
             continue 
 
         elif pais == "Russian Federation":
-            # ---------------------------------------------------------
-            # 1. ZONA OESTE AISLADA (Kaliningrado) - INTACTA
-            # ---------------------------------------------------------
+         
             coords_spb = [
                 (19.8, 54.4), (19.8, 55.0), (21.5, 55.3),
                 (23.8, 55.3), (23.8, 54.4), (21.5, 54.4)
@@ -204,11 +201,7 @@ def extraer_mascaras_faltantes():
             # Subimos la máscara de Kaliningrado
             minioFunctions.subir_fichero(cliente, "grupo3/raw/Countries/mascara_San_Petersburgo.parquet", df_spb)
 
-            # ---------------------------------------------------------
-            # 2. ZONA RUSIA EUROPEA (Ajustada a la frontera real y corte en 35)
-            # ---------------------------------------------------------
-            # Empezamos en la Longitud 27 (fuera del país) para que el clip()
-            # dibuje la frontera real automáticamente por la izquierda.
+     
             coords_moscu = [
                 (27.0, 50.0), # Suroeste (Fuera del país)
                 (27.0, 68.0), # Noroeste (Fuera del país)
@@ -223,28 +216,27 @@ def extraer_mascaras_faltantes():
             
             continue
 
-        # Subimos a MinIO para Belarus, Ukraine u otros países normales
+        # Subimos a MinIO
         nombre_archivo = f"grupo3/raw/Countries/mascara_{pais.replace(' ', '_')}.parquet"
         minioFunctions.subir_fichero(cliente, nombre_archivo, df_pais)
 
 
 if __name__ == '__main__':
-    # 1. EJECUCIÓN REAL: Genera los recortes y los sube a MinIO
-    print("🚀 Iniciando proceso de extracción y subida a MinIO...")
+    print("Iniciando proceso de extracción y subida a MinIO...")
     try:
         extraer_mascaras_faltantes()
-        print("✅ ¡Proceso completado con éxito! Los archivos ya deberían estar en el bucket.")
+        print("Proceso completado con éxito. Los archivos ya deberían estar en el bucket.")
     except Exception as e:
-        print(f"❌ Error durante la subida: {e}")
+        print(f"Error durante la subida: {e}")
 
     # 2. VERIFICACIÓN VISUAL (Opcional): 
     # Mantenemos esto solo para que estés 100% seguro de lo que acabas de subir
     print("\nGenerando vista previa de seguridad...")
     df_rusia = extraer_pais("Russian Federation")
     
-    # Geometría Kaliningrado (Azul)
+    # Kaliningrado (Azul)
     poly_spb = Polygon([(19.8, 54.4), (19.8, 55.0), (21.5, 55.3), (23.8, 55.3), (23.8, 54.4), (21.5, 54.4)])
-    # Geometría Rusia Europea (Rojo)
+    # Rusia Europea (Rojo)
     poly_moscu = Polygon([(27.0, 50.0), (27.0, 68.0), (35.0, 68.0), (35.0, 50.0)])
 
     fig, ax = plt.subplots(figsize=(10, 8))

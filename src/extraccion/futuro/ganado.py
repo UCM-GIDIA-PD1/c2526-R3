@@ -26,6 +26,13 @@ def obtenerNumero(lat, lon,matriz, src, transformer):
 
     El código comentado corresponde a la búsqueda de puntos cercanos para sanear puntos nulos.
     Como esta función también es usada para crear puntos sintéticos, queda comentado
+    
+    :param lat: Latitud
+    :param lon: Longitud
+    :param matriz: Matriz de datos
+    :param src: Archivo raster
+    :param transformer: Transformador de coordenadas
+    :return float: Valor del pixel
     '''
      
     x, y = transformer.transform(lon, lat)
@@ -66,6 +73,9 @@ def lista_entorno(lista_puntos):
     
     Abre una conexion al raster alojado en MinIO y traduce el valor numerico de cada 
     pixel utilizando el indice de df_vegetacion
+    
+    :params lista_puntos: Lista de tuplas
+    :return dict: Diccionario con las densidades
     """
 
     load_dotenv()
@@ -114,11 +124,22 @@ async def df_ganado(fires, limit=20, fecha_ini=None, fecha_fin=None):
     Se extraen los datos de vegetacion para un dataset
     
     Requiere que el DataFrame fires contenga las columnas 'lat_mean', 'lon_mean' y 'date_first'
+    
+    :params fires: Dataframe con los puntos
+    :params limit: Límite de filas
+    :params fecha_ini: Fecha de inicio
+    :params fecha_fin: Fecha de fin
+    :return pd.DataFrame: DataFrame final
     """
     
     ini = time.time()
     ak, sk = minioFunctions.importar_keys()
 
+    fin_none = fecha_fin is None
+    ini_none = fecha_ini is None
+
+    if not fin_none and not ini_none: 
+        fires = fires[fires['date_first'].between(fecha_ini, fecha_fin)]
 
     if limit != -1:
         fires = fires.head(limit)   
@@ -128,7 +149,7 @@ async def df_ganado(fires, limit=20, fecha_ini=None, fecha_fin=None):
     try:
         lista_res = await asyncio.to_thread(lista_entorno, lista_puntos)
     except KeyboardInterrupt:
-        print("\n Interrupción detectada. No hay datos parciales para guardar en vegetacion2 (proceso síncrono).")
+        print("\n Interrupción detectada. No hay datos parciales para guardar en ganado (proceso síncrono).")
         raise
     
     fires = fires[['lat_mean','lon_mean','date_first']].copy().reset_index(drop = True)

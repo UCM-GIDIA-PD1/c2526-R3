@@ -91,7 +91,7 @@ def evaluacion(X_train_full, X_test, y_train_full, y_test, metodo):
     run.finish()
 
 
-def entrenamiento(X_train_full, y_train_full, nombre=None):
+def entrenamiento(X_train_full, y_train_full, metrica_elegida, nombre=None):
     global NUM_IT
     NUM_IT += 1
 
@@ -120,7 +120,7 @@ def entrenamiento(X_train_full, y_train_full, nombre=None):
             reg_alpha = config.reg_alpha,
             reg_lambda = config.reg_lambda,
             random_state=SEED,
-            eval_metric="rmse",
+            eval_metric=metrica_elegida,
             early_stopping_rounds=50,
             n_jobs=-1,
         )
@@ -167,7 +167,7 @@ def entrenamiento(X_train_full, y_train_full, nombre=None):
         reg_lambda=config.reg_lambda,
         random_state=SEED,
         n_jobs=-1,
-        eval_metric="rmse"
+        eval_metric=metrica_elegida
     )
 
     model.fit(X_train_full, y_train_full)
@@ -195,7 +195,7 @@ def regresion(metodo_elegido, metrica_elegida):
     iters, nombre = pers.pregunta_iters_nombre()
 
     def ent():
-        entrenamiento(X_train_full, y_train_full, nombre)
+        entrenamiento(X_train_full, y_train_full, nombre, metrica_elegida)
 
     if metodo_elegido == "grid":
         params = {

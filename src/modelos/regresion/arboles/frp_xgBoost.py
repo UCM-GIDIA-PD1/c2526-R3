@@ -9,6 +9,8 @@ from xgboost import callback
 from wandb.sklearn import (
     plot_residuals,
     plot_feature_importances,
+    plot_learning_curve,
+    plot_summary_metrics
 )
 
 import modelos.utils.carga_datos as cg
@@ -76,7 +78,7 @@ def evaluacion(X_train_full, X_test, y_train_full, y_test, metodo):
 
     y_pred_test = model.predict(X_test)
 
-    metricas_test = evaluar_regresion(y_test, y_pred_test, "Test — XGBoost Regressor")
+    metricas_test = evaluar_regresion(y_test, y_pred_test, "Test — XGBoost Regressor", en_log=False)
 
     wandb.log({
         "test/rmse": float(metricas_test["rmse"]),
@@ -85,8 +87,13 @@ def evaluacion(X_train_full, X_test, y_train_full, y_test, metodo):
         "test/rmse_mw": float(metricas_test.get("rmse_mw", 0))
     })
 
-    plot_residuals(model, X_train_full, y_train_full)
-    plot_feature_importances(model)
+    try:
+        plot_residuals(model, X_test.values, y_test.values)
+        plot_feature_importances(model)
+        plot_learning_curve(model, X_train_full.values, y_train_full.values)
+        plot_summary_metrics(model, X_test.values, y_test.values)
+    except Exception as e:
+        print(f"error al generar las graficas de wandb: {e}")
 
     run.finish()
 
@@ -169,10 +176,6 @@ def entrenamiento(X_train_full, y_train_full, metrica_elegida, nombre=None):
         n_jobs=-1,
         eval_metric=metrica_elegida
     )
-
-    model.fit(X_train_full, y_train_full)
-    plot_feature_importances(model)
-    plot_residuals(model, X_train_full, y_train_full)
 
     run.finish()
 

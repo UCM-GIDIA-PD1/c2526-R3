@@ -65,6 +65,8 @@ def pedir_hiperparametros(modelo):
     if modelo == "XGBoostFRP":
         hiperparametros["min_child_weight"] = float(input("min_child_weight: "))
         hiperparametros["gamma"] = float(input("gamma (float): "))
+        hiperparametros["reg_alpha"] = float(input("reg_alpha (float): "))
+        hiperparametros["reg_lambda"] = float(input("reg_lambda (float): "))
 
     
     if modelo == "Regresión logística":

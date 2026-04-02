@@ -182,7 +182,7 @@ def inicializar():
         return
     
     # X, y = cg.cargar_dataset_frp()
-    X, y = pers.pregunta_PCA(False)
+    X, y = pers.pregunta_PCA(clasificacion=False)
     X_train_full, X_test, y_train_full, y_test = split_temporal(X, y, date_col='date', test_size=0.2)
     X_train_full, X_test = pers.anomalias(X_train_full, X_test)
 
@@ -209,7 +209,7 @@ def regresion(metodo_elegido, metrica_elegida):
             "reg_alpha": {"values": [0, 0.5, 0.9]},
             "reg_lambda": {"values": [0.5, 1, 3, 5]}
         }
-    else: 
+    elif metodo_elegido == "random": 
         params = {
             "n_estimators": {"values": [100, 500, 1000, 2000]},
             "learning_rate": {"distribution": "uniform", "min": 0.01, "max": 0.2},
@@ -221,6 +221,19 @@ def regresion(metodo_elegido, metrica_elegida):
             "reg_alpha": {"distribution": "uniform", "min": 0, "max": 1},
             "reg_lambda": {"distribution": "uniform", "min": 0.5, "max": 5}
         }
+    elif metodo_elegido == 'bayes':
+        params = {
+            "n_estimators": {"values": [100, 500, 1000, 2000]},
+            "learning_rate": {"distribution": "log_uniform_values", "min": 0.01, "max": 0.1},
+            "max_depth": {"distribution": "int_uniform", "min": 3, "max": 7},
+            "min_child_weight": {"distribution": "int_uniform", "min": 5, "max": 30},
+            "subsample": {"distribution": "uniform", "min": 0.7, "max": 0.9},
+            "colsample_bytree": {"distribution": "uniform", "min": 0.7, "max": 1.0},
+            "reg_alpha": {"distribution": "log_uniform_values", "min": 0.001, "max": 10.0},
+            "reg_lambda": {"distribution": "log_uniform_values", "min": 1.0, "max": 20.0},
+            "gamma": {"distribution": "uniform", "min": 0, "max": 5}
+        }
+        
 
     metrica_limpia = metrica_elegida.lower().strip()
     

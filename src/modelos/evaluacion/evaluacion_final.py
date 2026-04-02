@@ -5,7 +5,7 @@ from modelos.regresion.arboles import frp_xgBoost
 from modelos.regresion.arboles import frp_rdForest
 
 
-def evaluacion_modelo(modelo:Literal["XGBoostClassifier", "BalancedRandomForest", "DecisionTree", "RandomForestClassifier", "Regresión logística", "RandomForestFRP", "XGBoostFRP"], tipo_modelo):
+def evaluacion_modelo(modelo:Literal["XGBoostClassifier", "BalancedRandomForest", "DecisionTree", "RandomForestClassifier", "Regresión logística", "RandomForestFRP", "XGBoostFRP"]):
     '''
     Función para evaluar los modelos finales en nuestro conjunto de validación
     '''
@@ -63,7 +63,7 @@ def pedir_hiperparametros(modelo):
         hiperparametros["colsample_bytree"] = float(input("colsample_bytree (0.5-1): "))
 
     if modelo == "XGBoostFRP":
-        hiperparametros["min_child_weight"] = int(input("min_child_weight: "))
+        hiperparametros["min_child_weight"] = float(input("min_child_weight: "))
         hiperparametros["gamma"] = float(input("gamma (float): "))
 
     

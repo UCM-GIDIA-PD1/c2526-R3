@@ -54,7 +54,7 @@ async def build_environmental_df(file, limit=100, fecha_ini=None, fecha_fin=None
     
     assert not fires.empty, "El DataFrame está vacio"
 
-    no_fires = puntos_sinteticos.crearSinteticos(fires, False)
+    no_fires = puntos_no_incendio.crearSinteticos(fires, False)
     
     no_fires = no_fires.rename(columns={'lat': 'lat', 'lon': 'lon', 'date': 'date'})
     

@@ -32,6 +32,9 @@ except Exception as e:
 def quitar_dias(fecha_str):
     '''
     Resta 30 días a la fecha ingresada (en formato string)
+    
+    :param fecha_str: Fecha en formato string (se tomarán los primeros 10 caracteres)
+    :return str: Nueva fecha restando 30 días en formato '%Y-%m-%d'
     '''
     fecha_str = str(fecha_str)[:10]
     fecha_obj = datetime.strptime(fecha_str, '%Y-%m-%d')
@@ -44,6 +47,9 @@ def quitar_dias(fecha_str):
 def calcular_indices(img):
     '''
     Funcion que calcula los indices NDVI y NDWI a partir de una imagen de satélite con las bandas necesarias (B3, B4, B8)
+    
+    :param img: Objeto ee.Image del cual se calcularán los índices
+    :return ee.Image: Imagen original con las nuevas bandas 'NDVI' y 'NDWI' añadidas
     '''
     ndvi = img.normalizedDifference(['B8', 'B4']).rename('NDVI')
     ndwi = img.normalizedDifference(['B3', 'B8']).rename('NDWI')
@@ -53,11 +59,9 @@ def imagen(punto, fecha):
   '''
   Obtiene la imagen del satélite Copernicus en un rango de 30 dias ignorando los datos con nubes
 
-  Parametros:
-  - punto: ee.Geometry.Point con la ubicacion
-
-  Devuelve:
-  - img: ee.Image con los datos de la imagen procesada (mediana de las imagenes disponibles en el rango de fechas)
+  :param punto: ee.Geometry.Point con la ubicacion
+  :param fecha: Fecha base en formato string u objeto convertible a string
+  :return ee.Image: ee.Image con los datos de la imagen procesada (mediana de las imagenes disponibles en el rango de fechas)
   '''
   fecha = str(fecha)[:10]
   
@@ -85,8 +89,10 @@ def logica_vegetacion(lat, lon, fecha):
   '''
   Extrae los índices de vegetación (NDVI y NDWI) para una ubicación y fecha
 
-  Devuelve:
-  - resultado: diccionario con los valores de NDVI y NDWI o NaN si no se pudieron obtener datos
+  :param lat: Latitud del punto
+  :param lon: Longitud del punto
+  :param fecha: Fecha para la cual se quieren extraer los datos
+  :return dict: diccionario con los valores de NDVI y NDWI o NaN si no se pudieron obtener datos
   '''
 
   try:
@@ -110,11 +116,11 @@ async def vegetacion(lat, lon, fecha, indice = None):
   '''
   Obtiene los indices de vegetacion para una ubicacion y fecha
 
-  Parámetros:
-  - indice: indice del punto en el DataFrame (opcional, para depurar)
-
-  Devuelve:
-  - resultado: diccionario con los valores de NDVI y NDWI para la ubicación y fecha dadas
+  :param lat: Latitud del punto
+  :param lon: Longitud del punto
+  :param fecha: Fecha para la cual se quieren extraer los datos
+  :param indice: indice del punto en el DataFrame (opcional, para depurar)
+  :return dict: diccionario con los valores de NDVI y NDWI para la ubicación y fecha dadas, incluyendo lat, lon y date
   '''
 
   async with sem_global:
@@ -134,14 +140,11 @@ async def df_vegetacion(fires, limit = 20, fecha_ini = None, fecha_fin = None):
   '''
   Obtiene un DataFrame con los índices de vegetación para los incendios en un rango de fechas
 
-  Parámetros:
-  - fires: DataFrame con los incendios con columnas 'lat', 'lon', y 'date'
-  - limit: número de incendios a procesar (por defecto 20)
-  - fecha_ini: fecha inicial del rango (por defecto None)
-  - fecha_fin: fecha final del rango (por defecto None)
-  
-  Devuelve:
-  - final_df: DataFrame con los índices de vegetación para los incendios procesados
+  :param fires: DataFrame con los incendios con columnas 'lat', 'lon', y 'date'
+  :param limit: número de incendios a procesar (por defecto 20, -1 para procesar todos)
+  :param fecha_ini: fecha inicial del rango (por defecto None)
+  :param fecha_fin: fecha final del rango (por defecto None)
+  :return pd.DataFrame: DataFrame final con los índices de vegetación para los incendios procesados
   '''
     
   ini = time.time()

@@ -9,14 +9,20 @@ import pandas as pd
 sem_global = asyncio.Semaphore(10)
 
 async def pendiente(lat, lon, date, indice = None): #Ignacio: añadido date
-  """
+  '''
     Calcula la elevacion y pendiente (en grados y porcentaje) de un punto usando Google Earth Engine.
     
     Importante:
     - Utiliza el dataset MERIT/DEM/v1_0_3.
     - Asume que Earth Engine siempre devolvera un diccionario con las claves 'dem' y 'slope'.
     - Si el valor de 'slope' es vacio o 0, el calculo del porcentaje asume 0 por defecto.
-  """
+    
+    :param lat: Latitud
+    :param lon: Longitud
+    :param date: Fecha
+    :param indice: Índice opcional para seguimiento
+    :return dict: Diccionario con la elevación y pendientes
+  '''
   async with sem_global:
     elev = ee.Image('MERIT/DEM/v1_0_3').select('dem')
     punto = ee.Geometry.Point([lon, lat])
@@ -35,7 +41,6 @@ async def pendiente(lat, lon, date, indice = None): #Ignacio: añadido date
       print(f"Pendiente {indice} extraida.")
     
     return {
-        #Ignacio: añadido ["lat", "lon", "date"]
         "lat" : lat,
         "lon" : lon, 
         "date" : date,
@@ -46,11 +51,17 @@ async def pendiente(lat, lon, date, indice = None): #Ignacio: añadido date
 
 async def df_pendiente(fires, limit = 20, fecha_ini = None, fecha_fin = None):
   
-    """
+    '''
     Extrae la informacion del terreno de una serie de incendios 
     
     Requiere que el DataFrame fires contenga las columnas 'lat', 'lon' y 'date'.
-    """
+    
+    :param fires: DataFrame con los datos
+    :param limit: Límite de filas a procesar 
+    :param fecha_ini: Fecha inicial 
+    :param fecha_fin: Fecha final
+    :return pd.DataFrame: DataFrame final 
+    '''
 
     ini = time.time()
 

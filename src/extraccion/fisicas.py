@@ -11,6 +11,19 @@ limit = 5000
 sleep = 3600  
 
 async def fetch_environment(session, lat, lon, date, indice=None, intentos=3, directo=False):
+    '''
+    Función que utiliza la API Open-Meteo para obtener características físicas    
+    
+    :param session: Sesión de aiohttp para realizar la petición
+    :param lat: Latitud
+    :param lon: Longitud
+    :param date: Fecha objetivo
+    :param indice: Índice del procesamiento actual
+    :param intentos: Número de intentos en caso de fallo de conexión
+    :param directo: Booleano para activar el control de límite de peticiones (Rate Limit)
+    :return dict: Diccionario con los datos físicos extraídos o valores nulos si falla
+    '''
+    
     global contador
     async with sem_global:
         if directo:
@@ -76,6 +89,17 @@ async def fetch_environment(session, lat, lon, date, indice=None, intentos=3, di
         return error
 
 async def df_fisicas(fires, limit=20, fecha_ini=None, fecha_fin=None, directo=False):
+    '''
+    Función que extrae características físicas, cabe resaltar sus límites de 5000 por hora y 10000 diarios.
+
+    :param fires: DataFrame con los puntos (debe contener 'lat', 'lon', y 'date')
+    :param limit: Límite de filas a procesar (-1 para procesar todo)
+    :param fecha_ini: Fecha de inicio para filtrar el DataFrame
+    :param fecha_fin: Fecha de fin para filtrar el DataFrame
+    :param directo: Booleano para activar el control de límite de peticiones
+    :return pd.DataFrame: DataFrame final con los datos físicos añadidos
+    '''
+    
     global contador
     contador = 0 
     
@@ -113,7 +137,7 @@ async def df_fisicas(fires, limit=20, fecha_ini=None, fecha_fin=None, directo=Fa
                 try:
                     resultados.append(await tarea)
                 except asyncio.CancelledError:
-                    print("\n⚠️ Interrupción detectada. Guardando resultados parciales...")
+                    print("\n Interrupción detectada. Guardando resultados parciales...")
                     final_df = pd.DataFrame(resultados)
                     interrupcion.guardar_parcial(final_df)
                     for t in tareas:

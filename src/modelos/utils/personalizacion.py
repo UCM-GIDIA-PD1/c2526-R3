@@ -25,7 +25,7 @@ def pregunta_PCA(clasificacion = True, df=None):
         if pca_input == 's':
             from sklearn.decomposition import PCA
             n_components = int(input('¿Cuántos componentes quieres usar? '))
-            
+            df = df.sort_values(by='date')
             X_raw = df.drop(columns=[target_col, 'date'], errors='ignore')
             y = df[target_col]
             
@@ -35,7 +35,7 @@ def pregunta_PCA(clasificacion = True, df=None):
             break
             
         elif pca_input == 'n':
-            X = df.drop(columns=[target_col, 'date'], errors='ignore')
+            X = df.drop(columns=[target_col], errors='ignore')
             y = df[target_col]
             break
         else:

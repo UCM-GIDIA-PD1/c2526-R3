@@ -96,3 +96,52 @@ def obtener_df_date_transformado():
     
     return df_date_transformado
 
+def relacionar_variables(df):
+    '''
+    Relacionamos las variables entre sí para crear nuevas características
+    que puedan ser útiles para el modelo.
+    
+    :param df: dataframe con las características originales
+    :return df_relacionadas: dataframe con las nuevas características
+    '''
+    df_relacionadas = df.copy()
+
+    # Variables de vegetación
+    df_relacionadas['vegetacion'] = df_relacionadas['NDVI'] / (df_relacionadas['NDWI'] + 0.01)
+    print("Transformada vegetación")
+    
+    # Variables hídricas
+    df_relacionadas["hídricas"] = df_relacionadas["evapotranspiration"] - df_relacionadas["precipitation"]
+    print("Transformada hídrica")
+
+    # Variables térmicas
+    df_relacionadas["térmicas"] = df_relacionadas["temp_max"] - df_relacionadas["temp_min"]
+    print("Transformada térmica")
+
+    # Regla del 30-30-30 (indica riesgo extremo de incendio)
+    df_relacionadas["riesgo30"] = (df_relacionadas["temp_max"] * df_relacionadas["wind_speed_max"]) / (df_relacionadas["humidity_mean"] + 1)
+    df_relacionadas["regla30"] = ( # Columna booleana que indica si se cumple la regla
+        (df_relacionadas["temp_max"] > 30) & 
+        (df_relacionadas["wind_speed_max"] > 30) & 
+        (df_relacionadas["humidity_mean"] < 30)
+    )
+    print("Transformada 30-30-30")
+
+    # Variable de viento
+    df_relacionadas["viento"] = df_relacionadas["wind_gusts_max"] * df_relacionadas["wind_speed_max"]
+    print("Transformada viento")
+    
+    # Variables humanas
+    df_relacionadas["humanas"] = df_relacionadas["NDVI"] / (df_relacionadas["dist_civ"] + 1)
+    print("Transformada humana")
+
+    # Variables topográficas
+    df_relacionadas["topográficas"] = df_relacionadas["soil_temp"] - df_relacionadas["temp_mean"] 
+    print("Transformada topográfica")
+
+    # Variables temporales
+    df_relacionadas["date"] = pd.to_datetime(df_relacionadas["date"])
+    df_relacionadas["mes"] = df_relacionadas["date"].dt.month
+    print("Transformada temporal")
+
+    return df_relacionadas

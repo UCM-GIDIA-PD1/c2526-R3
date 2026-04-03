@@ -3,6 +3,7 @@ import sys
 import numpy as np
 import pandas as pd
 from pathlib import Path
+from sklearn.impute import SimpleImputer
 from sklearn.metrics import fbeta_score, recall_score, f1_score
 
 import wandb
@@ -54,6 +55,12 @@ def evaluacion_final(hiperparametros, metodo):
 
 
 def evaluacion(X_train_full, X_test, y_train_full, y_test, metodo):
+
+    columnas_validas = X_train_full.columns[X_train_full.notna().any()].tolist()
+    
+    X_train_limpio = X_train_full[columnas_validas]
+    X_test_limpio = X_test[columnas_validas]
+
     run = wandb.init(tags=["Evaluacion Final", metodo]) 
     config = wandb.config
 
@@ -69,12 +76,17 @@ def evaluacion(X_train_full, X_test, y_train_full, y_test, metodo):
         random_state=SEED,
         n_jobs=-1,
     )
+
+    imputer = SimpleImputer(strategy='median')
+    X_train_imputed = pd.DataFrame(imputer.fit_transform(X_train_limpio), columns=columnas_validas)
+    X_test_imputed = pd.DataFrame(imputer.transform(X_test_limpio), columns=columnas_validas)
+
     smote = SMOTE(random_state=SEED)
-    X_train_res, y_train_res = smote.fit_resample(X_train_full, y_train_full)
+    X_train_res, y_train_res = smote.fit_resample(X_train_imputed, y_train_full)
 
     clf.fit(X_train_res, y_train_res)
 
-    y_prob_test = clf.predict_proba(X_test)
+    y_prob_test = clf.predict_proba(X_test_imputed)
     y_pred_test = (y_prob_test[:, 1] >= config.umbral).astype(int)
     
     metricas_test = evaluar_clasificacion(y_test, y_pred_test, y_prob_test[:, 1], "Test — RandomForest")
@@ -92,22 +104,21 @@ def evaluacion(X_train_full, X_test, y_train_full, y_test, metodo):
     plot_precision_recall(y_test, y_prob_test)
     wandb.sklearn.plot_classifier(
         clf,
-        X_train_full,
-        X_test,
+        X_train_imputed,
+        X_test_imputed,
         y_train_full,
         y_test,
         y_pred_test,
         y_prob_test,
         labels=["no_incendio", "incendio"],
         model_name="RandomForest",
-        feature_names=X_train_full.columns.tolist(),
+        feature_names=columnas_validas,
     )
     
     plot_feature_importances(clf)
-    wf.matriz_confusion_feature_importance(clf, y_pred_test, y_test, X_train_full.columns.tolist())
+    wf.matriz_confusion_feature_importance(clf, y_pred_test, y_test, columnas_validas)
 
     run.finish()
-
 
 def entrenamiento(X_train_full, y_train_full, nombre=None):
     global NUM_IT
@@ -129,16 +140,29 @@ def entrenamiento(X_train_full, y_train_full, nombre=None):
         n_jobs=-1,
     )
 
+    columnas_con_datos = X_train_full.columns[X_train_full.notna().any()].tolist()
+
+    X_train_limpio = X_train_full[columnas_con_datos]
+
+    imputer = SimpleImputer(strategy='median')
+    
+    X_train_full_imputed = pd.DataFrame(imputer.fit_transform(X_train_limpio), 
+                                         columns=X_train_limpio.columns)
+    
     cv_generator = generador_cv(tipo_cv="temporal", n_splits=4, seed=SEED)
+    smote = SMOTE(random_state=SEED)
+
     f2_cv_scores, f1_cv_scores = [], []
     f2_cv_train, f1_cv_train = [], []
     tns, fps, fns, tps = [], [], [], []
 
     smote = SMOTE(random_state=SEED)
 
-    for train_idx, val_idx in cv_generator.split(X_train_full, y_train_full):
+    for train_idx, val_idx in cv_generator.split(X_train_full_imputed, y_train_full):
 
-        X_fold_train, X_fold_val = X_train_full.iloc[train_idx], X_train_full.iloc[val_idx]
+        X_fold_train = X_train_full_imputed.iloc[train_idx]
+        X_fold_val = X_train_full_imputed.iloc[val_idx]
+
         y_fold_train, y_fold_val = y_train_full.iloc[train_idx], y_train_full.iloc[val_idx]
 
         X_fold_train_res, y_fold_train_res = smote.fit_resample(X_fold_train, y_fold_train)
@@ -174,12 +198,14 @@ def entrenamiento(X_train_full, y_train_full, nombre=None):
         "val/tp_mean": np.mean(tps)
     })
 
-    X_train_res, y_train_res = smote.fit_resample(X_train_full, y_train_full)
+    X_train_res, y_train_res = smote.fit_resample(X_train_full_imputed, y_train_full)
     clf.fit(X_train_res, y_train_res)
 
     plot_feature_importances(clf)
-    y_pred_train = (clf.predict_proba(X_train_full)[:, 1] >= config.umbral).astype(int)
-    wf.matriz_confusion_feature_importance(clf, y_pred_train, y_train_full, X_train_full.columns.tolist())
+    
+    y_pred_train = (clf.predict_proba(X_train_full_imputed)[:, 1] >= config.umbral).astype(int)
+    
+    wf.matriz_confusion_feature_importance(clf, y_pred_train, y_train_full, columnas_con_datos)
 
     run.finish()
 

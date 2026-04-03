@@ -208,7 +208,7 @@ def regresion(metodo_elegido, metrica_elegida):
             "max_depth": {"values": [3, 6]},
             "subsample": {"values": [0.6, 0.8, 1.0]},
             "colsample_bytree": {"values": [0.5, 0.7, 1.0]},
-            "min_child_weight": {"values": [5, 10, 15, 20]},
+            "min_child_weight": {"values": [50, 70, 85, 100]},
             "gamma": {"values": [0, 0.1, 0.3, 0.5, 0.7]},
             "reg_alpha": {"values": [0, 0.5, 0.9]},
             "reg_lambda": {"values": [0.5, 1, 3, 5]}
@@ -217,10 +217,10 @@ def regresion(metodo_elegido, metrica_elegida):
         params = {
             "n_estimators": {"values": [100, 500, 1000, 2000]},
             "learning_rate": {"distribution": "uniform", "min": 0.01, "max": 0.2},
-            "max_depth": {"values": [3, 6]},
+            "max_depth": {"values": [2, 5]},
             "subsample": {"distribution": "uniform", "min": 0.6, "max": 1.0},
             "colsample_bytree": {"distribution": "uniform", "min": 0.5, "max": 1.0},
-            "min_child_weight": {"distribution": "uniform", "min": 5, "max": 20},
+            "min_child_weight": {"distribution": "uniform", "min": 50, "max": 100},
             "gamma": {"distribution": "uniform", "min": 0, "max": 0.7},
             "reg_alpha": {"distribution": "uniform", "min": 0, "max": 1},
             "reg_lambda": {"distribution": "uniform", "min": 0.5, "max": 5}
@@ -229,8 +229,8 @@ def regresion(metodo_elegido, metrica_elegida):
         params = {
             "n_estimators": {"values": [100, 500, 1000, 2000]},
             "learning_rate": {"distribution": "log_uniform_values", "min": 0.01, "max": 0.1},
-            "max_depth": {"distribution": "int_uniform", "min": 3, "max": 7},
-            "min_child_weight": {"distribution": "int_uniform", "min": 5, "max": 30},
+            "max_depth": {"distribution": "int_uniform", "min": 2, "max": 5},
+            "min_child_weight": {"distribution": "int_uniform", "min": 50, "max": 100},
             "subsample": {"distribution": "uniform", "min": 0.7, "max": 0.9},
             "colsample_bytree": {"distribution": "uniform", "min": 0.7, "max": 1.0},
             "reg_alpha": {"distribution": "log_uniform_values", "min": 0.001, "max": 10.0},

@@ -155,13 +155,16 @@ def entrenamiento(X_train_full, y_train_full, nombre=None):
     
     run.finish()
 
+
 def inicializar():
-    if not wf.inicializar_apikey_wandb(): return
-    X, y = cargar_dataset_general(eliminar_correladas=False)
+    if not wf.inicializar_apikey_wandb():
+        return
+    # pregunta_PCA descarga el dataset internamente y pregunta si aplicar PCA
     X, y = pers.pregunta_PCA()
     X_train_full, X_test, y_train_full, y_test = split_temporal(X, y, test_size=0.2)
     X_train_full, X_test = pers.anomalias(X_train_full, X_test)
     return X_train_full, X_test, y_train_full, y_test
+
 
 def clasificacion(metodo_elegido, metrica_elegida):
     X_train_full, X_test, y_train_full, y_test = inicializar()
@@ -192,6 +195,7 @@ def clasificacion(metodo_elegido, metrica_elegida):
     sweep_id = wandb.sweep(sweep_config, entity=WANDB_ENTITY, project=WANDB_PROJECT)
     
     wandb.agent(sweep_id, function=lambda: entrenamiento(X_train_full, y_train_full, nombre), count=iters)
+
 
 if __name__ == "__main__":
     metodo = input("\n Método (grid, random o bayes): ").lower()

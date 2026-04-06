@@ -12,20 +12,15 @@ from shapely.geometry import box
 import geopandas as gpd
 from limpieza import limpieza
 from modelos.evaluacion import evaluacion_final
-from modelos.clasificacion import decisiontree, balanced_random_forest, random_forest, m_xgboost,  regresion_logistica
+from modelos.clasificacion import decisiontree, balanced_random_forest, random_forest, m_xgboost, regresion_logistica, modelo_inversa
 from modelos.generico import modelo_xgboost
 from modelos.regresion.arboles import frp_xgBoost
 
-# Función encargada de unificar y facilitar el debug de cada módulo, avisar de imports faltantes y diferentes rutas
-
-#Sacamos el path actual, su padre y esa será la ruta donde se buscan los otros paquetes
 src_path = Path(__file__).parent
 sys.path.append(str(src_path))
 
-#Cargas desde el INICIO todas las claves de entorno, por si se llaman
 load_dotenv()
 
-# CONFIGURACIÓN DE EARTH ENGINE
 def setup_earth_engine():
     """Configura Earth Engine usando la variable RUTA_CREDENCIALES."""
 
@@ -140,7 +135,6 @@ def formatear_ruta(ruta, max_len=50):
         return ruta[:max_len] + "..."
     return ruta
 
-# Función para obtener parámetros
 def obtener_parametros():
     """Pregunta al usuario si quiere especificar parámetros y los devuelve."""
     print("\n--- Personalización de parámetros ---")
@@ -155,11 +149,9 @@ def obtener_parametros():
         print("Valor no válido, se usará 20 por defecto.")
         limit = 20
 
-    # Solicitar fecha_ini
     fecha_ini = input("fecha_ini (formato YYYY-MM-DD, vacío para None): ").strip()
     fecha_ini = fecha_ini if fecha_ini else None
 
-    # Solicitar fecha_fin
     fecha_fin = input("fecha_fin (formato YYYY-MM-DD, vacío para None): ").strip()
     fecha_fin = fecha_fin if fecha_fin else None
 
@@ -314,12 +306,10 @@ def pedirDatos():
         print(df["date"].head())
         return df
 
-# MAIN
 async def main():
     df_incendios = None
     pregunta = True
 
-    # Opciones que no requieren pedir datos por defecto al inicio
     exclusiones_pedir_datos = ["0", "7", "9", "10", "11", "13", "14", "15", "16", "17"]
 
     while True:
@@ -336,7 +326,6 @@ async def main():
             else:
                 print(f"No se consiguió tener el documento")
         
-        # Opciones de Extracción Directa y Construcción
         if opcion == "1" and MODULOS_CARGADOS:
             limit, fecha_ini, fecha_fin = obtener_parametros()
             if limit is None:
@@ -409,7 +398,6 @@ async def main():
         elif opcion == "8" and MODULOS_CARGADOS:
             print(f"\n📊 Generando puntos sintéticos")
             try:
-                # Es un hilo separado para no molestar la sincronización
                 df_resultado = await asyncio.to_thread(puntos_no_incendio.crearSinteticos, df_incendios)
                 print(f"\n   Se generaron {len(df_resultado)} puntos sintéticos.")
                 print("\nPrimeras 10 filas:")
@@ -545,23 +533,50 @@ async def main():
                 print("3.DecisionTree.")
                 print("4.RandomForestClassifier")
                 print("5.Regresión logística.")
+                print("6.Modelo Inversa (Filtro XGBoost).")
                 modelo = input("\n Indica el modelo que quieres entrenar (el número): ")
-                metodo = input("Selecciona el metodo (grid, random o bayes) para la búsqueda de hiperparámetros:" )
-                metrica = input("Selecciona la métrica que quieres optimizar (f1/f2):" )
-                if modelo == '1':
-                    decisiontree.clasificacion(metodo, metrica)
-                elif modelo == '2':
-                    ventanas_temporales = input("\nIndica si quieres ventanas temporales (s/n): ")
-                    if ventanas_temporales == "s":
-                        modelo_xgboost.entrenar() 
+                
+                if modelo == '6':
+                    print("\n--- Opciones Modelo Inversa ---")
+                    print("1. Ejecutar Búsqueda Exhaustiva (Grid Sweep)")
+                    print("2. Probar configuración Refinada (Existente)")
+                    print("3. Probar CONFIGURACIÓN SEQUÍA (VPD)")
+                    print("4. MODO EXPLORADOR AUTOMÁTICO (Combinaciones aleatorias/bayes)")
+                    print("5. MODO EXPLORADOR ANTRÓPICO (Civilización + Clima)")
+                    op_inversa = input("\nElige una opción (1-5): ")
+                    
+                    if op_inversa in ["1", "4", "5"]:
+                        metrica_inv = input("Selecciona la métrica que quieres optimizar (f1/f2): ")
+                        if op_inversa == "1":
+                            metodo_inv = "grid"
+                            print("Método fijado en: grid (Búsqueda Exhaustiva)")
+                        else:
+                            metodo_inv = input("Selecciona el metodo (grid, random o bayes) para la búsqueda: ")
+                        iteraciones_inv = int(input("Introduce el número máximo de iteraciones: "))
+                        modelo_inversa.clasificacion(op_inversa, metodo_inv, metrica_inv, iteraciones_inv)
+                        
+                    elif op_inversa in ["2", "3"]:
+                        print("\nEjecutando configuración manual predefinida (1 sola iteración en WandB)...")
+                        modelo_inversa.clasificacion(op_inversa, "grid", "f2", iteraciones=1)
                     else:
-                        m_xgboost.clasificacion(metodo, metrica)
-                elif modelo == '3':
-                    balanced_random_forest.clasificacion(metodo, metrica)
-                elif modelo == '4':
-                    random_forest.clasificacion(metodo, metrica)
+                        print("Opción no válida.")
                 else:
-                    regresion_logistica.clasificacion(metodo, metrica)
+                    metodo = input("Selecciona el metodo (grid, random o bayes) para la búsqueda de hiperparámetros:" )
+                    metrica = input("Selecciona la métrica que quieres optimizar (f1/f2):" )
+                    if modelo == '1':
+                        decisiontree.clasificacion(metodo, metrica)
+                    elif modelo == '2':
+                        ventanas_temporales = input("\nIndica si quieres ventanas temporales (s/n): ")
+                        if ventanas_temporales == "s":
+                            modelo_xgboost.entrenar() 
+                        else:
+                            m_xgboost.clasificacion(metodo, metrica)
+                    elif modelo == '3':
+                        balanced_random_forest.clasificacion(metodo, metrica)
+                    elif modelo == '4':
+                        random_forest.clasificacion(metodo, metrica)
+                    else:
+                        regresion_logistica.clasificacion(metodo, metrica)
             else:
                 print("1.RandomForestFRP.")
                 print("2.XGBoostFRP.")

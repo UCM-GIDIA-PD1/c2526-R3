@@ -10,7 +10,7 @@ from sklearn.metrics import fbeta_score, recall_score, f1_score, confusion_matri
 from imblearn.under_sampling import RandomUnderSampler
 from extraccion import minioFunctions as mf
 import wandb
-from wandb.sklearn import plot_roc, plot_precision_recall, plot_feature_importances
+from wandb.sklearn import plot_roc, plot_precision_recall, plot_feature_importances, plot_confusion_matrix
 
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
@@ -266,6 +266,7 @@ def entrenamiento(modelo_obj):
     probs_val_full = clf.predict_proba(X_val_f)
     plot_roc(modelo_obj.y_val, probs_val_full)
     plot_precision_recall(modelo_obj.y_val, probs_val_full)
+    plot_confusion_matrix(modelo_obj.y_val, preds_val, labels=["No Incendio", "Incendio"])
     
     if hasattr(clf, 'feature_importances_'):
         try:

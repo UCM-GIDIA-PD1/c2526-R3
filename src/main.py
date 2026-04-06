@@ -12,7 +12,7 @@ from shapely.geometry import box
 import geopandas as gpd
 from limpieza import limpieza
 from modelos.evaluacion import evaluacion_final
-from modelos.clasificacion import decisiontree, balanced_random_forest, random_forest, m_xgboost, regresion_logistica, modelo_inversa
+from modelos.clasificacion import decisiontree, balanced_random_forest, random_forest, m_xgboost, regresion_logistica, modelo_inversa, modelo_incremental
 from modelos.generico import modelo_xgboost
 from modelos.regresion.arboles import frp_xgBoost
 
@@ -534,6 +534,7 @@ async def main():
                 print("4.RandomForestClassifier")
                 print("5.Regresión logística.")
                 print("6.Modelo Inversa (Filtro XGBoost).")
+                print("7.Modelo Incremental.")
                 modelo = input("\n Indica el modelo que quieres entrenar (el número): ")
                 
                 if modelo == '6':
@@ -560,6 +561,25 @@ async def main():
                         modelo_inversa.clasificacion(op_inversa, "grid", "f2", iteraciones=1)
                     else:
                         print("Opción no válida.")
+                
+                elif modelo == '7':
+                    print("\nMODELO INCREMENTAL")
+                    print("1. FASE 1: Alta Sensibilidad (Prop 0.1 - 0.3)")
+                    print("2. FASE 2: Inyección de Ruido (Prop 0.4 - 0.8)")
+                    print("3. FASE 3: Entorno Real (Prop 1.0 - 1.5)")
+                    print("4. MODO ESCALADA COMPLETA (Prop 0.1 a 1.5)")
+                    
+                    opcion_inc = input("\nElige una fase a explorar (1-4): ")
+                    
+                    if opcion_inc in ["1", "2", "3", "4"]:
+                        metrica_inc = input("Selecciona la métrica que quieres optimizar (f1/f2): ")
+                        metodo_inc = input("Selecciona el metodo (grid, random o bayes): ")
+                        iteraciones_inc = int(input("Introduce el número máximo de iteraciones: "))
+                        
+                        modelo_incremental.clasificacion_incremental(opcion_inc, metodo_inc, metrica_inc, iteraciones_inc)
+                    else:
+                        print("Opción no válida.")
+
                 else:
                     metodo = input("Selecciona el metodo (grid, random o bayes) para la búsqueda de hiperparámetros:" )
                     metrica = input("Selecciona la métrica que quieres optimizar (f1/f2):" )

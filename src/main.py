@@ -589,30 +589,51 @@ async def main():
                     frp_xgBoost.regresion(metodo, metrica) 
 
         elif opcion == "15":
+
             print("\n" + " "*60)
             print(" INFORMACIÓN DEL PROYECTO")
             print(" "*60)
             print("""
-            Este código es utilizado para la extracción completa de datos.
+            Este código es el núcleo centralizado para la extracción, limpieza, análisis y modelado de datos de incendios.
 
             A tener en cuenta que cada extracción puede ser subida a MinIO si así lo desea su creador.
             Todo está automatizado, siendo el uso de rutas en .env utilizadas para pruebas sin conexión con el servidor.
 
-            Esta se reparte de la siguiente manera:
+            El proyecto cuenta con una arquitectura modular y se reparte de la siguiente manera:
 
-            - Main: Compuesto por un menú que indica dependencias, librerías y diferentes funciones.
-            - construccion_df: Se le pasa una ruta de MinIO y construye un DataFrame y un parquet completo con todas las variables a estudiar.
+             ARCHIVO PRINCIPAL
+            - main.py: Compuesto por un menú que indica dependencias, librerías y orquesta todas las funciones.
+
+             EXTRACCIÓN (src/extraccion/)
+            - construccion_df.py: Se le pasa una ruta de MinIO y construye un DataFrame y un parquet completo con todas las variables a estudiar.
             - fisicas.py: Saca las características físicas al mandar una ruta a un .parquet con la API Open-Meteo.
             - incendios.py: Extrae, limpia y aúna los datos de cada incendio al obtener una ruta de MinIO.
-            - pendiente.py: Extrae los datos de la pendiente al mandar una ruta .parquet con los satélites de Google Earth Engine.
-            - vegetacion.py: Extrae los datos de la vegetación al mandar una ruta .parquet con la API de Google Earth.
-            - vegetacion2.py: Analiza los datos mediante una rasterización de un .tif para saber si se encuentra en agua, zona urbana o en qué tipo de vegetación se encuentra.
-            - puntos_no_incendio.py: Creación de puntos por incendio basado en cercanía, área, intensidad de incendios y aleatoriedad.
+            - pendiente.py: Extrae los datos de la pendiente al mandar una ruta .parquet con Google Earth Engine.
+            - vegetacion.py: Extrae los datos de la vegetación al mandar una ruta .parquet con Google Earth.
+            - puntos_no_incendio.py: Creación de puntos por incendio basado en cercanía, área, intensidad y aleatoriedad.
             - filtros_no_incendio.py: Funciones para filtrar la creación de puntos de no incendio.
             - mascaras.py: Diferentes funciones de parse y de filtro de máscaras y parquets.
-            - minioFunctions.py: Funciones para subir, bajar y manejar archivos en MinIO sin tener que tenerlos en local.
-            - parquet.py: Función para ordenar parquets dentro de MinIO.
+            - minioFunctions.py / parquet.py: Funciones para subir, bajar, ordenar y manejar archivos en MinIO.
+            - interrupcion.py: Lógica para el manejo de procesos interrumpidos.
+            - descartadas/ (suelo.py, vegetacion2.py): Variables descartadas (ej. rasterización de un .tif para saber si se encuentra en agua o zona urbana).
+            - futuro/ (civilizacion.py, ganado.py, suelo2.py): Extracción de variables experimentales para integraciones futuras.
 
+             LIMPIEZA (src/limpieza/)
+            - limpieza.py: Funciones encargadas del análisis y tratamiento de valores nulos.
+            - transformacion.py: Funciones para la transformación y adaptación de los datos.
+
+             MODELOS (src/modelos/)
+            - clasificacion/: Modelos predictivos para la ocurrencia de incendios (balanced_random_forest, decisiontree, m_xgboost, random_forest, regresion_logistica, modelo_inversa) y ventanas_temporales.
+            - regresion/: Modelos para la predicción de la severidad o FRP. Se subdividen en métodos basados en árboles (frp_rdForest, frp_xgBoost), KNN y regresión lineal.
+            - evaluacion/evaluacion_final.py: Scripts para la validación y obtención de métricas de los modelos.
+            - generico/modelo_xgboost.py: Configuración general y de sweeps para XGBoost.
+
+             ANÁLISIS Y EXPLORACIÓN
+            - analisis/ y modelos/baseline/: Múltiples cuadernos Jupyter (.ipynb) dedicados al análisis exploratorio de datos (EDA), restauración de datasets, resolución de problemas y modelos base.
+
+             UTILIDADES (src/utils/)
+            - parser.py: Funciones de utilidad para el formateo de datos.
+                  
             """)
             print("="*60)
 

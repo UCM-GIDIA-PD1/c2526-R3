@@ -2,7 +2,6 @@ import numpy as np
 import pandas as pd
 from pathlib import Path
 from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
-
 import wandb
 import xgboost as xgb
 from xgboost import callback
@@ -12,7 +11,6 @@ from wandb.sklearn import (
     plot_learning_curve,
     plot_summary_metrics
 )
-
 import modelos.utils.carga_datos as cg
 from modelos.utils.particiones import split_temporal, generador_cv
 from modelos.utils.metricas import evaluar_regresion
@@ -30,6 +28,8 @@ def evaluacion_final(hiperparametros, metodo):
     config_final = {
         "method": metodo,
         "parameters": {
+            "objective": {"value": hiperparametros.get("objective", "reg:squarederror")},
+            "tweedie_variance_power": {"value": hiperparametros.get("tweedie_variance_power", 1.5)},
             "max_depth": {"values": [hiperparametros["max_depth"]]},
             "n_estimators": {"values": [hiperparametros["n_estimators"]]},
             "learning_rate": {"values": [hiperparametros["learning_rate"]]},
@@ -54,7 +54,15 @@ def evaluacion(X_train_full, X_test, y_train_full, y_test, metodo):
     run = wandb.init(tags=["Evaluacion Final", metodo]) 
     config = wandb.config
 
+    if config.get("objective") == "reg:tweedie":
+        rho = config.get("tweedie_variance_power", 1.5)
+        xgb_metric = f"tweedie-nloglik@{rho}"
+    else:
+        xgb_metric = "rmse"
+
     model = xgb.XGBRegressor(
+            objective=config.get("objective", "reg:squarederror"),
+            tweedie_variance_power=config.get("tweedie_variance_power", 1.5),
             n_estimators=config.n_estimators,
             learning_rate=config.learning_rate,
             max_depth=config.max_depth,
@@ -65,7 +73,7 @@ def evaluacion(X_train_full, X_test, y_train_full, y_test, metodo):
             reg_alpha = config.reg_alpha,
             reg_lambda = config.reg_lambda,
             random_state=SEED,
-            eval_metric="rmse",
+            eval_metric=xgb_metric,
             early_stopping_rounds=50,
             n_jobs=-1,
         )
@@ -77,7 +85,6 @@ def evaluacion(X_train_full, X_test, y_train_full, y_test, metodo):
     )
 
     y_pred_test = model.predict(X_test)
-
     metricas_test = evaluar_regresion(y_test, y_pred_test, "Test — XGBoost Regressor", en_log=False)
 
     wandb.log({
@@ -110,6 +117,12 @@ def entrenamiento(X_train_full, y_train_full, metrica_elegida, nombre=None):
     rmse_cv_scores_train, mae_cv_scores_train, r2_cv_scores_train = [], [], []
     best_iterations = []
 
+    if config.get("objective") == "reg:tweedie":
+        rho = config.get("tweedie_variance_power", 1.5)
+        xgb_eval_metric = f"tweedie-nloglik@{rho}"
+    else:
+        xgb_eval_metric = metrica_elegida if metrica_elegida != "r2" else "rmse"
+
     for train_idx, val_idx in cv_generator.split(X_train_full, y_train_full):
         X_fold_train = X_train_full.iloc[train_idx]
         y_fold_train = y_train_full.iloc[train_idx]
@@ -117,6 +130,8 @@ def entrenamiento(X_train_full, y_train_full, metrica_elegida, nombre=None):
         y_fold_val = y_train_full.iloc[val_idx]
 
         model = xgb.XGBRegressor(
+            objective=config.get("objective", "reg:squarederror"),
+            tweedie_variance_power=config.get("tweedie_variance_power", 1.5),
             n_estimators=config.n_estimators,
             learning_rate=config.learning_rate,
             max_depth=config.max_depth,
@@ -127,7 +142,7 @@ def entrenamiento(X_train_full, y_train_full, metrica_elegida, nombre=None):
             reg_alpha = config.reg_alpha,
             reg_lambda = config.reg_lambda,
             random_state=SEED,
-            eval_metric=metrica_elegida,
+            eval_metric=xgb_eval_metric,
             early_stopping_rounds=50,
             n_jobs=-1,
         )
@@ -162,21 +177,6 @@ def entrenamiento(X_train_full, y_train_full, metrica_elegida, nombre=None):
         "overfitting_gap_rmse_cv": float(np.mean(rmse_cv_scores) - np.mean(rmse_cv_scores_train))
     })
 
-    model = xgb.XGBRegressor(
-        n_estimators=avg_best_trees,
-        learning_rate=config.learning_rate,
-        max_depth=config.max_depth,
-        subsample=config.subsample,
-        colsample_bytree=config.colsample_bytree,
-        min_child_weight=config.min_child_weight,
-        gamma=config.gamma,
-        reg_alpha=config.reg_alpha,
-        reg_lambda=config.reg_lambda,
-        random_state=SEED,
-        n_jobs=-1,
-        eval_metric=metrica_elegida
-    )
-
     run.finish()
 
 
@@ -184,9 +184,7 @@ def inicializar():
     if not wf.inicializar_apikey_wandb():
         return
     
-    # X, y = cg.cargar_dataset_frp()
-    X, y = pers.pregunta_PCA(clasificacion=False)
-    X = X.drop(columns = ['log_frp'])
+    X, y = pers.pregunta_PCA(clasificacion=False, log_frp=True)
     X_train_full, X_test, y_train_full, y_test = split_temporal(X, y, date_col='date', test_size=0.2)
     X_train_full, X_test = pers.anomalias(X_train_full, X_test)
 
@@ -195,38 +193,36 @@ def inicializar():
 
 def regresion(metodo_elegido, metrica_elegida):
     X_train_full, X_test, y_train_full, y_test = inicializar()
-    
     iters, nombre = pers.pregunta_iters_nombre()
 
-    def ent():
-        entrenamiento(X_train_full, y_train_full, metrica_elegida, nombre)
+    base_params = {
+        "objective": {"value": "reg:squarederror"},
+        "n_estimators": {"values": [100, 500, 1000, 2000]},
+        "learning_rate": {"values": [0.01, 0.05, 0.1, 0.2]},
+        "max_depth": {"values": [3, 6]},
+        "subsample": {"values": [0.6, 0.8, 1.0]},
+        "colsample_bytree": {"values": [0.5, 0.7, 1.0]},
+        "min_child_weight": {"values": [50, 70, 85, 100]},
+        "gamma": {"values": [0, 0.1, 0.3, 0.5, 0.7]},
+        "reg_alpha": {"values": [0, 0.5, 0.9]},
+        "reg_lambda": {"values": [0.5, 1, 3, 5]}
+    }
 
     if metodo_elegido == "grid":
-        params = {
-            "n_estimators": {"values": [100, 500, 1000, 2000]},
-            "learning_rate": {"values": [0.01, 0.05, 0.1, 0.2]},
-            "max_depth": {"values": [3, 6]},
-            "subsample": {"values": [0.6, 0.8, 1.0]},
-            "colsample_bytree": {"values": [0.5, 0.7, 1.0]},
-            "min_child_weight": {"values": [50, 70, 85, 100]},
-            "gamma": {"values": [0, 0.1, 0.3, 0.5, 0.7]},
-            "reg_alpha": {"values": [0, 0.5, 0.9]},
-            "reg_lambda": {"values": [0.5, 1, 3, 5]}
-        }
+        params = base_params
     elif metodo_elegido == "random": 
         params = {
-            "n_estimators": {"values": [100, 500, 1000, 2000]},
+            **base_params,
             "learning_rate": {"distribution": "uniform", "min": 0.01, "max": 0.2},
             "max_depth": {"values": [2, 5]},
             "subsample": {"distribution": "uniform", "min": 0.6, "max": 1.0},
             "colsample_bytree": {"distribution": "uniform", "min": 0.5, "max": 1.0},
             "min_child_weight": {"distribution": "uniform", "min": 50, "max": 100},
-            "gamma": {"distribution": "uniform", "min": 0, "max": 0.7},
-            "reg_alpha": {"distribution": "uniform", "min": 0, "max": 1},
-            "reg_lambda": {"distribution": "uniform", "min": 0.5, "max": 5}
         }
     elif metodo_elegido == 'bayes':
         params = {
+            "objective": {"value": "reg:tweedie"},
+            "tweedie_variance_power": {"distribution": "uniform", "min": 1.1, "max": 1.9},
             "n_estimators": {"values": [100, 500, 1000, 2000]},
             "learning_rate": {"distribution": "log_uniform_values", "min": 0.01, "max": 0.1},
             "max_depth": {"distribution": "int_uniform", "min": 2, "max": 5},
@@ -237,7 +233,6 @@ def regresion(metodo_elegido, metrica_elegida):
             "reg_lambda": {"distribution": "log_uniform_values", "min": 1.0, "max": 20.0},
             "gamma": {"distribution": "uniform", "min": 0, "max": 5}
         }
-        
 
     metrica_limpia = metrica_elegida.lower().strip()
     
@@ -248,7 +243,7 @@ def regresion(metodo_elegido, metrica_elegida):
         metric_name = "val/r2_mean_cv"
         metric_goal = "maximize"
     else:
-        print("metrica no reconocida, se elige el RMSE por defecto")
+        metrica_limpia = 'rmse'
         metric_name = "val/rmse_mean_cv"
         metric_goal = "minimize"
 
@@ -261,13 +256,12 @@ def regresion(metodo_elegido, metrica_elegida):
 
     sweep_id = wandb.sweep(sweep_config, entity=WANDB_ENTITY, project=WANDB_PROJECT)
     
-    wandb.agent(
-        sweep_id=sweep_id,
-        function=ent,
-        count=iters
-    )
+    def ent():
+        entrenamiento(X_train_full, y_train_full, metrica_limpia, nombre)
+    
+    wandb.agent(sweep_id=sweep_id, function=ent, count=iters)
 
 if __name__ == "__main__":
-    metodo = input("\n Selecciona el método (grid o random) para la búsqueda de hiperparámetros: " )
+    metodo = input("\n Selecciona el método (grid, random o bayes): " )
     metrica = input("\n Selecciona la métrica que quieres optimizar (rmse/mae/r2): " )
     regresion(metodo, metrica)

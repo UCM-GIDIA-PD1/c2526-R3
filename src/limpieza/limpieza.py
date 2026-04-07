@@ -6,7 +6,6 @@ def bajar_df_final(clasificacion):
     if clasificacion:
         df = mf.bajar_fichero(cliente, "grupo3/cleaned/MINI.parquet", "df")
     else:
-        #df = mf.bajar_fichero(cliente, "grupo3/cleaned/MI.parquet", "df")
         df = mf.bajar_fichero(cliente, "grupo3/cleaned/MI_nuevas.parquet", "df")
     return df
 

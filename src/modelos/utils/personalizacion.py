@@ -3,6 +3,7 @@ import modelos.utils.carga_datos as cg
 import modelos.utils.anomalias as anom
 import extraccion.minioFunctions as mf
 import pandas as pd
+import numpy as np
 
 def pregunta_PCA(clasificacion = True, df=None):
     '''
@@ -27,8 +28,12 @@ def pregunta_PCA(clasificacion = True, df=None):
             n_components = int(input('¿Cuántos componentes quieres usar? '))
             df = df.sort_values(by='date')
             X_raw = df.drop(columns=[target_col, 'date'], errors='ignore')
-            y = df[target_col]
             
+            if not clasificacion:
+                y = np.log1p(df[target_col])
+            else :
+                y = df[target_col]
+
             pca_model = PCA(n_components=n_components)
             X_pca = pca_model.fit_transform(X_raw)
             X = pd.DataFrame(X_pca, columns=[f'PC{i+1}' for i in range(n_components)])

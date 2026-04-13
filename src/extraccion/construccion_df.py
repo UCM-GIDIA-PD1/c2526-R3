@@ -1,4 +1,4 @@
-from . import incendios, pendiente, vegetacion, fisicas, minioFunctions, puntos_no_incendio, interrupcion
+from extraccion import incendios, pendiente, vegetacion, fisicas, minioFunctions, puntos_no_incendio, interrupcion
 import time
 import pandas as pd
 import asyncio
@@ -127,8 +127,6 @@ async def build_environmental_df(file, limit=100, fecha_ini=None, fecha_fin=None
 
     return final_df
 
-#Ignacio: lo mejor es pasar como primer elemento de la lista el parquet de los
-#incendios/no incendios con los puntos para que el merge(how = 'left') sea más robusto
 def merge_parquets(path_list, anio):
     """
     Realiza un 'outer join' iterativo sobre una lista de DataFrames. 
@@ -296,4 +294,38 @@ def concatenar_variables():
     
     print(f"Columnas finales: {df_final.columns.tolist()}")
     minioFunctions.preguntar_subida(df_final, f"grupo3/raw/Nuevas_Zonas/")
-    
+
+
+def pipeline():
+    '''
+    Función para ejecutar el pipeline completo de construcción del dataframe.
+    '''
+    # ====================> PASO 1 : EXTRACCIÓN DE INCENDIOS 
+    print("====================> PASO 1 : EXTRACCIÓN DE INCENDIOS ...")
+
+    # Extracción de datos desde MinIO
+    print("Descargando datos crudos desde MinIO...")
+        
+    cliente = minioFunctions.crear_cliente()
+    df_raw = minioFunctions.bajar_csv(cliente, "grupo3/raw/incendios/fire_nrt_J1V-C2_739324.csv", sep=',')
+
+    assert df_raw is not None, "El DataFrame descargado de MinIO está vacío, no se pueden procesar incendios."
+    print(f"\n>>>>>>>>>>Número de registros inicial: {len(df_raw)} <<<<<<<<<<<\n")
+
+    # Procesamiento de los incendios
+    df_procesado = incendios.fetch_fires(df_raw, question=True)
+    print(f"\n>>>>>>>>>>Número de registros tras agrupar los incendios: {len(df_procesado)} <<<<<<<<<<<\n")
+
+    assert df_procesado is not None, "La función fetch_fires devolvió un DataFrame vacío, se esperaba un DataFrame con datos."
+    print("Cabecera del DataFrame procesado:")
+    print(df_procesado.head())
+
+    # ====================> PASO 2 : GENERACIÓN DE NO INCENDIOS 
+    print("\n====================> PASO 2 : GENERACIÓN DE NO INCENDIOS ...")
+    df_incendios_y_no_incendios = puntos_no_incendio.crearSinteticos(df_procesado, True)
+
+
+if __name__ == "__main__":
+    pipeline()
+
+

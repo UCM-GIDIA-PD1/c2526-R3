@@ -180,16 +180,10 @@ def fetch_fires(df, fecha_ini = None, fecha_fin = None, question=False):
         print("Hectáreas calculadas")
 
         df_clean = df_clean.rename(columns={
-
-        'lat': 'lat',
-
-        'lon': 'lon',
-
-        'date': 'date'
-
+        'lat_mean': 'lat',
+        'lon_mean': 'lon',
+        'date_first': 'date'
         })
-
-        df_clean.drop('date_last', axis = 1) 
         
     except KeyboardInterrupt:
         print("\n Interrupción detectada. Guardando resultados parciales...")
@@ -203,3 +197,4 @@ def fetch_fires(df, fecha_ini = None, fecha_fin = None, question=False):
         minioFunctions.preguntar_subida(resumen.sort_values(by='count', ascending=False), "grupo3/raw/incendios/")
     
     return resumen.sort_values(by='count', ascending=False)
+        

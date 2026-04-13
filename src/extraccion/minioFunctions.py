@@ -138,7 +138,7 @@ def preguntar_subida(df, ruta_carpeta = "grupo3/Datos/"):
         return False
     
     
-def bajar_csv(cliente, path_server: Path, sep = ',', **kwargs):
+def bajar_csv(cliente, path_server: Path, sep = ','):
     
     """
     Descarga un archivo CSV desde MinIO y lo devuelve como DataFrame.
@@ -146,7 +146,6 @@ def bajar_csv(cliente, path_server: Path, sep = ',', **kwargs):
     :param cliente: cliente de MinIO
     :param path_server: ruta del archivo CSV en MinIO
     :param sep: separación del csv (por defecto ,)
-    :param **kwargs: argumentos 
     :return: DataFrame con los datos del CSV
     """
 
@@ -158,7 +157,7 @@ def bajar_csv(cliente, path_server: Path, sep = ',', **kwargs):
         )
 
         buffer = io.BytesIO(response.read())  
-        df = pd.read_csv(buffer, **kwargs, sep = sep)  
+        df = pd.read_csv(buffer, sep = sep)  
         
         print(f"CSV importado correctamente desde {path_server}")
         return df

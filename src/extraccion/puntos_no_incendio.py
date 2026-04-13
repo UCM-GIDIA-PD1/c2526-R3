@@ -231,7 +231,7 @@ def crearSinteticos(df_incendios, subir = True):
     ak, sk = minioFunctions.importar_keys()
 
     with rasterio.Env(**minio_config, aws_access_key_id=ak, aws_secret_access_key=sk):
-        with rasterio.open("/vsis3/pd1/grupo3/mapa/mapa.tif") as src:
+        with rasterio.open("/vsis3/pd1/grupo3/maps/mapa/mapa.tif") as src:
           transformer = Transformer.from_crs("EPSG:4326", src.crs, always_xy=True)
 
           for i in range(len(mascarasRegiones)):

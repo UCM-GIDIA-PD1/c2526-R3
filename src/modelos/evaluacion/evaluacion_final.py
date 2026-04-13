@@ -56,6 +56,11 @@ def pedir_hiperparametros(modelo):
         mf = input("max_features (sqrt/log2/None): ")
         hiperparametros["max_features"] = None if mf.lower() == "none" else mf
 
+    if modelo == 'XGBoostFRP':
+        incluir_tweedie = input('Quieres incluir la distribucion tweedie? (s/n): ').lower()
+        if incluir_tweedie == 's':
+            hiperparametros["objective"] = "reg:tweedie"
+            hiperparametros["tweedie_variance_power"] = float(input("tweedie_variance_power (float): "))
   
     if modelo == "XGBoostClassifier" or modelo == "XGBoostFRP":
         hiperparametros["learning_rate"] = float(input("learning_rate (float): "))

@@ -1,6 +1,7 @@
 from extraccion.descartadas import vegetacion2
 from . import minioFunctions
 import numpy as np
+import pandas as pd
 import geopandas as gpd 
 from datetime import date
 
@@ -56,13 +57,14 @@ def puntoValido(lat, lon, parquet, src, transformer):
     return noIncendio
 
 
-def filtrarZona(mascarasRegiones, parquetAnio, cliente): #Pasamos la lista de parquets de las mascaras y el parquet del año que queremos
+def filtrarZona(mascarasRegiones, parquetAnio, cliente, devolver_lista = True): #Pasamos la lista de parquets de las mascaras y el parquet del año que queremos
     '''
     Función para filtrar los puntos, según la zona biogeográfica a la que pertenezcan
 
     :param mascarasRegiones: Lista con las rutas de todas las máscaras de las regiones
     :param parquetAnio: Parquet con los datos de incendio de un año determinado
     :param cliente: Cliente MinIO
+    :param devolver_lista: Parámetro de personalización de la salida, se puede devolver una lista o el dataframe completo
     :return list: Lista con los DataFrames divididos por zona biogeográfica
     '''
   
@@ -79,7 +81,11 @@ def filtrarZona(mascarasRegiones, parquetAnio, cliente): #Pasamos la lista de pa
         mascara = gdf.geometry.within(zona.geometry.iloc[0], align=False) #Crea el filtro de los puntos que pertenecen a la zona estudiada
         gdf_filtrado = gdf[mascara].copy()
         parquetsZonas.append(gdf_filtrado.drop(columns="geometry")) #Devuelve el parquet de esa zona
-    return parquetsZonas
+    
+    if devolver_lista: return parquetsZonas
+    else: 
+        parquetCompleto = pd.concat(parquetsZonas, ignore_index=True).drop_duplicates()
+        return parquetCompleto #Devuelve el parquet completo con todas las zonas filtradas, sin la columna de geometría
 
 
 def filtrar_zona_eliminar(ruta, df, cliente):

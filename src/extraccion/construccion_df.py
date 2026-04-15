@@ -1,4 +1,4 @@
-from extraccion import incendios, pendiente, vegetacion, fisicas, minioFunctions, puntos_no_incendio, interrupcion
+from extraccion import incendios, pendiente, vegetacion, fisicas, minioFunctions, puntos_no_incendio, interrupcion, filtros_no_incendio
 import time
 import pandas as pd
 import asyncio
@@ -320,9 +320,25 @@ def pipeline():
     print("Cabecera del DataFrame procesado:")
     print(df_procesado.head())
 
-    # ====================> PASO 2 : GENERACIÓN DE NO INCENDIOS 
+    # ====================> PASO 2 : FILTRAMOS LOS INCENDIOS POR ZONAS
+    mascaras = minioFunctions.listar_bucket(cliente, "grupo3/raw/Biogeoregiones/")
+    mascaras += [
+        'grupo3/raw/Countries/mascara_zona_Moscu.parquet',
+        'grupo3/raw/Countries/mascara_San_Petersburgo.parquet',
+        'grupo3/raw/Countries/mascara_Belarus.parquet',
+        'grupo3/raw/Countries/mascara_Norte_Africa.parquet'
+    ]
+
+    df_procesado_zonas = filtros_no_incendio.filtrarZona(mascaras, df_procesado, cliente, devolver_lista=False)
+    print(df_procesado_zonas.head())
+    print(f"Longitud procesado: {len(df_procesado)}")
+    print(f"Longitud procesado por zonas: {len(df_procesado_zonas)}")
+
+    # ====================> PASO 3 : GENERACIÓN DE NO INCENDIOS 
     print("\n====================> PASO 2 : GENERACIÓN DE NO INCENDIOS ...")
     df_incendios_y_no_incendios = puntos_no_incendio.crearSinteticos(df_procesado, True)
+
+    # ====================> PASO 4 : JUNTAR INCENDIOS Y NO INCENDIOS
 
 
 if __name__ == "__main__":

@@ -193,3 +193,24 @@ def bajar_csv(cliente, path_server: Path, sep = ','):
     finally:
         if response: 
             response.close()
+
+def listar_bucket(cliente, path_carpeta):
+    '''
+    Lista todos los objetos de una carpeta en MinIO
+    '''
+    objects = cliente.list_objects(
+            bucket_name = "pd1", 
+            prefix=path_carpeta, 
+            recursive=True
+        )
+    
+    lista = []
+    for object in objects:
+        lista.append(object.object_name)
+    
+    return lista
+
+if __name__ == "__main__":
+    cliente = crear_cliente()
+    lista = listar_bucket(cliente, "grupo3/raw/Biogeoregiones/")
+    print(lista)

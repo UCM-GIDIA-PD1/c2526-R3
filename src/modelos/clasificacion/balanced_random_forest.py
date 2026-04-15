@@ -123,14 +123,14 @@ def entrenamiento(X_train_full, y_train_full, nombre = None):
         y_fold_pred = (y_val_prob >= config.umbral).astype(int)
 
         f2_cv_scores.append(fbeta_score(y_fold_val, y_fold_pred, beta=2, zero_division=0))
-        f1_cv_scores.append(f1_score(y_fold_val, y_fold_pred, beta = 1, zero_division=0))
+        f1_cv_scores.append(f1_score(y_fold_val, y_fold_pred, zero_division=0))
         recall_cv_scores.append(recall_score(y_fold_val, y_fold_pred, zero_division=0))
     
         y_train_prob = clf.predict_proba(X_fold_train)[:, 1]
         y_fold_pred_train = (y_train_prob >= config.umbral).astype(int)
 
         f2_cv_scores_train.append(fbeta_score(y_fold_train, y_fold_pred_train, beta=2, zero_division=0))
-        f1_cv_scores_train.append(f1_score(y_fold_train, y_fold_pred_train, beta = 1, zero_division=0))
+        f1_cv_scores_train.append(f1_score(y_fold_train, y_fold_pred_train, zero_division=0))
         recall_cv_scores_train.append(recall_score(y_fold_train, y_fold_pred_train, zero_division=0))
 
         cm = confusion_matrix(y_fold_val, y_fold_pred)
@@ -201,10 +201,10 @@ def clasificacion(metodo_elegido, metrica):
         }
     else: 
         params = {
-            "n_estimators": {"values": [100, 200, 300, 400, 500, 750, 800, 900]},
+            "n_estimators": {"values": [100, 200, 300, 400, 500, 750, 800, 900,1000]},
             "max_depth": {"distribution": "int_uniform", "min": 5, "max": 25},
-            "min_samples_split": {"distribution": "int_uniform", "min": 1, "max": 30},
-            "min_samples_leaf": {"distribution": "int_uniform", "min": 1, "max": 30},
+            "min_samples_split": {"distribution": "int_uniform", "min": 3, "max": 30},
+            "min_samples_leaf": {"distribution": "int_uniform", "min": 3, "max": 30},
             "criterion": {"values": ["gini", "entropy"]},
             "max_features": {"values": ["sqrt", "log2", None]},
             "umbral": {"distribution": "uniform", "min": 0.23, "max": 0.6}

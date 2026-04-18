@@ -11,7 +11,6 @@ from wandb.sklearn import (
     plot_learning_curve,
     plot_summary_metrics
 )
-import modelos.utils.carga_datos as cg
 from modelos.utils.particiones import split_temporal, generador_cv
 from modelos.utils.metricas import evaluar_regresion
 import modelos.utils.wandbFunctions as wf

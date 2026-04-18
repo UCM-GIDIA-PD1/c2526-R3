@@ -54,7 +54,15 @@ def pedir_hiperparametros(modelo):
         hiperparametros["criterion"] = input("criterion (gini/entropy): ")
         
         mf = input("max_features (sqrt/log2/None): ")
-        hiperparametros["max_features"] = None if mf.lower() == "none" else mf
+        if mf.lower() == "none":
+            hiperparametros["max_features"] = None 
+        elif mf.lower() in ["sqrt", "log2"]:
+            hiperparametros["max_features"] = mf.lower()
+        elif mf.isdigit():
+            hiperparametros["max_features"] = int(mf)
+        else:
+            hiperparametros['max_features'] = float(mf) if mf.replace('.', '', 1).isdigit() else None
+        
 
     if modelo == 'XGBoostFRP':
         incluir_tweedie = input('Quieres incluir la distribucion tweedie? (s/n): ').lower()

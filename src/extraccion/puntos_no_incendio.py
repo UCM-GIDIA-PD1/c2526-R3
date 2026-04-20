@@ -184,8 +184,6 @@ def crearSinteticos(df_incendios, subir = True):
         'grupo3/raw/Countries/mascara_Norte_Africa.parquet'
     ]
 
-    cliente = minioFunctions.crear_cliente()
-
     # 3.- Obtener DataFrames de incendios por zona (ya no son rutas, son DataFrames)
     listaZonas = filtros_no_incendio.filtrarZona(mascarasRegiones, df_incendios,cliente)
 

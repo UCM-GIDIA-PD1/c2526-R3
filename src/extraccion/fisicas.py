@@ -5,7 +5,7 @@ import pandas as pd
 import aiohttp
 from . import interrupcion
 
-sem_global = asyncio.Semaphore(20)
+sem_global = asyncio.Semaphore(5)
 contador = 0
 limit = 5000
 sleep = 3600  

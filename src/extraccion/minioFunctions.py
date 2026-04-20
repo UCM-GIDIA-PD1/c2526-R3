@@ -82,11 +82,11 @@ def bajar_fichero(cliente, path_server: Path, type = "df"):
         
         if (type == "gdf"):
             gdf = gpd.read_parquet(buffer)
-            print(f"Geodataframe importado correctamente")
+            print(f"Geodataframe {path_server.split("/")[-1]} importado correctamente")
             return gdf
         else:
             df = pd.read_parquet(buffer)
-            print(f"Dataframe importado correctamente")
+            print(f"Dataframe {path_server.split("/")[-1]} importado correctamente")
             return df
     
     except Exception as e: 

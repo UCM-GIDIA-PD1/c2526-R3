@@ -175,12 +175,14 @@ def crearSinteticos(df_incendios, subir = True):
     incendiosTotales = len(df_incendios)
 
     # 2.- Definir máscaras de regiones
-    mascarasRegiones = [
-        'grupo3/raw/Biogeoregiones/AtlanticRegion.parquet', 'grupo3/raw/Biogeoregiones/BorealRegion.parquet', 'grupo3/raw/Biogeoregiones/MediterraneanRegion.parquet',
-        'grupo3/raw/Biogeoregiones/BlackSeaRegion.parquet', 'grupo3/raw/Biogeoregiones/ContinentalRegion.parquet', 'grupo3/raw/Biogeoregiones/MacaronesianRegion.parquet',
-        'grupo3/raw/Biogeoregiones/PannonianRegion.parquet', 'grupo3/raw/Biogeoregiones/SteppicRegion.parquet', 'grupo3/raw/Biogeoregiones/AnatolianRegion.parquet',
-        'grupo3/raw/Biogeoregiones/ArcticRegion.parquet', 'grupo3/raw/Biogeoregiones/AlpineRegion.parquet','grupo3/raw/Countries/mascara_Belarus.parquet', 'grupo3/raw/Countries/mascara_Norte_Africa.parquet',
-        'grupo3/raw/Countries/mascara_zona_Moscu.parquet', 'grupo3/raw/Countries/mascara_San_Petersburgo.parquet']
+    cliente = minioFunctions.crear_cliente()
+    mascarasRegiones = minioFunctions.listar_bucket(cliente, "grupo3/raw/Biogeoregiones/")
+    mascarasRegiones += [
+        'grupo3/raw/Countries/mascara_zona_Moscu.parquet',
+        'grupo3/raw/Countries/mascara_San_Petersburgo.parquet',
+        'grupo3/raw/Countries/mascara_Belarus.parquet',
+        'grupo3/raw/Countries/mascara_Norte_Africa.parquet'
+    ]
 
     cliente = minioFunctions.crear_cliente()
 
@@ -189,7 +191,7 @@ def crearSinteticos(df_incendios, subir = True):
 
     mascaraRegionesGDF = []
 
-       # 4.- Calcular áreas, número de incendios y FRP total por zona
+    # 4.- Calcular áreas, número de incendios y FRP total por zona
     for i in range(len(listaZonas)):
         mascaraRegionesGDF.append(minioFunctions.bajar_fichero(cliente, mascarasRegiones[i], "gdf"))
     

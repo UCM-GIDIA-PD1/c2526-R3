@@ -1,9 +1,11 @@
 from extraccion import incendios, pendiente, vegetacion, fisicas, minioFunctions, puntos_no_incendio, interrupcion, filtros_no_incendio
+from extraccion.futuro import suelo2, civilizacion
 import time
 import pandas as pd
 import asyncio
 import aiohttp
 from functools import reduce
+
 
 sem_global = asyncio.Semaphore(20)
 
@@ -295,6 +297,45 @@ def concatenar_variables():
     print(f"Columnas finales: {df_final.columns.tolist()}")
     minioFunctions.preguntar_subida(df_final, f"grupo3/raw/Nuevas_Zonas/")
 
+async def extraccion_pipeline(df):
+    '''
+    Extrae variable a variable para un DataFrame dado.
+    :param df: DataFrame con las columnas 'lat', 'lon' y 'date' y los incendios y no incendios
+    '''
+
+    limite_extraccion = 100 # Para depurar
+        
+    try:
+        print("==============================")
+        print("EXTRACCIÓN DE VEGETACIÓN")
+        print("==============================")
+
+        await vegetacion.df_vegetacion(df, limit=limite_extraccion)
+            
+        print("==============================")
+        print("EXTRACCIÓN DE PENDIENTE")
+        print("==============================")
+        await pendiente.df_pendiente(df, limit=limite_extraccion)
+            
+        print("==============================")
+        print("EXTRACCIÓN DE FÍSICAS")
+        print("==============================")      
+        await fisicas.df_fisicas(df, limit=limite_extraccion, directo=True)
+
+        print("==============================")
+        print("EXTRACCIÓN DE SUELO")
+        print("==============================") 
+        await suelo2.df_soil_temp(df, limit=limite_extraccion)
+        
+        print("==============================")
+        print("EXTRACCIÓN DE CIVILIZACIÓN")
+        print("==============================") 
+        await civilizacion.civilizacion(df, limit=limite_extraccion)
+            
+        print("Extraídas todas las variables con éxito :)")
+
+    except Exception as e:
+        print(f"Error durante la extracción: {e}")
 
 def pipeline():
     '''
@@ -321,6 +362,7 @@ def pipeline():
     print(df_procesado.head())
 
     # ====================> PASO 2 : FILTRAMOS LOS INCENDIOS POR ZONAS
+    print("\n====================> PASO 2 : FILTRACIÓN DE LOS INCENDIOS ...")
     mascaras = minioFunctions.listar_bucket(cliente, "grupo3/raw/Biogeoregiones/")
     mascaras += [
         'grupo3/raw/Countries/mascara_zona_Moscu.parquet',
@@ -333,12 +375,27 @@ def pipeline():
     print(df_procesado_zonas.head())
     print(f"Longitud procesado: {len(df_procesado)}")
     print(f"Longitud procesado por zonas: {len(df_procesado_zonas)}")
+    df_inc = df_procesado_zonas.copy()
 
-    # ====================> PASO 3 : GENERACIÓN DE NO INCENDIOS 
-    print("\n====================> PASO 2 : GENERACIÓN DE NO INCENDIOS ...")
-    df_incendios_y_no_incendios = puntos_no_incendio.crearSinteticos(df_procesado, True)
+    # ====================> PASO 3 : GENERACIÓN DE NO INCENDIOS Y CONCATENACIÓN
+    print("\n====================> PASO 3: GENERACIÓN DE NO INCENDIOS ...")
+    df_no_inc = puntos_no_incendio.crearSinteticos(df_procesado, True)
 
-    # ====================> PASO 4 : JUNTAR INCENDIOS Y NO INCENDIOS
+    # Creamos la variable respuesta
+    print(f"La proporción de incendios es: {round(len(df_no_inc) / (len(df_inc) + len(df_no_inc)) * 100, 2)}%")
+    df_inc["final"] = 1
+    print(f"La proporción de no incendios es: {round(len(df_inc) / (len(df_inc) + len(df_no_inc)) * 100, 2)}%")
+    df_no_inc["final"] = 0
+
+    # Concateanmos incendios y no incendios
+    df_final = pd.concat([df_inc, df_no_inc], ignore_index=True)
+
+    # ====================> PASO 4 : EXTRACCIÓN DE LOS DATOS
+    print("\n====================> PASO 4: EXTRACCIÓN DE LOS DATOS ...")
+    asyncio.run(extraccion_pipeline(df_final))
+
+
+
 
 
 if __name__ == "__main__":

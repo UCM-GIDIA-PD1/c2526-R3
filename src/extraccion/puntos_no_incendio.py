@@ -179,8 +179,8 @@ def crearSinteticos(df_incendios, subir = True):
         'grupo3/raw/Biogeoregiones/AtlanticRegion.parquet', 'grupo3/raw/Biogeoregiones/BorealRegion.parquet', 'grupo3/raw/Biogeoregiones/MediterraneanRegion.parquet',
         'grupo3/raw/Biogeoregiones/BlackSeaRegion.parquet', 'grupo3/raw/Biogeoregiones/ContinentalRegion.parquet', 'grupo3/raw/Biogeoregiones/MacaronesianRegion.parquet',
         'grupo3/raw/Biogeoregiones/PannonianRegion.parquet', 'grupo3/raw/Biogeoregiones/SteppicRegion.parquet', 'grupo3/raw/Biogeoregiones/AnatolianRegion.parquet',
-        'grupo3/raw/Biogeoregiones/ArcticRegion.parquet', 'grupo3/raw/Biogeoregiones/AlpineRegion.parquet','grupo3/raw/Countries/mascara_Belarus.parquet', 'grupo3/raw/Countries/mascara_Norte_Africa.parquet',
-        'grupo3/raw/Countries/mascara_zona_Moscu.parquet', 'grupo3/raw/Countries/mascara_San_Petersburgo.parquet']
+        'grupo3/raw/Biogeoregiones/ArcticRegion.parquet', 'grupo3/raw/Biogeoregiones/AlpineRegion.parquet','grupo3/raw/Countries/mascara_Belarus.parquet', 'grupo3/raw/Countries/mascara_Norte_Africa_recortada.parquet',
+        'grupo3/raw/Countries/mascara_zona_Moscu_recortada.parquet', 'grupo3/raw/Countries/mascara_San_Petersburgo.parquet']
 
     cliente = minioFunctions.crear_cliente()
 

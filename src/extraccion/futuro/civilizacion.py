@@ -39,7 +39,7 @@ def calcular_distancias(df_pobl, df_inc):
     # 6371 es el radio de la Tierra en km
     return distancias * 6371
 
-async def civilizacion(df, limit=20, fecha_ini=None, fecha_fin=None):
+async def civilizacion(df, limit=20, fecha_ini=None, fecha_fin=None, pipeline=False, anio=None):
     '''
     Calcula para todo un dataframe las distancias (en km) a la civilización más cercana a
     partir de nuestro dataset de poblaciones utilizando la distancia de Haversine,
@@ -50,6 +50,8 @@ async def civilizacion(df, limit=20, fecha_ini=None, fecha_fin=None):
     :params limit: Límite de filas
     :params fecha_ini: Fecha de inicio
     :params fecha_fin: Fecha de fin
+    :param pipeline: si es true se automatiza la subida a Minio sin preguntar (por defecto False)
+    :param anio: Año para subir el archivo a Minio automáticamente
     :return pd.DataFrame: DataFrame final
     '''
     fin_none = fecha_fin is None
@@ -81,6 +83,11 @@ async def civilizacion(df, limit=20, fecha_ini=None, fecha_fin=None):
 
     print(df_final)
 
-    await asyncio.to_thread(minioFunctions.preguntar_subida, df_final, f'grupo3/raw/civilizacion/')
+    if pipeline:
+        assert anio is not None, "Se requiere el año para subir a minio el archivo automáticamente"
+        cliente = minioFunctions.inicializar_cliente()
+        minioFunctions.subir_fichero(cliente, df_final, f"grupo3/raw/civilizacion/civilizacion_{anio}.parquet")
+    else:
+        await asyncio.to_thread(minioFunctions.preguntar_subida, df_final, f'grupo3/raw/civilizacion/')
 
     return df_final

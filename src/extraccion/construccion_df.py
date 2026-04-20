@@ -4,7 +4,11 @@ import time
 import pandas as pd
 import asyncio
 import aiohttp
+import ee
+import os
+from pathlib import Path
 from functools import reduce
+from dotenv import load_dotenv
 
 
 sem_global = asyncio.Semaphore(20)
@@ -297,50 +301,80 @@ def concatenar_variables():
     print(f"Columnas finales: {df_final.columns.tolist()}")
     minioFunctions.preguntar_subida(df_final, f"grupo3/raw/Nuevas_Zonas/")
 
-async def extraccion_pipeline(df):
+async def extraccion_pipeline(df, limite_extraccion=100, anio=None):
     '''
-    Extrae variable a variable para un DataFrame dado.
-    :param df: DataFrame con las columnas 'lat', 'lon' y 'date' y los incendios y no incendios
+    Ejecuta la extracción de variables ambientales de forma secuencial y asíncrona.
     '''
 
-    limite_extraccion = 100 # Para depurar
+    ''' SOLAMENTE PARA DEPURAR DESDE EL SCRIPT (CUANDO SE EJECUTE DESDE EL MAIN SE BORRARÁ)
+    load_dotenv()
+    try:
+        # 1. Intenta inicializar con la sesión activa si la hubiera
+        ee.Initialize()
+    except Exception:
+        # 2. Tu nueva ruta directa
+        ruta_directa = "google-credentials.json"
         
+        # 3. La ruta antigua del .env (mantenemos la lógica por si cambia en el futuro)
+        ruta_env = os.getenv('RUTA_CREDENCIALES')
+        
+        json_file = None
+        
+        # Comprobamos dónde está el archivo realmente
+        if os.path.exists(ruta_directa):
+            json_file = ruta_directa
+        elif ruta_env and os.path.exists(ruta_env):
+            json_file = ruta_env if ruta_env.endswith('.json') else str(list(Path(ruta_env).glob('*.json'))[0])
+            
+        # Si hemos encontrado el archivo, arrancamos el motor
+        if json_file:
+            credentials = ee.ServiceAccountCredentials(None, json_file)
+            ee.Initialize(credentials)
+            print(f"Google Earth Engine inicializado correctamente usando: {json_file}")
+        else:
+            print("No se pudo inicializar Earth Engine. No se encontró google-credentials.json")
+            return # Abortamos la extracción para evitar que el programa cra
+    '''
+    assert anio is not None, "Se requiere el año para subir a minio el archivo automáticamente"
     try:
         print("==============================")
         print("EXTRACCIÓN DE VEGETACIÓN")
         print("==============================")
 
-        await vegetacion.df_vegetacion(df, limit=limite_extraccion)
+        await vegetacion.df_vegetacion(df, limit=limite_extraccion, pipeline=True)
             
         print("==============================")
         print("EXTRACCIÓN DE PENDIENTE")
         print("==============================")
-        await pendiente.df_pendiente(df, limit=limite_extraccion)
-            
+        await pendiente.df_pendiente(df, limit=limite_extraccion, pipeline=True)
+        
         print("==============================")
         print("EXTRACCIÓN DE FÍSICAS")
         print("==============================")      
-        await fisicas.df_fisicas(df, limit=limite_extraccion, directo=True)
+        await fisicas.df_fisicas(df, limit=limite_extraccion, directo=True, pipeline=True)
 
         print("==============================")
         print("EXTRACCIÓN DE SUELO")
         print("==============================") 
-        await suelo2.df_soil_temp(df, limit=limite_extraccion)
+        await suelo2.df_soil_temp(df, limit=limite_extraccion, pipeline=True)
         
         print("==============================")
         print("EXTRACCIÓN DE CIVILIZACIÓN")
         print("==============================") 
-        await civilizacion.civilizacion(df, limit=limite_extraccion)
+        await civilizacion.civilizacion(df, limit=limite_extraccion, pipeline=True)
             
         print("Extraídas todas las variables con éxito :)")
 
     except Exception as e:
         print(f"Error durante la extracción: {e}")
 
-def pipeline():
+def pipeline(anio=None):
     '''
     Función para ejecutar el pipeline completo de construcción del dataframe.
+    :param anio: Año datado de los incendios.
     '''
+    assert anio is not None, "Se requiere el año para ejecutar el pipeline completo"
+
     # ====================> PASO 1 : EXTRACCIÓN DE INCENDIOS 
     print("====================> PASO 1 : EXTRACCIÓN DE INCENDIOS ...")
 
@@ -348,10 +382,21 @@ def pipeline():
     print("Descargando datos crudos desde MinIO...")
         
     cliente = minioFunctions.crear_cliente()
-    df_raw = minioFunctions.bajar_csv(cliente, "grupo3/raw/incendios/fire_nrt_J1V-C2_739324.csv", sep=',')
 
-    assert df_raw is not None, "El DataFrame descargado de MinIO está vacío, no se pueden procesar incendios."
-    print(f"\n>>>>>>>>>>Número de registros inicial: {len(df_raw)} <<<<<<<<<<<\n")
+    # Si es una lista procesamos año a año
+    if isinstance(anio, list):
+        for a in anio:
+            df_anio = minioFunctions.bajar_csv(cliente, f"grupo3/raw/incendios/{a}.csv", sep=',')
+            assert df_anio is not None, f"No se pudo descargar el DataFrame de MinIO para el año {a}, verifica la conexión o si el año es correcto."
+            print(f"\n>>>>>>>>>>Número de registros inicial para {a}: {len(df_raw)} <<<<<<<<<<<\n")
+
+            df_raw = pd.concat([df_raw, df_anio], ignore_index=True)
+    
+    # Procesamos año individual
+    else:
+        df_raw = minioFunctions.bajar_csv(cliente, f"grupo3/raw/incendios/{anio}.csv", sep=',')
+        assert df_raw is not None, "No se pudo descargar el DataFrame de MinIO, verifica la conexión o si el año es correcto."
+        print(f"\n>>>>>>>>>>Número de registros inicial: {len(df_raw)} <<<<<<<<<<<\n")
 
     # Procesamiento de los incendios
     df_procesado = incendios.fetch_fires(df_raw, question=True)

@@ -88,7 +88,7 @@ async def fetch_environment(session, lat, lon, date, indice=None, intentos=3, di
                                 "radiation", "evapotranspiration", "sunshine_seconds"]})
         return error
 
-async def df_fisicas(fires, limit=20, fecha_ini=None, fecha_fin=None, directo=False):
+async def df_fisicas(fires, limit=20, fecha_ini=None, fecha_fin=None, directo=False, pipeline=False, anio=None):
     '''
     Función que extrae características físicas, cabe resaltar sus límites de 5000 por hora y 10000 diarios.
 
@@ -97,6 +97,8 @@ async def df_fisicas(fires, limit=20, fecha_ini=None, fecha_fin=None, directo=Fa
     :param fecha_ini: Fecha de inicio para filtrar el DataFrame
     :param fecha_fin: Fecha de fin para filtrar el DataFrame
     :param directo: Booleano para activar el control de límite de peticiones
+    :param pipeline: si es true se automatiza la subida a Minio sin preguntar (por defecto False)
+    :param anio: Año para subir el archivo a Minio automáticamente
     :return pd.DataFrame: DataFrame final con los datos físicos añadidos
     '''
     
@@ -124,7 +126,7 @@ async def df_fisicas(fires, limit=20, fecha_ini=None, fecha_fin=None, directo=Fa
                 session=session,
                 lat=row['lat'],
                 lon=row['lon'],
-                date=row['date'].split()[0],
+                date=str(row['date']).split()[0],
                 indice=i,
                 directo=directo
             )
@@ -167,5 +169,11 @@ async def df_fisicas(fires, limit=20, fecha_ini=None, fecha_fin=None, directo=Fa
     print(f"Total de requests realizados: {contador}")
     print(final_df.head(limit))
 
-    minioFunctions.preguntar_subida(final_df, "grupo3/raw/Fisicas/")
+    if pipeline:
+        assert anio is not None, "Se requiere el año para subir a minio el archivo automáticamente"
+        cliente = minioFunctions.inicializar_cliente()
+        minioFunctions.subir_fichero(cliente, final_df, f"grupo3/raw/Fisicas/Fisicas_{anio}.parquet")
+    else:
+        minioFunctions.preguntar_subida(final_df, "grupo3/raw/Fisicas/")
+    
     return final_df

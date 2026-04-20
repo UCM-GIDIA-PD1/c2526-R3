@@ -135,7 +135,7 @@ async def vegetacion(lat, lon, fecha, indice = None):
     return resultado
 
 
-async def df_vegetacion(fires, limit = 20, fecha_ini = None, fecha_fin = None):
+async def df_vegetacion(fires, limit = 20, fecha_ini = None, fecha_fin = None, pipeline = False, anio = None):
 
   '''
   Obtiene un DataFrame con los índices de vegetación para los incendios en un rango de fechas
@@ -144,6 +144,8 @@ async def df_vegetacion(fires, limit = 20, fecha_ini = None, fecha_fin = None):
   :param limit: número de incendios a procesar (por defecto 20, -1 para procesar todos)
   :param fecha_ini: fecha inicial del rango (por defecto None)
   :param fecha_fin: fecha final del rango (por defecto None)
+  :param pipeline: si es true se automatiza la subida a Minio sin preguntar (por defecto False)
+  :param anio: Año para subir el archivo a Minio automáticamente
   :return pd.DataFrame: DataFrame final con los índices de vegetación para los incendios procesados
   '''
     
@@ -196,5 +198,11 @@ async def df_vegetacion(fires, limit = 20, fecha_ini = None, fecha_fin = None):
   print(f"Extraídas {len(final_df)} filas de vegetación en {fin - ini:.2f} segundos.")
   print(final_df.head(limit))
 
-  minioFunctions.preguntar_subida(final_df, "grupo3/raw/Vegetacion/")
+    
+  if pipeline:
+      assert anio is not None, "Se requiere el año para subir a minio el archivo automáticamente"
+      cliente = minioFunctions.inicializar_cliente()
+      minioFunctions.subir_fichero(cliente, final_df, f"grupo3/raw/Vegetacion/Vegetacion_{anio}.parquet")
+  else:
+      minioFunctions.preguntar_subida(final_df, "grupo3/raw/Vegetacion/")
   return final_df

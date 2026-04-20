@@ -49,7 +49,7 @@ async def pendiente(lat, lon, date, indice = None): #Ignacio: añadido date
         "porcentaje": (np.tan(np.radians(res['slope'])) * 100) if res['slope'] else 0
     }
 
-async def df_pendiente(fires, limit = 20, fecha_ini = None, fecha_fin = None):
+async def df_pendiente(fires, limit = 20, fecha_ini = None, fecha_fin = None, pipeline = False, anio = None):
   
     '''
     Extrae la informacion del terreno de una serie de incendios 
@@ -60,6 +60,8 @@ async def df_pendiente(fires, limit = 20, fecha_ini = None, fecha_fin = None):
     :param limit: Límite de filas a procesar 
     :param fecha_ini: Fecha inicial 
     :param fecha_fin: Fecha final
+    :param pipeline: si es true se automatiza la subida a Minio sin preguntar (por defecto False)
+    :param anio: Año para subir el archivo a Minio automáticamente
     :return pd.DataFrame: DataFrame final 
     '''
 
@@ -118,6 +120,11 @@ async def df_pendiente(fires, limit = 20, fecha_ini = None, fecha_fin = None):
     print(f"Extraidas {len(final_df)} filas de pendiente en {fin - ini:.2f} segundos.")
     print(final_df.head(limit))
 
-    minioFunctions.preguntar_subida(final_df, "grupo3/raw/Pendiente/")
+    if pipeline:
+        assert anio is not None, "Se requiere el año para subir a minio el archivo automáticamente"
+        cliente = minioFunctions.inicializar_cliente()
+        minioFunctions.subir_fichero(cliente, final_df, f"grupo3/raw/Pendiente/Pendiente_{anio}.parquet")
+    else:
+        minioFunctions.preguntar_subida(final_df, "grupo3/raw/Pendiente/")
 
     return final_df

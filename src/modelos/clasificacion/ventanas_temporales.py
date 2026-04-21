@@ -44,42 +44,66 @@ def encontrar_mejor_umbral(y_true, y_prob):
             mejor_f1, mejor_umbral = f1, umbral
     return mejor_umbral
 
-def crear_features_temp_multiple(df, ventanas_dias, radio_km=None):
+import numpy as np
+import h3
+
+def crear_features_temp_multiple(df, ventanas_dias, param_espacial=None):
     df = df.sort_values('date').reset_index(drop=True)
     n = len(df)
-    coords = np.radians(df[['lat', 'lon']].values)
+    es_h3 = 'id_hexagono' in df.columns
     
     incendios_mask = df['incendio'] == 1
     incendios_idx = df[incendios_mask].index
-    incendios_coords = coords[incendios_idx]
     fechas_ord = df['date'].values.astype('datetime64[s]').astype(int) // 10**9
     incendios_fechas_ord = fechas_ord[incendios_idx]
     
-    if radio_km is not None and len(incendios_coords) > 0:
-        radio_rad = np.radians(radio_km / R)
-        tree_inc = BallTree(incendios_coords, metric='haversine')
-    else:
-        tree_inc = None
+    tree_inc = None
+    hex_neighbors = None
+    incendios_hex = None
     
+    if not es_h3:
+        coords = np.radians(df[['lat', 'lon']].values)
+        incendios_coords = coords[incendios_idx]
+        
+    if param_espacial is not None and len(incendios_idx) > 0:
+        if es_h3:
+            unique_hexs = df['id_hexagono'].unique()
+            hex_neighbors = {h: h3.grid_disk(h, param_espacial) for h in unique_hexs}
+            incendios_hex = df.loc[incendios_idx, 'id_hexagono'].values
+        else:
+            radio_rad = np.radians(param_espacial / R)
+            tree_inc = BallTree(incendios_coords, metric='haversine')
+            
     for w in ventanas_dias:
         col_inc = f'incendios_recientes_{w}d'
         col_dias = f'dias_ultimo_incendio_{w}d'
         df[col_inc] = 0
         df[col_dias] = np.nan
-    
+        
     for i in range(n):
         fecha_actual_ord = fechas_ord[i]
         
-        if tree_inc is not None:
-            idx_rad = tree_inc.query_radius([coords[i]], r=radio_rad)[0]
-            if len(idx_rad) == 0:
-                continue
-            incendios_cercanos_idx = incendios_idx[idx_rad]
-            fechas_cercanas_ord = incendios_fechas_ord[idx_rad]
+        if param_espacial is not None:
+            if es_h3:
+                hex_actual = df.at[i, 'id_hexagono']
+                vecinos = hex_neighbors[hex_actual]
+                idx_rad = np.where(np.isin(incendios_hex, list(vecinos)))[0]
+                
+                if len(idx_rad) == 0:
+                    continue
+                incendios_cercanos_idx = incendios_idx[idx_rad]
+                fechas_cercanas_ord = incendios_fechas_ord[idx_rad]
+                
+            else:
+                idx_rad = tree_inc.query_radius([coords[i]], r=radio_rad)[0]
+                if len(idx_rad) == 0:
+                    continue
+                incendios_cercanos_idx = incendios_idx[idx_rad]
+                fechas_cercanas_ord = incendios_fechas_ord[idx_rad]
         else:
             incendios_cercanos_idx = incendios_idx
             fechas_cercanas_ord = incendios_fechas_ord
-        
+            
         for w in ventanas_dias:
             fecha_limite = fecha_actual_ord - w * 86400
             mask = (fechas_cercanas_ord >= fecha_limite) & (fechas_cercanas_ord < fecha_actual_ord)
@@ -89,28 +113,37 @@ def crear_features_temp_multiple(df, ventanas_dias, radio_km=None):
                 df.at[i, f'dias_ultimo_incendio_{w}d'] = (fecha_actual_ord - ultima_fecha) / 86400
     return df
 
-def crear_features_temp(df, radio_km=None):
+
+def crear_features_temp(df, param_espacial=None):
     df = df.sort_values('date').reset_index(drop=True)
     n = len(df)
-    coords = np.radians(df[['lat', 'lon']].values)
+    es_h3 = 'id_hexagono' in df.columns
     
     incendios_mask = df['incendio'] == 1
     incendios_idx = df[incendios_mask].index
-    incendios_coords = coords[incendios_idx]
     incendios_fechas = df.loc[incendios_idx, 'date'].values
     incendios_anios = incendios_fechas.astype('datetime64[Y]').astype(int) + 1970
     incendios_meses = incendios_fechas.astype('datetime64[M]').astype(int) % 12 + 1
     incendios_fechas_ord = incendios_fechas.astype('datetime64[s]').astype(int) // 10**9
+    fechas_ord = df['date'].values.astype('datetime64[s]').astype(int) // 10**9
     
-    if radio_km is not None and len(incendios_coords) > 0:
-        radio_rad = np.radians(radio_km / R)
-        tree_inc = BallTree(incendios_coords, metric='haversine')
-    else:
-        tree_inc = None
+    tree_inc = None
+    hex_neighbors = None
+    
+    if not es_h3:
+        coords = np.radians(df[['lat', 'lon']].values)
+        incendios_coords = coords[incendios_idx]
+        
+    if param_espacial is not None and len(incendios_idx) > 0:
+        if es_h3:
+            unique_hexs = df['id_hexagono'].unique()
+            hex_neighbors = {h: h3.grid_disk(h, param_espacial) for h in unique_hexs}
+        else:
+            radio_rad = np.radians(param_espacial / R)
+            tree_inc = BallTree(incendios_coords, metric='haversine')
     
     df['incendios_estacionales'] = 0
     df['dias_ultimo_incendio_estacional'] = np.nan
-    fechas_ord = df['date'].values.astype('datetime64[s]').astype(int) // 10**9
     
     for i in range(n):
         fecha_actual = df.loc[i, 'date']
@@ -121,29 +154,41 @@ def crear_features_temp(df, radio_km=None):
         mask_mes = (incendios_meses == mes_actual) & (incendios_anios < año_actual)
         if not mask_mes.any():
             continue
-        
+            
         idx_candidatos = incendios_idx[mask_mes]
         fechas_candidatos_ord = incendios_fechas_ord[mask_mes]
-        coords_candidatos = incendios_coords[mask_mes]
         
-        if tree_inc is not None:
-            if len(coords_candidatos) > 0:
-                tree_cand = BallTree(coords_candidatos, metric='haversine')
-                idx_rad = tree_cand.query_radius([coords[i]], r=radio_rad)[0]
+        if param_espacial is not None:
+            if es_h3:
+                hex_actual = df.at[i, 'id_hexagono']
+                vecinos = hex_neighbors[hex_actual]
+                candidatos_hex = df.loc[idx_candidatos, 'id_hexagono'].values
+                
+                idx_rad = np.where(np.isin(candidatos_hex, list(vecinos)))[0]
                 if len(idx_rad) == 0:
                     continue
                 idx_filtrados = idx_candidatos[idx_rad]
                 fechas_filtradas = fechas_candidatos_ord[idx_rad]
             else:
-                continue
+                coords_candidatos = incendios_coords[mask_mes]
+                if len(coords_candidatos) > 0:
+                    tree_cand = BallTree(coords_candidatos, metric='haversine')
+                    idx_rad = tree_cand.query_radius([coords[i]], r=radio_rad)[0]
+                    if len(idx_rad) == 0:
+                        continue
+                    idx_filtrados = idx_candidatos[idx_rad]
+                    fechas_filtradas = fechas_candidatos_ord[idx_rad]
+                else:
+                    continue
         else:
             idx_filtrados = idx_candidatos
             fechas_filtradas = fechas_candidatos_ord
-        
+            
         if len(idx_filtrados) > 0:
             df.at[i, 'incendios_estacionales'] = len(idx_filtrados)
             ultima_fecha = np.max(fechas_filtradas)
             df.at[i, 'dias_ultimo_incendio_estacional'] = (fecha_actual_ord - ultima_fecha) / 86400
+            
     return df
 
 def split_temporal(X, y, test_size=0.2, val_size=0.1):
@@ -344,6 +389,10 @@ def seleccionar_modelo(y_train):
         return [(clf, "XGBoost_Estandar")]
 
 def menu_ventanas_temporales(df):
+    es_h3 = 'id_hexagono' in df.columns
+
+    if es_h3:
+        print("...Trabajando con dataset de hexágonos (H3)...")
     print("\nConfiguración de ventanas espacio-temporales")
     print("1. Temporal (días hacia atrás)")
     print("2. Estacional (mismo mes en todos los años anteriores)")
@@ -356,8 +405,12 @@ def menu_ventanas_temporales(df):
         espacial = incluir_espacial == 's'
         radio_km = None
         if espacial:
-            radio_input = input("Radio en km (por defecto 10): ").strip()
-            radio_km = float(radio_input) if radio_input else 10.0
+            if es_h3:
+                radio_input = input("Niveles de vecindad H3 (k-rings, 0 = solo el propio hexágono, por defecto 0): ").strip()
+                param_espacial = int(radio_input) if radio_input else 0
+            else:
+                radio_input = input("Radio en km (por defecto 10): ").strip()
+                param_espacial = float(radio_input) if radio_input else 10.0
         
         opcion_ventanas = input("¿Una o más ventanas? (1/más): ").strip()
         if opcion_ventanas == '1':
@@ -375,30 +428,42 @@ def menu_ventanas_temporales(df):
                 print("Formato inválido. Se usarán [180, 365, 730].")
                 ventanas = [180, 365, 730]
         
-        print(f"Generando características temporales con ventanas {ventanas} días y radio={radio_km if radio_km else 'sin espacial'}.")
-        df_resultado = crear_features_temp_multiple(df, ventanas, radio_km)
+        tipo_espacial = 'k-rings' if es_h3 else 'radio'
+        print(f"Generando características temporales con ventanas {ventanas} días y {tipo_espacial}={param_espacial if param_espacial is not None else 'sin espacial'}.")
+        df_resultado = crear_features_temp_multiple(df, ventanas, param_espacial)
         return df_resultado
     
     elif opcion_tipo == '2':
         incluir_espacial = input("¿Incluir componente espacial? (s/n): ").strip().lower()
         espacial = incluir_espacial == 's'
-        radio_km = None
+        param_espacial = None
+
         if espacial:
-            radio_input = input("Radio en km (por defecto 10): ").strip()
-            radio_km = float(radio_input) if radio_input else 10.0
+            if es_h3:
+                radio_input = input("Niveles de vecindad H3 (k-rings, 0 = solo el propio hexágono, por defecto 0): ").strip()
+                param_espacial = int(radio_input) if radio_input else 0
+            else:
+                radio_input = input("Radio en km (por defecto 10): ").strip()
+                param_espacial = float(radio_input) if radio_input else 10.0
         
-        print(f"Generando características estacionales con todos los años anteriores y radio={radio_km if radio_km else 'sin espacial'}.")
-        df_resultado = crear_features_temp(df, radio_km)
+        tipo_espacial = 'k-rings' if es_h3 else 'radio'
+        print(f"Generando características estacionales con todos los años anteriores y {tipo_espacial}={param_espacial if param_espacial is not None else 'sin espacial'}.")
+        df_resultado = crear_features_temp(df, param_espacial)
         return df_resultado
     
     elif opcion_tipo == '3':
         print("\nConfiguración TEMPORAL (días hacia atrás)")
         incluir_espacial_temp = input("¿Incluir componente espacial? (s/n): ").strip().lower()
         radio_temp = None
+
         if incluir_espacial_temp == 's':
-            radio_input = input("Radio en km para parte temporal (por defecto 10): ").strip()
-            radio_temp = float(radio_input) if radio_input else 10.0
-        
+            if es_h3:
+                radio_input = input("Niveles de vecindad H3 (k-rings, por defecto 0): ").strip()
+                radio_temp = int(radio_input) if radio_input else 0
+            else:
+                radio_input = input("Radio en km para parte temporal (por defecto 10): ").strip()
+                radio_temp = float(radio_input) if radio_input else 10.0
+
         opcion_ventanas_temp = input("¿Una o más ventanas temporales? (1/más): ").strip()
         if opcion_ventanas_temp == '1':
             valor = input("Valor de la ventana temporal (días): ").strip()
@@ -418,10 +483,15 @@ def menu_ventanas_temporales(df):
         print("\nConfiguración ESTACIONAL (mismo mes en todos los años anteriores)")
         incluir_espacial_est = input("¿Incluir componente espacial en la parte estacional? (s/n): ").strip().lower()
         radio_est = None
+
         if incluir_espacial_est == 's':
-            radio_input = input("Radio en km para parte estacional (por defecto 10): ").strip()
-            radio_est = float(radio_input) if radio_input else 10.0
-        
+            if es_h3:
+                radio_input = input("Niveles de vecindad H3 (k-rings, por defecto 0): ").strip()
+                radio_est = int(radio_input) if radio_input else 0
+            else:
+                radio_input = input("Radio en km para parte estacional (por defecto 10): ").strip()
+                radio_est = float(radio_input) if radio_input else 10.0
+
         print("\nGenerando características temporales y estacionales combinadas...")
         df_temp = crear_features_temp_multiple(df, ventanas_temp, radio_temp)
         df_combined = crear_features_temp(df_temp, radio_est)
@@ -430,6 +500,7 @@ def menu_ventanas_temporales(df):
     else:
         print("Opción no válida. Intente nuevamente.")
         return menu_ventanas_temporales(df)
+    
 
 def ventanas():
     X, y = cargar_dataset_general_con_tiempos(eliminar_correladas=False)

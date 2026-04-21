@@ -94,6 +94,8 @@ async def df_suelo(fires, limit=20):
 
     """
     Se extraen los datos de una variable de suelo específica para una serie de incendios
+    :param fires: dataframe con latitud y longitud de puntos
+    :param limit: limite para la extracción
     """
     
     ini = time.time()
@@ -101,7 +103,7 @@ async def df_suelo(fires, limit=20):
     if limit != -1:
         fires = fires.head(limit)   
     
-    lista_puntos = list(zip(fires['lon_mean'], fires['lat_mean']))
+    lista_puntos = list(zip(fires['lon'], fires['lat']))
 
     try:
         lista_res = await asyncio.to_thread(lista_entorno_suelo, lista_puntos)
@@ -109,11 +111,11 @@ async def df_suelo(fires, limit=20):
         print("\n Interrupción detectada. No hay datos parciales para guardar en suelo (proceso síncrono).")
         raise
     
-    fires = fires[['lat_mean','lon_mean','date_first']].copy().reset_index(drop = True)
+    fires = fires[['lat','lon','date']].copy().reset_index(drop = True)
 
     final_df = pd.DataFrame(lista_res, columns=["SOC"])
     final_df = pd.concat([final_df, fires], axis = 1)
-    final_df = final_df.rename(columns={'lat_mean':'lat', 'lon_mean':'lon', 'date_first':'date'})
+    final_df = final_df.rename(columns={'lat':'lat', 'lon':'lon', 'date':'date'})
 
     print(f"Finalizado en {time.time() - ini:.2f}s")
     print(final_df.head(limit))

@@ -5,6 +5,10 @@ def guardar_parcial(df, prefijo="parcial"):
     """
     Pregunta al usuario si desea guardar el DataFrame en local o subirlo a MinIO.
     Si se elige MinIO, se usa la ruta 'grupo3/interrupciones/'.
+    
+    :param df: DataFrame con los resultados parciales a guardar
+    :param prefijo: Nombre del archivo si se guarda en local
+    :return None:
     """
     print("\n Resultados parciales obtenidos")
     print(f"Filas: {len(df)}")

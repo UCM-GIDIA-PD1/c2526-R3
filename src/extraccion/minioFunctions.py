@@ -5,6 +5,7 @@ import pandas as pd
 import geopandas as gpd
 import os
 from dotenv import load_dotenv
+from joblib import load
 
 '''
 Comprobar:
@@ -81,11 +82,11 @@ def bajar_fichero(cliente, path_server: Path, type = "df"):
         
         if (type == "gdf"):
             gdf = gpd.read_parquet(buffer)
-            print(f"Geodataframe importado correctamente")
+            print(f"Geodataframe {path_server.split("/")[-1]} importado correctamente")
             return gdf
         else:
             df = pd.read_parquet(buffer)
-            print(f"Dataframe importado correctamente")
+            print(f"Dataframe {path_server.split("/")[-1]} importado correctamente")
             return df
     
     except Exception as e: 
@@ -101,6 +102,29 @@ def bajar_fichero_local(cliente, path_server: Path, path_local: Path):
         object_name=path_server,
         file_path=path_local,
     )
+
+def bajar_modelo(cliente, path_server: Path):
+    '''
+    Baja un modelo desde un archivo .joblib desde la ruta especificada.
+
+    :param cliente: cliente de MinIO (función crear_cliente())
+    :param path_server: path del modelo en MinIO
+    '''
+
+    response = cliente.get_object(
+            bucket_name="pd1",
+            object_name=path_server,
+            )
+    
+    buffer = io.BytesIO(response.read())
+
+    model = load(buffer)
+
+    response.close()
+
+    return model
+
+
 
 # Función encargada de automatizar la subida de .parquets a Minio
 
@@ -138,7 +162,7 @@ def preguntar_subida(df, ruta_carpeta = "grupo3/Datos/"):
         return False
     
     
-def bajar_csv(cliente, path_server: Path, sep = ',', **kwargs):
+def bajar_csv(cliente, path_server: Path, sep = ','):
     
     """
     Descarga un archivo CSV desde MinIO y lo devuelve como DataFrame.
@@ -146,7 +170,6 @@ def bajar_csv(cliente, path_server: Path, sep = ',', **kwargs):
     :param cliente: cliente de MinIO
     :param path_server: ruta del archivo CSV en MinIO
     :param sep: separación del csv (por defecto ,)
-    :param **kwargs: argumentos 
     :return: DataFrame con los datos del CSV
     """
 
@@ -158,7 +181,7 @@ def bajar_csv(cliente, path_server: Path, sep = ',', **kwargs):
         )
 
         buffer = io.BytesIO(response.read())  
-        df = pd.read_csv(buffer, **kwargs, sep = sep)  
+        df = pd.read_csv(buffer, sep = sep)  
         
         print(f"CSV importado correctamente desde {path_server}")
         return df
@@ -170,3 +193,24 @@ def bajar_csv(cliente, path_server: Path, sep = ',', **kwargs):
     finally:
         if response: 
             response.close()
+
+def listar_bucket(cliente, path_carpeta):
+    '''
+    Lista todos los objetos de una carpeta en MinIO
+    '''
+    objects = cliente.list_objects(
+            bucket_name = "pd1", 
+            prefix=path_carpeta, 
+            recursive=True
+        )
+    
+    lista = []
+    for object in objects:
+        lista.append(object.object_name)
+    
+    return lista
+
+if __name__ == "__main__":
+    cliente = crear_cliente()
+    lista = listar_bucket(cliente, "grupo3/raw/Biogeoregiones/")
+    print(lista)

@@ -1,9 +1,7 @@
-import os
-import sys
 import numpy as np
 import pandas as pd
 from pathlib import Path
-from sklearn.metrics import fbeta_score, recall_score, f1_score
+from sklearn.metrics import fbeta_score
 from sklearn.linear_model import LogisticRegression
 from sklearn.preprocessing import StandardScaler
 
@@ -18,6 +16,7 @@ from modelos.utils.particiones import split_temporal, generador_cv
 from modelos.utils.metricas import evaluar_clasificacion
 import modelos.utils.wandbFunctions as wf
 import modelos.utils.personalizacion as pers
+from sklearn.metrics import confusion_matrix
 
 # Configuración
 WANDB_ENTITY = "pd1-c2526-team3"
@@ -107,6 +106,7 @@ def entrenamiento(X_train_full, y_train_full, nombre=None):
     cv_generator = generador_cv(tipo_cv="temporal", n_splits=4, seed=SEED)
     f2_cv_scores, f2_cv_train = [], []
     f1_cv_scores, f1_cv_train = [], []
+    tns, fps, fns, tps = [], [], [], []
 
     for train_idx, val_idx in cv_generator.split(X_train_full, y_train_full):
         X_fold_train, X_fold_val = X_train_full.iloc[train_idx], X_train_full.iloc[val_idx]
@@ -117,8 +117,11 @@ def entrenamiento(X_train_full, y_train_full, nombre=None):
         X_fold_val_sc = scaler.transform(X_fold_val)
 
         clf = LogisticRegression(
-            C=config.C, penalty=config.penalty, class_weight=config.class_weight,
-            solver='saga', max_iter=5000, random_state=SEED
+            penalty=config.penalty, 
+            class_weight=config.class_weight,
+            solver='saga', 
+            max_iter=5000, 
+            random_state=SEED
         )
         clf.fit(X_fold_train_sc, y_fold_train)
 
@@ -130,23 +133,38 @@ def entrenamiento(X_train_full, y_train_full, nombre=None):
         y_train_prob = clf.predict_proba(X_fold_train_sc)[:, 1]
         y_train_pred = (y_train_prob >= config.umbral).astype(int)
         f2_cv_train.append(fbeta_score(y_fold_train, y_train_pred, beta=2, zero_division=0))
-        f1_cv_train.append(fbeta_score(y_fold_val, y_fold_pred, beta=1, zero_division=0))
+        f1_cv_train.append(fbeta_score(y_fold_train, y_train_pred, beta=1, zero_division=0))
+
+        cm = confusion_matrix(y_fold_val, y_fold_pred)
+
+        tns.append(cm[0,0])
+        fps.append(cm[0,1])
+        fns.append(cm[1,0])
+        tps.append(cm[1,1])
 
     wandb.log({
         "train/f2_mean_cv": float(np.mean(f2_cv_train)),
         "val/f2_mean_cv": float(np.mean(f2_cv_scores)),
-        "train/f1_mean_cv": float(np.mean(f2_cv_train)),
-        "val/f1_mean_cv": float(np.mean(f2_cv_scores))
+        "train/f1_mean_cv": float(np.mean(f1_cv_train)),
+        "val/f1_mean_cv": float(np.mean(f1_cv_scores)),
+        "val/tn_mean": np.mean(tns),
+        "val/fp_mean": np.mean(fps),
+        "val/fn_mean": np.mean(fns),
+        "val/tp_mean": np.mean(tps)
     })
+    
     run.finish()
 
+
 def inicializar():
-    if not wf.inicializar_apikey_wandb(): return
-    X, y = cargar_dataset_general(eliminar_correladas=False)
+    if not wf.inicializar_apikey_wandb():
+        return
+    # pregunta_PCA descarga el dataset internamente y pregunta si aplicar PCA
     X, y = pers.pregunta_PCA()
     X_train_full, X_test, y_train_full, y_test = split_temporal(X, y, test_size=0.2)
     X_train_full, X_test = pers.anomalias(X_train_full, X_test)
     return X_train_full, X_test, y_train_full, y_test
+
 
 def clasificacion(metodo_elegido, metrica_elegida):
     X_train_full, X_test, y_train_full, y_test = inicializar()
@@ -178,7 +196,8 @@ def clasificacion(metodo_elegido, metrica_elegida):
     
     wandb.agent(sweep_id, function=lambda: entrenamiento(X_train_full, y_train_full, nombre), count=iters)
 
+
 if __name__ == "__main__":
-    metodo = input("\n Método (grid o random): ").lower()
+    metodo = input("\n Método (grid, random o bayes): ").lower()
     metrica = input("\n Métrica a optimizar (f1 o f2): ").lower()
     clasificacion(metodo, metrica)

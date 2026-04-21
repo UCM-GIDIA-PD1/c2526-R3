@@ -140,7 +140,8 @@ def train(tags, class_names, feature_names, X_train_full, X_test, y_train_full, 
         plt.close()
         explicabilidad_lime(clf, X_train_full, X_test)
 
-if __name__ == "__main__":
+    
+def entrenar():
     assert wf.inicializar_apikey_wandb()
     wandb.login() 
     opcion, df = menu()
@@ -156,3 +157,7 @@ if __name__ == "__main__":
 
     sweep_id = wandb.sweep(sweep_config, project=WANDB_PROJECT, entity=WANDB_ENTITY)
     wandb.agent(sweep_id, function=lambda: train(tags, class_names, feature_names, X_train, X_test, y_train, y_test), count=15)
+
+if __name__ == "__main__":
+    entrenar()
+    

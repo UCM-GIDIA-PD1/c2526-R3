@@ -1,10 +1,11 @@
-from matplotlib.pylab import Literal
+from typing import Literal
 from modelos.clasificacion import balanced_random_forest, decisiontree, m_xgboost, random_forest, regresion_logistica
 from modelos.generico import modelo_xgboost
-from modelos.regresion import frp_rdForest, frp_xgBoost
+from modelos.regresion.arboles import frp_xgBoost
+from modelos.regresion.arboles import frp_rdForest
 
 
-def evaluacion_modelo(modelo:Literal["XGBoostClassifier", "BalancedRandomForest", "DecisionTree", "RandomForest", "Regresión logística", "RandomForestFRP", "XGBoostFRP"], tipo_modelo):
+def evaluacion_modelo(modelo:Literal["XGBoostClassifier", "BalancedRandomForest", "DecisionTree", "RandomForestClassifier", "Regresión logística", "RandomForestFRP", "XGBoostFRP"]):
     '''
     Función para evaluar los modelos finales en nuestro conjunto de validación
     '''
@@ -20,7 +21,7 @@ def evaluacion_modelo(modelo:Literal["XGBoostClassifier", "BalancedRandomForest"
     elif modelo == "DecisionTree":
         decisiontree.evaluacion_final(hiperparametros, metodo)
 
-    elif modelo == "RandomForest":
+    elif modelo == "RandomForestClassifier":
         random_forest.evaluacion_final(hiperparametros, metodo)
 
     elif modelo == "Regresión logística":
@@ -47,14 +48,27 @@ def pedir_hiperparametros(modelo):
     if modelo != "Regresión logística" and 'FRP' not in modelo:
         hiperparametros["umbral"] = float(input("umbral (float, ej 0.35): "))
 
-    if modelo in ["RandomForest", "DecisionTree", "BalancedRandomForest"]:
+    if any(model in modelo for model in ["RandomForest", "DecisionTree", "BalancedRandomForest"]):
         hiperparametros["min_samples_split"] = int(input("min_samples_split: "))
         hiperparametros["min_samples_leaf"] = int(input("min_samples_leaf: "))
         hiperparametros["criterion"] = input("criterion (gini/entropy): ")
         
         mf = input("max_features (sqrt/log2/None): ")
-        hiperparametros["max_features"] = None if mf.lower() == "none" else mf
+        if mf.lower() == "none":
+            hiperparametros["max_features"] = None 
+        elif mf.lower() in ["sqrt", "log2"]:
+            hiperparametros["max_features"] = mf.lower()
+        elif mf.isdigit():
+            hiperparametros["max_features"] = int(mf)
+        else:
+            hiperparametros['max_features'] = float(mf) if mf.replace('.', '', 1).isdigit() else None
+        
 
+    if modelo == 'XGBoostFRP':
+        incluir_tweedie = input('Quieres incluir la distribucion tweedie? (s/n): ').lower()
+        if incluir_tweedie == 's':
+            hiperparametros["objective"] = "reg:tweedie"
+            hiperparametros["tweedie_variance_power"] = float(input("tweedie_variance_power (float): "))
   
     if modelo == "XGBoostClassifier" or modelo == "XGBoostFRP":
         hiperparametros["learning_rate"] = float(input("learning_rate (float): "))
@@ -62,8 +76,10 @@ def pedir_hiperparametros(modelo):
         hiperparametros["colsample_bytree"] = float(input("colsample_bytree (0.5-1): "))
 
     if modelo == "XGBoostFRP":
-        hiperparametros["min_child_weight"] = int(input("min_child_weight: "))
+        hiperparametros["min_child_weight"] = float(input("min_child_weight: "))
         hiperparametros["gamma"] = float(input("gamma (float): "))
+        hiperparametros["reg_alpha"] = float(input("reg_alpha (float): "))
+        hiperparametros["reg_lambda"] = float(input("reg_lambda (float): "))
 
     
     if modelo == "Regresión logística":
@@ -73,7 +89,7 @@ def pedir_hiperparametros(modelo):
             hiperparametros["penalty"] = None
         hiperparametros["umbral"] = float(input("umbral (float): "))
 
-    if modelo in ["RandomForest", "DecisionTree", "Regresión logística"]:
+    if modelo in ["RandomForestClassifier", "DecisionTree", "Regresión logística"]:
         cw = input("class_weight (balanced/None): ")
         hiperparametros["class_weight"] = None if cw.lower() == "none" else cw
 

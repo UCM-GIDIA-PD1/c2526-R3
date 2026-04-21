@@ -10,8 +10,7 @@ import matplotlib
 matplotlib.use('Agg')
 
 import wandb
-from wandb.sklearn import plot_residuals, plot_feature_importances
-
+from wandb.sklearn import plot_residuals, plot_feature_importances, plot_learning_curve, plot_summary_metrics
 sys.path.append(os.path.join(os.path.dirname(__file__), "..", ".."))
 from modelos.utils.particiones import split_temporal, generador_cv
 from modelos.utils.metricas import evaluar_regresion
@@ -21,7 +20,6 @@ import modelos.utils.personalizacion as per
 
 WANDB_ENTITY = "pd1-c2526-team3"
 WANDB_PROJECT = "rdForest-frp-sweeps"
-SWEEP_PATH = Path(__file__).with_name("sweep.yaml")
 SEED = 42
 NUM_IT = 0
 
@@ -79,6 +77,8 @@ def evaluacion(X_train_full, X_test, y_train_full, y_test, metodo):
     try:
         plot_residuals(model, X_test.values, y_test.values)
         plot_feature_importances(model)
+        plot_learning_curve(model, X_train_full.values, y_train_full.values)
+        plot_summary_metrics(model, X_test.values, y_test.values)
     except Exception as e:
         print(f"error al generar las graficas de wandb: {e}")
 
@@ -149,9 +149,9 @@ def inicializar():
     if not wf.inicializar_apikey_wandb():
         return None, None, None, None
     
-    X, y = cg.cargar_dataset_frp()
+    # X, y = cg.cargar_dataset_frp()
     
-    X, y = per.pregunta_PCA() 
+    X, y = per.pregunta_PCA(False, log_frp=True) 
     X_train, X_test, y_train, y_test = split_temporal(X, y, date_col='date', test_size=0.2)
     X_train, X_test = per.anomalias(X_train, X_test)
 
@@ -175,10 +175,39 @@ def regresion(metodo_elegido, metrica_elegida):
             "max_depth": {"values": [5, 15, 25, 35]},
             "min_samples_leaf": {"values": [1, 5, 10]},
             "min_samples_split": {"values": [2, 10, 18]},
-            "criterion": {"values": ["squared_error", "absolute_error", "friedman_mse", "poisson"]},
+            "criterion": {"values": ["squared_error", "absolute_error", "friedman_mse"]},
             "max_features": {"values": ["sqrt", "log2", None]}
         }
-    else: 
+    elif metodo_elegido == 'bayes': 
+        params = {
+            "n_estimators": {
+                "distribution": "int_uniform", 
+                "min": 100, 
+                "max": 1000
+            },
+            "max_depth": {
+                "distribution": "int_uniform",
+                "min": 3, 
+                "max": 20
+            },
+            "min_samples_leaf": {
+                "distribution": "int_uniform", 
+                "min": 1, 
+                "max": 15 
+            },
+            "min_samples_split": {
+                "distribution": "int_uniform", 
+                "min": 2, 
+                "max": 30
+            },
+            "criterion": {
+                "values": ["squared_error"]
+            },
+            "max_features": {
+                "values": ["sqrt", "log2", 0.5, 0.8] 
+            }
+        }
+    else:
         params = {
             "n_estimators": {
                 "values": [100, 200, 300, 400, 500, 600, 700, 800, 900]
@@ -199,12 +228,13 @@ def regresion(metodo_elegido, metrica_elegida):
                 "max": 18
             },
             "criterion": {
-                "values": ["squared_error", "absolute_error", "poisson"]
+                "values": ["squared_error", "absolute_error"]
             },
             "max_features": {
                 "values": ["sqrt", "log2", None] 
             }
         }
+
 
     metrica_limpia = metrica_elegida.lower().strip()
     if "rmse" in metrica_limpia:
@@ -217,6 +247,7 @@ def regresion(metodo_elegido, metrica_elegida):
         metric_name = "val/r2_mean_cv"
         goal = "maximize"
     else:
+        print("Metrica no reconocida, se usara RMSE por defecto")
         metric_name = "val/rmse_mean_cv"
         goal = "minimize"
 
@@ -240,6 +271,6 @@ def regresion(metodo_elegido, metrica_elegida):
     )
 
 if __name__ == "__main__":
-    metodo = input("\n Selecciona el metodo (grid o random) para la búsqueda de hiperparámetros: ")
+    metodo = input("\n Selecciona el metodo (grid, random o bayes) para la búsqueda de hiperparámetros: ")
     metrica = input("\n Selecciona la métrica que quieres optimizar (rmse/mae/r2): ")
     regresion(metodo, metrica)

@@ -5,6 +5,7 @@ import pandas as pd
 from pathlib import Path
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.metrics import fbeta_score, recall_score, f1_score
+from sklearn.metrics import confusion_matrix
 
 import wandb
 from wandb.sklearn import (
@@ -86,6 +87,7 @@ def entrenamiento(X_train_full, y_train_full, nombre=None):
     cv_generator = part.generador_cv(tipo_cv='temporal', n_splits=4, seed=SEED)
     f2_cv_scores, f1_cv_scores = [], []
     f2_cv_train, f1_cv_train = [], []
+    tns, fps, fns, tps = [], [], [], []
 
     for train_idx, val_idx in cv_generator.split(X_train_full, y_train_full):
         X_fold_train, X_fold_val = X_train_full.iloc[train_idx], X_train_full.iloc[val_idx]
@@ -103,12 +105,25 @@ def entrenamiento(X_train_full, y_train_full, nombre=None):
         f2_cv_train.append(fbeta_score(y_fold_train, y_t_pred, beta=2, zero_division=0))
         f1_cv_train.append(fbeta_score(y_fold_train, y_t_pred, beta = 1))
 
+        cm = confusion_matrix(y_fold_val, y_v_pred)
+
+        tns.append(cm[0,0])
+        fps.append(cm[0,1])
+        fns.append(cm[1,0])
+        tps.append(cm[1,1])
+
     wandb.log({
         "train/f2_mean_cv": np.mean(f2_cv_train),
         "train/f1_mean_cv": np.mean(f1_cv_train),
         "val/f2_mean_cv": np.mean(f2_cv_scores), 
-        "val/f1_mean_cv": np.mean(f1_cv_scores)
+        "val/f1_mean_cv": np.mean(f1_cv_scores),
+        "val/tn_mean": np.mean(tns),
+        "val/fp_mean": np.mean(fps),
+        "val/fn_mean": np.mean(fns),
+        "val/tp_mean": np.mean(tps)
     })
+
+    wf.matriz_confusion_feature_importance(clf, y_v_pred, y_fold_val, X_train_full.columns.tolist())
     run.finish()
 
 def inicializar():
@@ -119,7 +134,7 @@ def inicializar():
     X_train_full, X_test = pers.anomalias(X_train_full, X_test)
     return X_train_full, X_test, y_train_full, y_test
 
-def clasificacion(metodo_elegido):
+def clasificacion(metodo_elegido, metrica):
     X_train_full, X_test, y_train_full, y_test = inicializar()
     
     iters, nombre = pers.pregunta_iters_nombre()
@@ -193,6 +208,6 @@ def clasificacion(metodo_elegido):
     )
 
 if __name__ == "__main__":
-    metodo = input("\n Selecciona el metodo (grid o random) para la búsqueda de hiperparámetros:" )
+    metodo = input("\n Selecciona el metodo (grid, random o bayes) para la búsqueda de hiperparámetros:" )
     metrica = input("\n Selecciona la métrica que quieres optimizar (f1/f2):" )
     clasificacion(metodo, metrica)

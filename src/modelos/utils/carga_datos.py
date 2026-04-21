@@ -21,12 +21,13 @@ PREFIX_GENERAL   = "grupo3/cleaned/MINI"
 PREFIX_INCENDIOS = "grupo3/cleaned/MI"
 YEARS            = [2022, 2023, 2024, 2025]
 
-# Variables eliminadas correlación alta (r > 0.90)
+# Variables eliminadas por correlación alta (r > 0.90):
 # - porcentaje:    duplicado casi exacto de grados (r=0.996)
 # - temp_max:      casi idéntica a temp_mean (r=0.984)
 # - temp_min:      casi idéntica a temp_mean (r=0.977)
 # - pressure_mean: casi idéntica a elevacion_centro (r=0.985)
-# - NDVI: casi idéntica a NDWI (r=-0.94) --> quitamos NDVI porque tiene menor correlación con la variable objetivo
+# - NDVI:          casi idéntica a NDWI (r=-0.94); se conserva NDWI por mayor
+#                  correlación con la variable objetivo
 
 COLS_ELIMINAR = ["porcentaje", "temp_max", "temp_min", "NDVI", "pressure_mean"]
 
@@ -38,20 +39,14 @@ TARGET_REGRESION     = "log_frp"
 
 def _cargar_parquets(prefix: str, years: list) -> pd.DataFrame:
     cliente = crear_cliente()
-    dfs = []
-    #for year in years:
     key = f"{prefix}.parquet"
     print(f"  Descargando {key}...")
     df = bajar_fichero(cliente, key)
-    if df is not None:
-        dfs.append(df)
-    else:
-        print(f"  ⚠️  No se pudo descargar {key}")
-    if not dfs:
+    if df is None:
         raise RuntimeError(
-            "No se cargó ningún archivo. ¿Tienes la VPN de la UCM activa?"
+            f"No se pudo descargar {key}. ¿Tienes la VPN de la UCM activa?"
         )
-    return pd.concat(dfs, ignore_index=True)
+    return df
 
 
 # ── API pública ────────────────────────────────────────────────────────────────
@@ -59,7 +54,8 @@ def _cargar_parquets(prefix: str, years: list) -> pd.DataFrame:
 def cargar_dataset_general(years=YEARS, eliminar_correladas=True):
     """
     Carga el dataset de clasificación (incendios + no incendios).
-    Elimina lat, lon, date y _year — no los incluye en X.
+    Elimina _year del dataset; lat, lon y date se conservan en X y se
+    eliminan más tarde en split_temporal.
 
     Returns:
         X (pd.DataFrame): variables predictoras
@@ -113,7 +109,7 @@ def cargar_dataset_incendios(years=YEARS, eliminar_correladas=True, logs=True):
     Carga el dataset de regresión (solo incendios, variable objetivo FRP).
 
     Args:
-        eliminar_correladas: si True elimina las 4 variables con r > 0.95
+        eliminar_correladas: si True elimina las 5 variables con r > 0.90.
         logs: si True devuelve log(1 + frp_mean) como target (recomendado).
               si False devuelve frp_mean directamente en MW.
 
@@ -123,14 +119,11 @@ def cargar_dataset_incendios(years=YEARS, eliminar_correladas=True, logs=True):
     """
     print("Cargando dataset incendios (regresión FRP)...")
     df = _cargar_parquets(PREFIX_INCENDIOS, years)
-    df = df.drop(columns=['date_last', 'count', 'lat', 'lon', 'frp_sum', 'final', 'duration_days', 'date'])
 
-    # Eliminar columnas de metadatos que no son features
-    
-    """cols_metadatos = ["date_last", "count", "lat", "lon", "frp_sum",
-                      "final", "duration_days", "date", "_year"]
+    cols_metadatos = ["date_last", "count", "lat", "lon", "frp_sum",
+                      "final", "duration_days", "date"]
     df = df.drop(columns=[c for c in cols_metadatos if c in df.columns])
-    """
+
     if eliminar_correladas:
         df = df.drop(columns=COLS_ELIMINAR, errors="ignore")
 
@@ -148,7 +141,7 @@ def cargar_dataset_incendios(years=YEARS, eliminar_correladas=True, logs=True):
         X = df.drop(columns=[frp_col])
         y = df[frp_col]
 
-    print(f"  ✅ Dataset cargado: {X.shape[0]:,} filas, {X.shape[1]} features")
+    print(f"  Dataset cargado: {X.shape[0]:,} filas, {X.shape[1]} features")
     print(f"  Target — media: {y.mean():.2f}, std: {y.std():.2f}")
     print(f"  frp_mean — media: {df[frp_col].mean():.1f} MW, max: {df[frp_col].max():.1f} MW")
     if logs:
@@ -158,23 +151,18 @@ def cargar_dataset_incendios(years=YEARS, eliminar_correladas=True, logs=True):
 
 
 def cargar_dataset_clasificacion_todas_variables():
-
     cliente = crear_cliente()
     ruta = 'grupo3/cleaned/final_date_transformado_civilizacion.parquet'
     df = bajar_fichero(cliente, ruta)
-
-    X = df.drop(columns = ['final', 'date', 'date_last'])
+    X = df.drop(columns=['final', 'date', 'date_last'])
     y = df['final']
-
     return X, y
 
-def cargar_dataset_frp():
 
+def cargar_dataset_frp():
     cliente = crear_cliente()
     ruta = 'grupo3/cleaned/MI.parquet'
     df = bajar_fichero(cliente, ruta)
-
-    X = df.drop(columns = ['frp_mean', 'date'])
+    X = df.drop(columns=['frp_mean'])
     y = df['frp_mean']
-
     return X, y

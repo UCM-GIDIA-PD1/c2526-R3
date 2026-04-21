@@ -14,7 +14,7 @@ esc
 wandb/
 **/wandb/
 
-
+*.tif
 wandb/
 outputs/
 pruebas.ipynb

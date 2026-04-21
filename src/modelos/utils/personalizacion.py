@@ -3,40 +3,47 @@ import modelos.utils.carga_datos as cg
 import modelos.utils.anomalias as anom
 import extraccion.minioFunctions as mf
 import pandas as pd
+import numpy as np
 
-def pregunta_PCA(df=None):
+def pregunta_PCA(clasificacion = True, df=None, log_frp = False):
     '''
     Pide por pantalla si se quiere aplicar PCA. 
     Si recibe un df, lo usa. Si no, lo descarga.
     '''
 
     if df is None:
-        df = clean.bajar_df_final() 
+        df = clean.bajar_df_final(clasificacion) 
 
     df.columns = df.columns.str.lower().str.strip()
-    target_col = 'incendio' if 'incendio' in df.columns else 'final'
+    if clasificacion:
+        target_col = 'incendio' if 'incendio' in df.columns else 'final'
+    else:
+        target_col = 'frp_mean'
 
-    while True:
-        pca_input = input("¿Quieres aplicar PCA a los datos? (s/n): ").lower()
+    pca_input = input("¿Quieres aplicar PCA a los datos? (s/n): ").lower()
+
+    if not clasificacion and log_frp:
+        y = np.log1p(df[target_col])
+    else :
+        y = df[target_col]
+    
+    if pca_input == 's':
+        from sklearn.decomposition import PCA
+        n_components = int(input('¿Cuántos componentes quieres usar? '))
+        df = df.sort_values(by='date')
+        X_raw = df.drop(columns=[target_col, 'date'], errors='ignore')
+            
+        pca_model = PCA(n_components=n_components)
+        X_pca = pca_model.fit_transform(X_raw)
+        X = pd.DataFrame(X_pca, columns=[f'PC{i+1}' for i in range(n_components)])
         
-        if pca_input == 's':
-            from sklearn.decomposition import PCA
-            n_components = int(input('¿Cuántos componentes quieres usar? '))
-            
-            X_raw = df.drop(columns=[target_col, 'date'], errors='ignore')
-            y = df[target_col]
-            
-            pca_model = PCA(n_components=n_components)
-            X_pca = pca_model.fit_transform(X_raw)
-            X = pd.DataFrame(X_pca, columns=[f'PC{i+1}' for i in range(n_components)])
-            break
-            
-        elif pca_input == 'n':
-            X = df.drop(columns=[target_col, 'date'], errors='ignore')
-            y = df[target_col]
-            break
-        else:
-            print("Entrada no válida. Por favor, ingresa 's' o 'n'.")
+    elif pca_input == 'n':
+        X = df.drop(columns=[target_col], errors='ignore')
+        y = df[target_col]
+    else:
+        print("Entrada no válida. Suponiendo que no se quiere aplicar PCA.")
+        X = df.drop(columns=[target_col], errors='ignore')
+        y = df[target_col]
     
     return X, y
 

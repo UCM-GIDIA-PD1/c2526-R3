@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IGNIS AI - Innovación en Protección Forestal</title>
+    <style>
+        :root {
+            --bg-dark: #0f172a;
+            --panel-bg: linear-gradient(180deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.03) 100%);
+            --accent-blue: #60a5fa;
+            --border-color: rgba(255, 255, 255, 0.1);
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background-color: var(--bg-dark);
+            background-image: 
+                radial-gradient(circle at 50% 20%, rgba(30, 58, 138, 0.3) 0%, transparent 50%),
+                url('https://www.transparenttextures.com/patterns/circuit-board.png');
+            color: #f8fafc;
+            display: flex;
+            justify-content: center;
+            min-height: 100vh;
+        }
+
+        .container {
+            width: 100vw;
+            max-width: 850px;
+            padding: 40px 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 35px;
+        }
+
+        header { display: flex; align-items: center; gap: 20px; }
+        
+        .logo-container { position: relative; width: 65px; height: 65px; }
+
+        .logo {
+            width: 100%; height: 100%;
+            border: 2px solid #ef4444;
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            background: rgba(239, 68, 68, 0.1);
+            color: #ef4444; font-weight: bold; font-size: 11px;
+            box-shadow: 0 0 15px rgba(239, 68, 68, 0.3);
+            z-index: 2; position: relative;
+        }
+
+        .logo-pulse {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            border: 2px solid #ef4444; border-radius: 50%;
+            animation: pulse 2s infinite; opacity: 0;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); opacity: 0.5; }
+            100% { transform: scale(1.4); opacity: 0; }
+        }
+
+        h1 { font-size: 2.5rem; letter-spacing: 5px; font-weight: 200; color: #cbd5e1; }
+
+        .hero-map {
+            width: 100%; height: 240px;
+            background: url('https://upload.wikimedia.org/wikipedia/commons/thumb/2/23/Blue_Marble_Next_Generation_-_July_2005.jpg/1200px-Blue_Marble_Next_Generation_-_July_2005.jpg') center/cover;
+            border-radius: 20px; border: 1px solid var(--border-color);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+        }
+
+        h2 { 
+            font-size: 1rem; text-transform: uppercase; letter-spacing: 2px;
+            color: var(--accent-blue); margin-bottom: 20px;
+            display: flex; align-items: center; gap: 10px;
+        }
+        h2::after { content: ""; flex: 1; height: 1px; background: linear-gradient(90deg, rgba(96, 165, 250, 0.3), transparent); }
+
+        .data-grid { display: flex; flex-direction: column; gap: 15px; }
+        .data-link { text-decoration: none; color: inherit; }
+        .data-box {
+            background: var(--panel-bg); border: 1px solid var(--border-color);
+            padding: 20px; border-radius: 12px; display: flex; align-items: center; gap: 20px;
+            backdrop-filter: blur(10px); transition: 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            position: relative; overflow: hidden;
+        }
+        .data-link:hover .data-box { transform: translateX(10px); border-color: var(--accent-blue); box-shadow: 0 10px 20px rgba(0,0,0,0.2); }
+
+        /* --- DIAGRAMA DE FLUJO --- */
+        .flowchart {
+            display: flex; flex-direction: column; align-items: center;
+            gap: 20px; margin: 50px 0; position: relative;
+        }
+
+        .flow-step {
+            background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 16px; padding: 22px; width: 340px; text-align: center;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.4); backdrop-filter: blur(12px);
+            z-index: 5;
+        }
+
+        /* Flecha Izquierda: Une Datos Entrada con Preprocesado */
+        .flowchart::before {
+            content: ""; position: absolute; width: 80px; height: 135px;
+            border: 2px solid var(--accent-blue); border-right: none;
+            border-radius: 20px 0 0 20px; left: 140px; top: 55px; /* Ajustado para centrar entre cajas */
+            z-index: 1; filter: drop-shadow(0 0 5px var(--accent-blue));
+        }
+
+        /* MODIFICACIÓN: Flecha Derecha uniendo Preprocesado con Modelo IA */
+        .flowchart::after {
+            content: ""; position: absolute; width: 80px; height: 135px;
+            border: 2px solid var(--accent-blue); border-left: none;
+            border-radius: 0 20px 20px 0; right: 140px; 
+            top: 175px; /* Bajamos la posición para que inicie en Preprocesado y termine en Modelo */
+            z-index: 1; filter: drop-shadow(0 0 5px var(--accent-blue));
+        }
+
+        .arrow-glow { color: var(--accent-blue); font-size: 1.8rem; animation: bounce 2s infinite; }
+        @keyframes bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(5px); } }
+
+        .gauge-wrap {
+            width: 180px; height: 90px;
+            background: conic-gradient(from 270deg, #22c55e 0% 45%, #f59e0b 45% 75%, #ef4444 75% 100%);
+            border-radius: 180px 180px 0 0; margin: 0 auto; position: relative;
+        }
+        .gauge-inner {
+            position: absolute; bottom: 0; left: 50%; transform: translateX(-50%);
+            width: 140px; height: 70px; background: #0f172a;
+            border-radius: 140px 140px 0 0; display: flex; align-items: flex-end;
+            justify-content: center; padding-bottom: 8px; font-size: 1.8rem; font-weight: bold;
+        }
+
+        footer { text-align: center; padding: 40px 0; font-size: 0.8rem; color: #475569; border-top: 1px solid rgba(255,255,255,0.05); }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <div class="logo-container">
+            <div class="logo">IGNIS AI</div>
+            <div class="logo-pulse"></div>
+        </div>
+        <h1>IGNIS AI</h1>
+    </header>
+
+    <div class="hero-map"></div>
+
+    <section>
+        <h2>Nuestro Objetivo</h2>
+        <p style="font-size: 1.05rem; line-height: 1.8; color: #cbd5e1;">
+            IGNIS AI emplea como modelo de <strong>Machine Learning</strong>, XGBoost. Analiza múltiples variables como temperatura y humedad para salvar vidas, bosques y propiedades.
+            Entrena el modelo con datos de incendios de Europa y Norte de África desde <strong>2022 a 2026</strong>. 
+        </p>
+    </section>
+
+    <section>
+        <h2>Fuentes de Datos y Enlaces</h2>
+        <div class="data-grid">
+            <a href="https://firms.modaps.eosdis.nasa.gov/download/" class="data-link" target="_blank">
+                <div class="data-box">
+                    <span>🛰️</span>
+                    <div><strong>NASA FIRMS</strong> - Archivos CSV para la obtención de incendios</div>
+                </div>
+            </a>
+            <a href="https://open-meteo.com/" class="data-link" target="_blank">
+                <div class="data-box">
+                    <span>☁️</span>
+                    <div><strong>OpenMeteo</strong> - API para datos meteorológicos</div>
+                </div>
+            </a>
+            <a href="https://earthengine.google.com/" class="data-link" target="_blank">
+                <div class="data-box">
+                    <span>🌍</span>
+                    <div><strong>Google Earth Engine</strong> - Obtención de índices de vegetación (NDVI, NDWI) y pendiente del terreno</div>
+                </div>
+            </a>
+            <a href="https://land.copernicus.eu/" class="data-link" target="_blank">
+                <div class="data-box">
+                    <span>🗺️</span>
+                    <div><strong>Copernicus Land Cover</strong> - Mapa rasterizado para la obtención del tipo de vegetación</div>
+                </div>
+            </a>
+        </div>
+    </section>
+
+    <section>
+        <h2>Fundamentos del Modelo</h2>
+        <div class="flowchart">
+            <div class="flow-step">
+                <strong>DATOS ENTRADA</strong>
+                <div style="font-size: 2.2rem; margin: 10px 0;">🗺️ ☁️ 🛰️</div>
+                <small>Satelital / Clima / Mapas</small>
+            </div>
+            
+            <div class="arrow-glow">↓</div>
+
+            <div class="flow-step">
+                <strong>PREPROCESADO</strong>
+                <div style="font-size: 2.2rem; margin: 10px 0;">⚙️</div>
+                <small>Limpieza y Preparación</small>
+            </div>
+
+            <div class="arrow-glow">↓</div>
+
+            <div class="flow-step">
+                <strong>MODELO IA</strong>
+                <div style="font-size: 2.2rem; margin: 10px 0;">🧠</div>
+                <small>XGBoost Algorithm</small>
+            </div>
+
+            <div class="arrow-glow">↓</div>
+
+            <div class="gauge-wrap">
+                <div class="gauge-inner">85%</div>
+            </div>
+            <div style="text-align: center; margin-top: 15px; font-weight: bold;">PROBABILIDAD ESTIMADA: 85%</div>
+        </div>
+    </section>
+
+    <footer>
+        © 2026 IGNIS AI — INNOVACIÓN EN PROTECCIÓN FORESTAL
+    </footer>
+</div>
+
+</body>
+</html>

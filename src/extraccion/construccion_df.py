@@ -1,5 +1,5 @@
-from extraccion import incendios, pendiente, vegetacion, fisicas, minioFunctions, puntos_no_incendio, interrupcion, filtros_no_incendio
-from extraccion.futuro import suelo2, civilizacion
+from . import incendios, pendiente, vegetacion, fisicas, minioFunctions, puntos_no_incendio, interrupcion, filtros_no_incendio
+from .futuro import suelo2, civilizacion
 import time
 import pandas as pd
 import asyncio

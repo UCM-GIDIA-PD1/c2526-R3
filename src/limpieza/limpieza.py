@@ -41,7 +41,7 @@ def mostrar_nulos(df):
     
     return columnas_con_nulos
 
-def limpieza_nulos(df, columnas=None):
+def limpieza_nulos(df, columnas=None, pipeline = False, anio = None):
     """
     Borra filas con valores nulos. 
     Si 'columnas' es una lista, solo mira nulos en esas columnas.
@@ -61,7 +61,12 @@ def limpieza_nulos(df, columnas=None):
         print("Filtrando nulos en todas las columnas del DataFrame")
         df_temp = df_temp.dropna()
 
-    mf.preguntar_subida(df_temp, "grupo3/cleaned/")
+    if pipeline:
+        assert anio is not None, "Si pipeline es True, se debe proporcionar un año para subir el archivo a MinIO."
+        cliente = mf.crear_cliente()
+        mf.subir_fichero(cliente, f"grupo3/cleaned/final_cleaned_{anio}.parquet", df_temp)
+    else:
+        mf.preguntar_subida(df_temp, "grupo3/cleaned/")
         
     return df_temp
 

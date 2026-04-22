@@ -214,6 +214,9 @@ const geocoder = new MapboxGeocoder({
 document.getElementById('geocoder-container').appendChild(geocoder.onAdd(map));
 
 let currentMarker = null;
+let selectedLat = null;
+let selectedLon = null;
+const API_BASE_URL = 'http://localhost:8000'; // Ajusta si el puerto es diferente
 
 // Application Mode: 'prediction' | 'history'
 let appMode = 'prediction';
@@ -471,6 +474,8 @@ openPanelBtn.addEventListener('click', () => {
 
 // Set coordinates function
 function setCoordinates(lng, lat) {
+    selectedLat = lat;
+    selectedLon = lng;
     const formatLng = lng.toFixed(4);
     const formatLat = lat.toFixed(4);
     const lngDir = lng >= 0 ? 'E' : 'W';
@@ -589,15 +594,49 @@ tabFrp.addEventListener('click', () => {
     if (hasPrediction) generateMockPrediction();
 });
 
-actionBtn.addEventListener('click', () => {
-    if(!coordsInput.value) {
+actionBtn.addEventListener('click', async () => {
+    if(!selectedLat || !selectedLon) {
         alert("Por favor, selecciona una ubicación en el mapa primero.");
         return;
     }
-    hasPrediction = true;
-    updateUIState();
-    generateMockPrediction();
+    
+    actionBtn.disabled = true;
+    actionBtn.textContent = 'Procesando...';
+    
+    try {
+        await performPrediction();
+        hasPrediction = true;
+    } catch (error) {
+        console.error("Prediction error:", error);
+        alert("Error al realizar la predicción: " + error.message);
+    } finally {
+        actionBtn.disabled = false;
+        updateUIState();
+    }
 });
+
+async function performPrediction() {
+    const endpoint = activeTab === 'riesgo' ? '/predict/ocurrencia' : '/predict/intensidad';
+    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            latitud: selectedLat,
+            longitud: selectedLon,
+            fecha: dateInput.value
+        })
+    });
+
+    if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || "Error en el servidor");
+    }
+
+    const data = await response.json();
+    renderPredictionResults(data);
+}
 
 function updateUIState() {
     if (hasPrediction) {
@@ -612,57 +651,109 @@ function updateUIState() {
     }
 }
 
-function generateMockPrediction() {
+function renderPredictionResults(data) {
     if (activeTab === 'riesgo') {
+        const prob = (data.probabilidad * 100).toFixed(1);
+        const riskClass = data.ocurrencia ? 'risk-high' : 'risk-low';
+        
+        let variablesHtml = '';
+        if (data.variables_clave) {
+            variablesHtml = `
+                <div class="factors-title">Variables Clave en el Punto</div>
+                <div class="key-variables-grid">
+                    ${Object.entries(data.variables_clave).map(([name, val]) => `
+                        <div class="key-variable-item">
+                            <span class="var-name">${name}</span>
+                            <span class="var-value">${val}</span>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        }
+
+        let importanciasHtml = '';
+        if (data.importancias && Object.keys(data.importancias).length > 0) {
+            const maxImp = Math.max(...Object.values(data.importancias));
+            importanciasHtml = `
+                <div class="factors-title">Contribución al Riesgo (Importancia)</div>
+                <div class="importance-chart">
+                    ${Object.entries(data.importancias).map(([name, imp]) => {
+                        const percent = (imp / maxImp * 100).toFixed(0);
+                        return `
+                            <div class="importance-item">
+                                <div class="importance-label">
+                                    <span>${name}</span>
+                                    <span>${(imp * 100).toFixed(1)}%</span>
+                                </div>
+                                <div class="importance-bar-bg">
+                                    <div class="importance-bar" style="width: ${percent}%"></div>
+                                </div>
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+            `;
+        }
+        
         resultsContainer.innerHTML = `
             <div class="result-section">
                 <div class="result-header">Resultado de la Predicción</div>
-                <div class="risk-probability">PROBABILIDAD DE INCENDIO: 95%</div>
-                
-                <div class="factors-title">Principales Factores Determinantes (Impacto)</div>
-                
-                <div class="factor-item">
-                    <div class="factor-header">
-                        <span class="factor-icon">🌡️</span> Alta Temperatura (34ºC)
-                    </div>
-                    <div class="progress-bg"><div class="progress-bar pb-red"></div></div>
+                <div class="risk-probability ${riskClass}">
+                    ${data.ocurrencia ? 'ALTO RIESGO' : 'RIESGO BAJO'}: ${prob}%
                 </div>
                 
-                <div class="factor-item">
-                    <div class="factor-header">
-                        <span class="factor-icon">💧</span> Baja Humedad (18%)
+                ${data.error ? `<div class="error-msg" style="color: #ef4444; margin-top: 10px;">${data.error}</div>` : ''}
+                ${data.nota_informativa ? `<div class="note-msg" style="color: #f59e0b; font-size: 0.8rem; margin-top: 10px;">⚠️ ${data.nota_informativa}</div>` : ''}
+
+                ${variablesHtml}
+                ${importanciasHtml}
+
+                <div class="factor-item" style="margin-top: 15px; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 10px;">
+                    <div class="factor-header" style="font-size: 0.7rem; opacity: 0.6;">
+                        Fecha: ${data.fecha_procesada} | Modelo: ${data.modelo_version}
                     </div>
-                    <div class="progress-bg"><div class="progress-bar pb-orange"></div></div>
-                </div>
-                
-                <div class="factor-item">
-                    <div class="factor-header">
-                        <span class="factor-icon">💨</span> Viento Moderado (20 km/h)
-                    </div>
-                    <div class="progress-bg"><div class="progress-bar pb-yellow"></div></div>
-                </div>
-                
-                <div class="factor-item">
-                    <div class="factor-header">
-                        <span class="factor-icon">🌿</span> Sequedad de la Vegetación (Extrema)
-                    </div>
-                    <div class="progress-bg"><div class="progress-bar pb-extreme"></div></div>
                 </div>
             </div>
         `;
     } else {
+        const intensity = data.intensidad.toFixed(2);
+        
+        let variablesHtml = '';
+        if (data.variables_clave) {
+            variablesHtml = `
+                <div class="factors-title">Condiciones en el Punto</div>
+                <div class="key-variables-grid">
+                    ${Object.entries(data.variables_clave).map(([name, val]) => `
+                        <div class="key-variable-item">
+                            <span class="var-name">${name}</span>
+                            <span class="var-value">${val}</span>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        }
+
         resultsContainer.innerHTML = `
             <div class="result-section">
                 <div class="result-header">Resultado de la Predicción de FRP</div>
                 <div class="frp-title">FRP ESTIMADO:</div>
-                <div class="frp-value">87.3 MW</div>
+                <div class="frp-value">${intensity} MW</div>
                 <div class="frp-subtitle">Potencia Radiativa del Fuego Estimada</div>
+                
+                ${data.error ? `<div class="error-msg" style="color: #ef4444; margin-top: 10px;">${data.error}</div>` : ''}
+                ${data.nota_informativa ? `<div class="note-msg" style="color: #f59e0b; font-size: 0.8rem; margin-top: 10px;">⚠️ ${data.nota_informativa}</div>` : ''}
+                
+                ${variablesHtml}
+
+                <div style="margin-top: 15px; font-size: 0.7rem; opacity: 0.6; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 10px;">
+                    Fecha: ${data.fecha_procesada} | Versión: ${data.modelo_version}
+                </div>
             </div>
         `;
     }
 }
 
-// Manual coordinates input parsing
+
 coordsInput.addEventListener('change', (e) => {
     const val = e.target.value.trim();
     if (!val) return;

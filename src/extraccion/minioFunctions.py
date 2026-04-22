@@ -124,7 +124,19 @@ def bajar_modelo(cliente, path_server: Path):
 
     return model
 
+def bajar_imagen(cliente, path_server: Path):
+    response = cliente.get_object(
+        bucket_name="pd1",
+        object_name=path_server
+    )
+    
+    buffer = io.BytesIO(response.read())
 
+    imagen = load(buffer)
+
+    response.close()
+
+    return imagen
 
 # Función encargada de automatizar la subida de .parquets a Minio
 

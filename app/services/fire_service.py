@@ -93,7 +93,7 @@ def realizar_inferencia_ocurrencia(modelo_ocurrencia, features: dict) -> tuple[f
     try:
         df_predict = pd.DataFrame([features])
         columnas_ocurrencia = [
-            'lat', 'lon', 'date', 'soil_temp', 'final', 'elevacion_centro',
+            'lat', 'lon', 'soil_temp', 'final', 'elevacion_centro',
             'grados', 'porcentaje', 'temp_mean', 'temp_max', 'temp_min',
             'humidity_mean', 'precipitation', 'wind_speed_max', 'wind_gusts_max',
             'pressure_mean', 'cloud_cover', 'radiation', 'evapotranspiration',
@@ -118,7 +118,7 @@ def realizar_inferencia_intensidad(modelo_frp, features: dict) -> float:
 
         # Sin la columna 'final'
         columnas_frp = [
-            'lat', 'lon', 'date', 'soil_temp', 'elevacion_centro',
+            'lat', 'lon', 'soil_temp', 'elevacion_centro',
             'grados', 'porcentaje', 'temp_mean', 'temp_max', 'temp_min',
             'humidity_mean', 'precipitation', 'wind_speed_max', 'wind_gusts_max',
             'pressure_mean', 'cloud_cover', 'radiation', 'evapotranspiration',

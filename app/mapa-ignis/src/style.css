@@ -38,7 +38,7 @@ body {
 /* Tooltip */
 #map-tooltip {
   position: absolute;
-  top: 30px;
+  top: 85px;
   left: 50%;
   transform: translateX(-50%);
   background-color: rgba(22, 27, 34, 0.7);
@@ -140,6 +140,117 @@ body {
 .mapboxgl-ctrl-geocoder--suggestion-title,
 .mapboxgl-ctrl-geocoder--suggestion-address {
   color: #000; /* Mapbox geocoder dropdown requires visible text */
+}
+
+/* Main Mode Toggle */
+#mode-toggle-container {
+  position: absolute;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.mode-toggle {
+  display: flex;
+  background-color: var(--panel-bg);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--panel-border);
+  border-radius: 30px;
+  padding: 4px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+}
+
+.mode-btn {
+  background: transparent;
+  border: none;
+  border-radius: 26px;
+  padding: 8px 20px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.mode-btn:hover {
+  color: var(--text);
+}
+
+.mode-btn.active {
+  background: linear-gradient(135deg, var(--accent-fire), var(--accent-ember));
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.4);
+}
+
+#heatmap-toggle-wrapper {
+  margin-top: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background-color: var(--panel-bg);
+  backdrop-filter: blur(12px);
+  padding: 6px 12px;
+  border-radius: 20px;
+  border: 1px solid var(--panel-border);
+  box-shadow: 0 4px 10px rgba(0,0,0,0.4);
+  transition: opacity 0.3s ease;
+}
+
+#heatmap-toggle-wrapper.hidden {
+  display: none !important;
+}
+
+.toggle-label {
+  font-size: 0.8rem;
+  color: var(--text);
+  font-weight: 500;
+}
+
+/* Switch styling */
+.toggle-switch {
+  position: relative;
+  display: inline-block;
+  width: 36px;
+  height: 20px;
+}
+.toggle-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+.slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background-color: rgba(255, 255, 255, 0.2);
+  transition: .4s;
+}
+.slider:before {
+  position: absolute;
+  content: "";
+  height: 14px;
+  width: 14px;
+  left: 3px;
+  bottom: 3px;
+  background-color: white;
+  transition: .4s;
+}
+input:checked + .slider {
+  background-color: var(--accent-fire);
+}
+input:checked + .slider:before {
+  transform: translateX(16px);
+}
+.slider.round {
+  border-radius: 20px;
+}
+.slider.round:before {
+  border-radius: 50%;
 }
 
 /* Right Side Panel */
@@ -246,6 +357,57 @@ body {
 .input-group input:focus {
   border-color: var(--accent-fire);
   box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.15);
+}
+
+/* Data Grid for History Panel */
+#history-content-container {
+  padding: 10px 20px 20px;
+}
+
+.data-section-title {
+  font-size: 0.8rem;
+  color: var(--accent-fire);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-top: 15px;
+  margin-bottom: 10px;
+  border-bottom: 1px solid rgba(249, 115, 22, 0.3);
+  padding-bottom: 5px;
+  font-weight: 600;
+}
+
+.data-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.data-item {
+  background: rgba(255, 255, 255, 0.03);
+  padding: 10px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.data-item.full-width {
+  grid-column: span 2;
+}
+
+.data-label {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+
+.data-value {
+  font-size: 1rem;
+  font-weight: 500;
+  color: #fff;
+}
+
+.data-value.highlight {
+  color: var(--accent-yellow);
 }
 
 /* Date picker specific styling for dark mode */

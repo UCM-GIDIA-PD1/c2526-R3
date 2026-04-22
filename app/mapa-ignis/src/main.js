@@ -75,15 +75,29 @@ const openPanelBtn = document.getElementById('open-panel-btn');
 
 let previousView = null;
 
-// Set today's date implicitly and restrict past dates
+// Set today's date implicitly, restrict past dates and limit future to 15 days
 const today = new Date();
 const year = today.getFullYear();
 const month = String(today.getMonth() + 1).padStart(2, '0');
 const day = String(today.getDate()).padStart(2, '0');
 const formattedToday = `${year}-${month}-${day}`;
 
+// Calculate maximum allowed date: 15 days from today
+const maxDateObj = new Date(today);
+maxDateObj.setDate(maxDateObj.getDate() + 15);
+const maxYear = maxDateObj.getFullYear();
+const maxMonth = String(maxDateObj.getMonth() + 1).padStart(2, '0');
+const maxDay = String(maxDateObj.getDate()).padStart(2, '0');
+const formattedMaxDate = `${maxYear}-${maxMonth}-${maxDay}`;
+
 dateInput.value = formattedToday;
 dateInput.min = formattedToday;
+dateInput.max = formattedMaxDate;
+
+// Ensure default value does not exceed the max
+if (dateInput.value > formattedMaxDate) {
+    dateInput.value = formattedMaxDate;
+}
 
 let activeTab = 'riesgo'; // 'riesgo' or 'frp'
 let hasPrediction = false;

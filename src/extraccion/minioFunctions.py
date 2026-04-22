@@ -67,9 +67,9 @@ def bajar_fichero(cliente, path_server: Path, type = "df"):
 
     :param cliente: cliente de MinIO (función crear_cliente())
     :param path_server: path del archivo en MinIO
-    :param type: especificar el tipo "df" o "gdf"
+    :param type: especificar el tipo "df", "gdf" o "pkl"
     '''
-    assert type == "gdf" or type == "df", f"Tipo especificado no válido: {type}, especifique 'df' o 'gdf'"
+    assert type == "gdf" or type == "df" or type == "pkl", f"Tipo especificado no válido: {type}, especifique 'df' o 'gdf'"
     
     response = None
     try:
@@ -84,6 +84,9 @@ def bajar_fichero(cliente, path_server: Path, type = "df"):
             gdf = gpd.read_parquet(buffer)
             print(f"Geodataframe {path_server.split("/")[-1]} importado correctamente")
             return gdf
+        elif(type == "pkl"):
+            print(f"pkl {path_server.split("/")[-1]} importado correctamente")
+            return load(buffer)
         else:
             df = pd.read_parquet(buffer)
             print(f"Dataframe {path_server.split("/")[-1]} importado correctamente")

@@ -258,14 +258,20 @@ def concatenar_df():
 
 from functools import reduce
 
-def concatenar_variables():
+def concatenar_variables(pipeline=False, anio=None):
     '''
     Función para unir las variables de un .parquet con el mismo nombre.
+
+    :param pipeline: si es true se automatiza la subida a Minio sin preguntar (por defecto False)
+    :param anio: Año para subir el archivo a Minio automáticamente (requerido si pipeline es True)
     '''
 
-    nombre_parquet = input("Introduce el nombre de los parquets a juntar (sin .parquet): ")
-    lista_var = ['Pendiente', 'Fisicas', 'Suelo2', 'civilizacion', 'Vegetacion']
-    cliente = minioFunctions.crear_cliente()
+    if pipeline:
+        assert anio is not None, "Se requiere el año para subir a minio el archivo automáticamente"
+    else:
+        nombre_parquet = input("Introduce el nombre de los parquets a juntar (sin .parquet): ")
+        lista_var = ['Pendiente', 'Fisicas', 'Suelo2', 'civilizacion', 'Vegetacion']
+        cliente = minioFunctions.crear_cliente()
     
     dfs = []
 
@@ -299,14 +305,24 @@ def concatenar_variables():
         df_final = pd.merge(df_final, df2, on=columnas_comunes, how='left')
     
     print(f"Columnas finales: {df_final.columns.tolist()}")
-    minioFunctions.preguntar_subida(df_final, f"grupo3/raw/Nuevas_Zonas/")
+
+    if pipeline:
+        assert anio is not None, "Se requiere el año para subir a minio el archivo automáticamente"
+        cliente = minioFunctions.crear_cliente()
+        minioFunctions.subir_fichero(cliente, f"grupo3/raw/Final/final_limpio_{anio}_modeloGeneral.parquet", df_final)
+    else:
+        minioFunctions.preguntar_subida(df_final, f"grupo3/raw/Nuevas_Zonas/")
 
 async def extraccion_pipeline(df, limite_extraccion=100, anio=None):
     '''
     Ejecuta la extracción de variables ambientales de forma secuencial y asíncrona.
+
+    :param df: DataFrame con los datos de incendios y no incendios
+    :param limite_extraccion: Número máximo de filas a procesar (por defecto 100)
+    :param anio: Año para subir los archivos a MinIO automáticamente (requerido para pipeline completo)
+    :return: Todos los DataFrames de cada variable extraída
     '''
 
-    ''' SOLAMENTE PARA DEPURAR DESDE EL SCRIPT (CUANDO SE EJECUTE DESDE EL MAIN SE BORRARÁ)
     load_dotenv()
     try:
         # 1. Intenta inicializar con la sesión activa si la hubiera
@@ -334,36 +350,37 @@ async def extraccion_pipeline(df, limite_extraccion=100, anio=None):
         else:
             print("No se pudo inicializar Earth Engine. No se encontró google-credentials.json")
             return # Abortamos la extracción para evitar que el programa cra
-    '''
+
     assert anio is not None, "Se requiere el año para subir a minio el archivo automáticamente"
     try:
         print("==============================")
         print("EXTRACCIÓN DE VEGETACIÓN")
         print("==============================")
 
-        await vegetacion.df_vegetacion(df, limit=limite_extraccion, pipeline=True)
+        df_vegetacion = await vegetacion.df_vegetacion(df, limit=limite_extraccion, pipeline=True)
             
         print("==============================")
         print("EXTRACCIÓN DE PENDIENTE")
         print("==============================")
-        await pendiente.df_pendiente(df, limit=limite_extraccion, pipeline=True)
+        df_pendiente = await pendiente.df_pendiente(df, limit=limite_extraccion, pipeline=True)
         
         print("==============================")
         print("EXTRACCIÓN DE FÍSICAS")
         print("==============================")      
-        await fisicas.df_fisicas(df, limit=limite_extraccion, directo=True, pipeline=True)
+        df_fisicas = await fisicas.df_fisicas(df, limit=limite_extraccion, directo=True, pipeline=True)
 
         print("==============================")
         print("EXTRACCIÓN DE SUELO")
         print("==============================") 
-        await suelo2.df_soil_temp(df, limit=limite_extraccion, pipeline=True)
+        df_suelo2 = await suelo2.df_soil_temp(df, limit=limite_extraccion, pipeline=True)
         
         print("==============================")
         print("EXTRACCIÓN DE CIVILIZACIÓN")
         print("==============================") 
-        await civilizacion.civilizacion(df, limit=limite_extraccion, pipeline=True)
+        df_civilizacion = await civilizacion.civilizacion(df, limit=limite_extraccion, pipeline=True)
             
         print("Extraídas todas las variables con éxito :)")
+        return df_vegetacion, df_pendiente, df_fisicas, df_suelo2, df_civilizacion
 
     except Exception as e:
         print(f"Error durante la extracción: {e}")
@@ -398,7 +415,7 @@ def pipeline(anio=None):
         assert df_raw is not None, "No se pudo descargar el DataFrame de MinIO, verifica la conexión o si el año es correcto."
         print(f"\n>>>>>>>>>>Número de registros inicial: {len(df_raw)} <<<<<<<<<<<\n")
 
-    # Procesamiento de los incendios
+    # Procesamiento de los incendios AQUÍ
     df_procesado = incendios.fetch_fires(df_raw, question=True)
     print(f"\n>>>>>>>>>>Número de registros tras agrupar los incendios: {len(df_procesado)} <<<<<<<<<<<\n")
 
@@ -424,6 +441,8 @@ def pipeline(anio=None):
 
     # ====================> PASO 3 : GENERACIÓN DE NO INCENDIOS Y CONCATENACIÓN
     print("\n====================> PASO 3: GENERACIÓN DE NO INCENDIOS ...")
+    
+    # Generamos los puntos de no incendio
     df_no_inc = puntos_no_incendio.crearSinteticos(df_procesado, True)
 
     # Creamos la variable respuesta
@@ -435,15 +454,19 @@ def pipeline(anio=None):
     # Concateanmos incendios y no incendios
     df_final = pd.concat([df_inc, df_no_inc], ignore_index=True)
 
-    # ====================> PASO 4 : EXTRACCIÓN DE LOS DATOS
+    # Subimos a MinIO
+    cliente = minioFunctions.crear_cliente()
+    minioFunctions.subir_fichero(cliente, f"grupo3/raw/Incendios_y_no_incendios/incendios_y_no_incendios_{anio}.parquet", df_final)
+
+    # ====================> PASO 4 : EXTRACCIÓN DE LOS DATOS Y CONCATENACIÓN DE VARIABLES
     print("\n====================> PASO 4: EXTRACCIÓN DE LOS DATOS ...")
-    asyncio.run(extraccion_pipeline(df_final))
 
-
-
+    # Función que realiza la extracción individual variable por variable 
+    df_vegetacion, df_pendiente, df_fisicas, df_suelo2, df_civilizacion = asyncio.run(extraccion_pipeline(df_final, anio = anio))
+    df_entero = concatenar_variables(pipeline=True, anio=anio)
 
 
 if __name__ == "__main__":
-    pipeline()
+    pipeline(anio=2026)
 
 

@@ -384,7 +384,9 @@ function openPanel() {
 
 function closePanel() {
     panel.classList.add('is-hidden');
-    openPanelBtn.classList.remove('hidden');
+    if (appMode === 'prediction') {
+        openPanelBtn.classList.remove('hidden');
+    }
 }
 
 function openHistoryPanel(lng, lat, data) {
@@ -445,7 +447,8 @@ function openHistoryPanel(lng, lat, data) {
 
 function closeHistoryPanel() {
     historyPanel.classList.add('is-hidden');
-    openPanelBtn.classList.remove('hidden');
+    // Button is only visible if we return to prediction mode, but here we stay in history mode
+    // so we don't show any button to reopen history since history opens via marker click
 }
 
 backBtn.addEventListener('click', () => {
@@ -529,6 +532,10 @@ btnModePrediction.addEventListener('click', () => {
     map.getCanvas().style.cursor = '';
     closeHistoryPanel();
     
+    if (panel.classList.contains('is-hidden')) {
+        openPanelBtn.classList.remove('hidden');
+    }
+    
     if (currentMarker) currentMarker.addTo(map);
 });
 
@@ -549,6 +556,7 @@ btnModeHistory.addEventListener('click', () => {
     
     map.getCanvas().style.cursor = 'pointer';
     closePanel();
+    openPanelBtn.classList.add('hidden');
     
     if (currentMarker) currentMarker.remove();
 });
@@ -654,6 +662,47 @@ function generateMockPrediction() {
     }
 }
 
+// Manual coordinates input parsing
+coordsInput.addEventListener('change', (e) => {
+    const val = e.target.value.trim();
+    if (!val) return;
+
+    // Check for "Lat, Lng" or similar formats, including degree symbols and N/S/E/W
+    const regex = /([-+]?\d*\.?\d+)\s*°?\s*([NSns]?)[,\s]+([-+]?\d*\.?\d+)\s*°?\s*([EWew]?)/;
+    const match = val.match(regex);
+
+    if (match) {
+        let lat = parseFloat(match[1]);
+        const latDir = match[2].toUpperCase();
+        let lng = parseFloat(match[3]);
+        const lngDir = match[4].toUpperCase();
+
+        if (latDir === 'S') lat = -Math.abs(lat);
+        if (lngDir === 'W') lng = -Math.abs(lng);
+        if (latDir === 'N') lat = Math.abs(lat);
+        if (lngDir === 'E') lng = Math.abs(lng);
+        
+        // Basic check for Europe bounds
+        if (lat < 27.6 || lat > 71.2 || lng < -31.8 || lng > 45.0) {
+            alert("Atención: Las coordenadas introducidas parecen estar fuera de Europa.");
+        }
+
+        setCoordinates(lng, lat);
+        saveCurrentView();
+        
+        map.flyTo({
+            center: [lng, lat],
+            zoom: 14,
+            pitch: 65,
+            duration: 1500,
+            essential: true
+        });
+    } else {
+        alert("Formato no válido. Usa un formato como '40.4168, -3.7838' o '40.41 N, 3.78 W'.");
+        coordsInput.value = headerCoords.textContent;
+    }
+});
+
 // Current Location Button
 document.getElementById('target-btn').addEventListener('click', () => {
     if (navigator.geolocation) {
@@ -672,3 +721,10 @@ document.getElementById('target-btn').addEventListener('click', () => {
         );
     }
 });
+
+// Inicializar la vista abierta por defecto
+map.once('style.load', () => {
+    openPanel();
+    setCoordinates(defaultCenter[0], defaultCenter[1]);
+});
+

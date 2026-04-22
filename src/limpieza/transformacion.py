@@ -66,13 +66,17 @@ def obtener_df_pca(num_componentes):
     
     return df_pca[columnas_componentes + ["final"]]
 
-def tranformar_date():
+def tranformar_date(df=None):
     '''
     Extrae de la columna "date" el día y lo transforma a un formato cíclico para 
     que el modelo pueda entenderlo mejor (usando senos y cosenos). Posteriormente lo sube a MinIO
     '''
 
-    df = lp.bajar_df_final()
+    if isinstance(df, pd.DataFrame):
+        print("Procesando el dataframe proporcionado...")
+    else:
+        df = lp.bajar_df_final()
+    
     print(df.columns)
 
     #Extraemos el día y lo transformamos con senos y cosenos a formato cíclico

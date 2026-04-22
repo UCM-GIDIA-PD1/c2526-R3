@@ -3,7 +3,8 @@ from . import minioFunctions
 import numpy as np
 import pandas as pd
 import geopandas as gpd 
-from datetime import date
+from datetime import date, timedelta
+import random
 
 # Filtros encargados de mejorar la precisión y utilidad de datos de no incendio generados
 
@@ -121,6 +122,39 @@ def crearFecha(dia, mes, anio):
     :param anio: Año
     :return str: Fecha en formato string (YYYY-MM-DD)
     '''
-  
-    fecha = date(anio, mes, dia)
-    return fecha.strftime("%Y-%m-%d")
+    hoy = date.today()
+    
+    try:
+        fecha_solicitada = date(anio, mes, dia)
+
+    except Exception:
+        
+        if mes == 2 and dia >= 29:
+            fecha_solicitada = date(anio, 2, 28)
+        else:
+            fecha_solicitada = date(anio, mes, 1)
+
+    if fecha_solicitada > hoy:
+
+        # Para el 1 de enero
+        if hoy.month == 1 and hoy.day == 1:
+            fecha_final = hoy
+        else:
+            nuevo_mes = random.randint(1, hoy.month)
+            
+            # Controlamos los valores de día 31 
+            if nuevo_mes < hoy.month:
+                if nuevo_mes == 12:
+                    ultimo_dia = 31
+                else:
+                    ultimo_dia = (date(anio, nuevo_mes + 1, 1) - timedelta(days=1)).day
+
+                nuevo_dia = random.randint(1, ultimo_dia)
+            else:
+                nuevo_dia = random.randint(1, hoy.day)
+            
+            fecha_final = date(anio, nuevo_mes, nuevo_dia)
+    else:
+        fecha_final = fecha_solicitada
+    
+    return fecha_final.strftime("%Y-%m-%d")

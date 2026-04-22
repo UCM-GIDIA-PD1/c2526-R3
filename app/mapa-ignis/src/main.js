@@ -754,7 +754,7 @@ function renderPredictionResults(data) {
 }
 
 
-coordsInput.addEventListener('change', (e) => {
+coordsInput.addEventListener('change', async (e) => {
     const val = e.target.value.trim();
     if (!val) return;
 
@@ -775,7 +775,31 @@ coordsInput.addEventListener('change', (e) => {
         
         // Basic check for Europe bounds
         if (lat < 27.6 || lat > 71.2 || lng < -31.8 || lng > 45.0) {
-            alert("Atención: Las coordenadas introducidas parecen estar fuera de Europa.");
+            alert("Atención: Las coordenadas introducidas están fuera de Europa. Por favor, selecciona un punto dentro del territorio europeo.");
+            coordsInput.value = headerCoords.textContent;
+            return;
+        }
+
+        try {
+            // Check country via reverse geocoding
+            const response = await fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?types=country&access_token=${mapboxgl.accessToken}`);
+            const data = await response.json();
+            
+            if (data.features && data.features.length > 0) {
+                const countryCode = data.features[0].properties.short_code.toLowerCase();
+                if (!europeanCountries.includes(countryCode)) {
+                    alert("Selección fuera de Europa. Por favor, introduce unas coordenadas en territorio europeo.");
+                    coordsInput.value = headerCoords.textContent;
+                    return;
+                }
+            } else {
+                 // No country found (e.g. ocean)
+                 alert("Ubicación en el mar o no válida. Por favor, selecciona un punto en tierra dentro de Europa.");
+                 coordsInput.value = headerCoords.textContent;
+                 return;
+            }
+        } catch (err) {
+            console.error("Geocoding error:", err);
         }
 
         setCoordinates(lng, lat);

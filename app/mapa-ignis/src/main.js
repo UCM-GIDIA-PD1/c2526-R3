@@ -216,7 +216,7 @@ document.getElementById('geocoder-container').appendChild(geocoder.onAdd(map));
 let currentMarker = null;
 let selectedLat = null;
 let selectedLon = null;
-const API_BASE_URL = 'http://localhost:8000'; // Ajusta si el puerto es diferente
+const API_BASE_URL = window.location.origin;
 
 // Application Mode: 'prediction' | 'history'
 let appMode = 'prediction';

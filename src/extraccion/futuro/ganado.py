@@ -12,7 +12,7 @@ from rasterio.windows import Window
 from dotenv import load_dotenv
 
 import asyncio
-from extraccion import minioFunctions
+from .. import minioFunctions
 import numpy as np
 
 def obtenerNumero(lat, lon,matriz, src, transformer):

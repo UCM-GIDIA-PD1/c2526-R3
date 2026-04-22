@@ -1,19 +1,15 @@
-from fastapi import FastAPI
-from fastapi.responses import StreamingResponse
+from fastapi import FastAPI, Request, HTTPException
+from fastapi.responses import StreamingResponse, HTMLResponse, FileResponse
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.templating import Jinja2Templates
+from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
 import os
 import sys
-from fastapi import FastAPI, Request
-from fastapi.templating import Jinja2Templates
-from fastapi.staticfiles import StaticFiles
-from fastapi.responses import HTMLResponse, FileResponse
-from fastapi import HTTPException
-from joblib import load
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../')))
 
-from src.extraccion.minioFunctions import crear_cliente, bajar_modelo, bajar_fichero, bajar_imagen
+from src.extraccion.minioFunctions import crear_cliente, bajar_fichero, bajar_imagen
 from app.schemas import IncendioRequest, OcurrenciaResponse, IntensidadResponse
 from app.services.fire_service import procesar_ocurrencia, procesar_intensidad
 
@@ -35,7 +31,7 @@ async def lifespan(app: FastAPI):
         print("Cargando modelo de intensidad (FRP) desde MinIO...")
         cliente = crear_cliente()
         path_modelo_frp = "grupo3/Modelos/modelo_xgboost_frp.pkl" 
-        ml_models["xgboost_frp"] = bajar_modelo(cliente, path_modelo_frp)
+        ml_models["xgboost_frp"] = bajar_fichero(cliente, path_modelo_frp, type="pkl")
         print("Modelo de intensidad cargado exitosamente.")
     except Exception as e:
         print(f"Error al cargar el modelo de intensidad (FRP) desde MinIO: {e}")

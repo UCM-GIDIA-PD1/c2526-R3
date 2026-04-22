@@ -1,4 +1,4 @@
-from extraccion import minioFunctions
+from . import minioFunctions
 import pandas as pd
 
 def guardar_parcial(df, prefijo="parcial"):

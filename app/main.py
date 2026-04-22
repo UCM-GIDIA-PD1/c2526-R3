@@ -6,7 +6,9 @@ import os
 import sys
 from fastapi import FastAPI, Request
 from fastapi.templating import Jinja2Templates
-from fastapi.responses import HTMLResponse
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import HTMLResponse, FileResponse
+from fastapi import HTTPException
 from joblib import load
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../')))
@@ -50,8 +52,6 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-templates = Jinja2Templates(directory="templates")
-
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -60,16 +60,36 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Llamadas para las páginas de información 
+template_index = Jinja2Templates(directory="app/mapa-ignis/dist")
+app.mount("/assets", StaticFiles(directory="app/mapa-ignis/dist/assets"), name="assets")
+
+# Endpoint para la página principal
+@app.get("/", response_class=HTMLResponse)
+def index(request: Request):
+    """
+    Endpoint para mostrar la página principal
+    """
+    return template_index.TemplateResponse(request=request, name="index.html")
+
+
+templates = Jinja2Templates(directory="app/templates")
+
+# Endpoints para las páginas de información 
 @app.get("/info_incendios", response_class=HTMLResponse)
 def info_incendios(request: Request):
-    return templates.TemplateResponse("info_incendios.html", {"request": request})
+    """
+    Endpoint para mostrar la página informativa del modelo de incendios
+    """
+    return templates.TemplateResponse(request=request, name="info_incendios.html")
 
 @app.get("/info_frp", response_class=HTMLResponse)
 def info_frp(request: Request):
-    return templates.TemplateResponse("info_frp.html", {"request": request})
+    """
+    Endpoint para mostrar la página informativa del modelo de frp
+    """
+    return templates.TemplateResponse(request=request, name="info_frp.html")
 
-# Llamada para obtener las imágenes desde MinIO
+# Endpoint para obtener las imágenes desde MinIO
 @app.get("/imagen/{filename}")
 def obtener_imagen_minio(filename: str):
     """
@@ -84,7 +104,7 @@ def obtener_imagen_minio(filename: str):
         print(f"Error cargando imagen de MinIO: {e}")
         return {"error": "Imagen no encontrada"}
 
-# Llamadas para las predicciones
+# Endpoints para las predicciones
 @app.post("/predict/ocurrencia", response_model=OcurrenciaResponse)
 async def predict_ocurrencia(request: IncendioRequest):
     """
@@ -102,3 +122,13 @@ async def predict_intensidad(request: IncendioRequest):
     modelo_frp = ml_models.get("xgboost_frp")
     response_data = await procesar_intensidad(request, modelo_frp)
     return response_data
+
+@app.get("/{filename}")
+def get_root_static(filename: str):
+    """
+    Endpoint Catch-All para servir archivos en la raíz del build (como fires.geojson, ico, png, etc)
+    """
+    file_path = os.path.join("app/mapa-ignis/dist", filename)
+    if os.path.isfile(file_path):
+        return FileResponse(file_path)
+    raise HTTPException(status_code=404, detail="Archivo no encontrado")

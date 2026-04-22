@@ -3,6 +3,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 import os
 import sys
+from fastapi import FastAPI, Request
+from fastapi.templating import Jinja2Templates
+from fastapi.responses import HTMLResponse
+from joblib import load
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../')))
 
@@ -45,6 +49,8 @@ app = FastAPI(
     lifespan=lifespan
 )
 
+templates = Jinja2Templates(directory="templates")
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -53,6 +59,16 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Llamadas para las páginas de información 
+@app.get("/info_incendios", response_class=HTMLResponse)
+def info_incendios(request: Request):
+    return templates.TemplateResponse("info_incendios.html", {"request": request})
+
+@app.get("/info_frp", response_class=HTMLResponse)
+def info_frp(request: Request):
+    return templates.TemplateResponse("info_frp.html", {"request": request})
+
+# Llamada para obtener las imágenes desde MinIO
 @app.get("/imagen/{filename}")
 def obtener_imagen_minio(filename: str):
     """
@@ -67,6 +83,7 @@ def obtener_imagen_minio(filename: str):
         print(f"Error cargando imagen de MinIO: {e}")
         return {"error": "Imagen no encontrada"}
 
+# Llamadas para las predicciones
 @app.post("/predict/ocurrencia", response_model=OcurrenciaResponse)
 async def predict_ocurrencia(request: IncendioRequest):
     """

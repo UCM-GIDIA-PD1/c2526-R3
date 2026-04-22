@@ -159,17 +159,17 @@ body {
   background-color: var(--panel-bg);
   backdrop-filter: blur(12px);
   border: 1px solid var(--panel-border);
-  border-radius: 30px;
-  padding: 4px;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+  border-radius: 24px;
+  padding: 3px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.4);
 }
 
 .mode-btn {
   background: transparent;
   border: none;
-  border-radius: 26px;
-  padding: 8px 20px;
-  font-size: 0.9rem;
+  border-radius: 20px;
+  padding: 6px 16px;
+  font-size: 0.8rem;
   font-weight: 600;
   color: var(--text-muted);
   cursor: pointer;
@@ -186,32 +186,87 @@ body {
   box-shadow: 0 2px 8px rgba(239, 68, 68, 0.4);
 }
 
-#heatmap-toggle-wrapper {
-  margin-top: 10px;
+/* Layer Control — bottom left */
+#layer-control-wrapper {
+  position: absolute;
+  bottom: 30px;
+  left: 20px;
+  z-index: 10;
   display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
+  flex-direction: column;
+  gap: 2px;
   background-color: var(--panel-bg);
   backdrop-filter: blur(12px);
-  padding: 6px 12px;
-  border-radius: 20px;
+  padding: 8px 12px;
+  border-radius: 10px;
   border: 1px solid var(--panel-border);
-  box-shadow: 0 4px 10px rgba(0,0,0,0.4);
-  transition: opacity 0.3s ease;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.35);
+  transition: opacity 0.3s ease, transform 0.3s ease;
 }
 
-#heatmap-toggle-wrapper.hidden {
+#layer-control-wrapper.hidden {
   display: none !important;
 }
 
-.toggle-label {
-  font-size: 0.8rem;
-  color: var(--text);
-  font-weight: 500;
+.layer-control-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.2s;
 }
 
-/* Switch styling */
+.layer-control-item:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.layer-control-item input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 18px;
+  height: 18px;
+  border: 2px solid var(--panel-border);
+  border-radius: 4px;
+  background: var(--input-bg);
+  cursor: pointer;
+  position: relative;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+
+.layer-control-item input[type="checkbox"]:checked {
+  background: var(--accent-fire);
+  border-color: var(--accent-fire);
+}
+
+.layer-control-item input[type="checkbox"]:checked::after {
+  content: '✓';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 12px;
+  color: #fff;
+  font-weight: 700;
+}
+
+.layer-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.82rem;
+  color: var(--text);
+  cursor: pointer;
+  user-select: none;
+}
+
+.layer-icon {
+  font-size: 0.9rem;
+}
+
+/* Switch styling (kept for potential reuse) */
 .toggle-switch {
   position: relative;
   display: inline-block;

@@ -31,12 +31,23 @@
         <button id="mode-prediction-btn" class="mode-btn active">Predecir Incendios</button>
         <button id="mode-history-btn" class="mode-btn">Ver Histórico</button>
       </div>
-      <div id="heatmap-toggle-wrapper" class="hidden">
-        <label class="toggle-switch">
-          <input type="checkbox" id="heatmap-toggle" checked>
-          <span class="slider round"></span>
+    </div>
+
+    <!-- Layer Control (bottom-left, independent) -->
+    <div id="layer-control-wrapper" class="hidden">
+      <div class="layer-control-item">
+        <input type="checkbox" id="layer-incendios" checked>
+        <label for="layer-incendios" class="layer-label">
+          <span class="layer-icon">🔥</span>
+          <span>Incendios</span>
         </label>
-        <span class="toggle-label">Mapa de Calor</span>
+      </div>
+      <div class="layer-control-item">
+        <input type="checkbox" id="layer-heatmap" checked>
+        <label for="layer-heatmap" class="layer-label">
+          <span class="layer-icon">🌡️</span>
+          <span>Mapa de Calor</span>
+        </label>
       </div>
     </div>
 

@@ -55,11 +55,20 @@ function addCustomLayers() {
         });
     }
 
-    // Añadir fuente de datos de incendios históricos
+    // Añadir fuente de datos de incendios históricos (sin clustering para heatmap)
+    if (!map.getSource('historical-fires-heatmap')) {
+        map.addSource('historical-fires-heatmap', {
+            type: 'geojson',
+            data: '/fires.geojson',
+            cluster: false
+        });
+    }
+
+    // Fuente con clustering para marcadores
     if (!map.getSource('historical-fires')) {
         map.addSource('historical-fires', {
             type: 'geojson',
-            data: '/fires.geojson', // Se cargará dinámicamente de public/
+            data: '/fires.geojson',
             cluster: true,
             clusterMaxZoom: 14,
             clusterRadius: 50
@@ -68,44 +77,55 @@ function addCustomLayers() {
 
     const historyVisibility = appMode === 'history' ? 'visible' : 'none';
 
+    // Heatmap layer using unclustered source for better gradient coverage
     if (!map.getLayer('fires-heatmap')) {
         map.addLayer({
             id: 'fires-heatmap',
             type: 'heatmap',
-            source: 'historical-fires',
+            source: 'historical-fires-heatmap',
             paint: {
-                'heatmap-weight': [
-                    'interpolate',
-                    ['linear'],
-                    ['get', 'point_count'],
-                    0, 1,
-                    500, 3
-                ],
+                'heatmap-weight': 1,
                 'heatmap-intensity': [
                     'interpolate',
                     ['linear'],
                     ['zoom'],
-                    0, 1,
+                    0, 0.6,
+                    5, 1.2,
+                    10, 2,
                     15, 3
                 ],
+                // Yellow → Orange → Red gradient matching the reference image
                 'heatmap-color': [
                     'interpolate',
                     ['linear'],
                     ['heatmap-density'],
-                    0, 'rgba(0, 255, 0, 0)',
-                    0.2, 'rgba(132, 204, 34, 0.5)', 
-                    0.5, 'rgba(234, 179, 8, 0.6)',  
-                    0.8, 'rgba(249, 115, 22, 0.7)', 
-                    1, 'rgba(239, 68, 68, 0.8)'     
+                    0, 'rgba(255, 255, 0, 0)',
+                    0.15, 'rgba(255, 255, 100, 0.4)',
+                    0.3, 'rgba(255, 230, 50, 0.55)',
+                    0.5, 'rgba(255, 190, 0, 0.65)',
+                    0.7, 'rgba(255, 140, 0, 0.75)',
+                    0.85, 'rgba(255, 80, 0, 0.85)',
+                    1, 'rgba(255, 20, 0, 0.95)'
                 ],
                 'heatmap-radius': [
                     'interpolate',
                     ['linear'],
                     ['zoom'],
-                    0, 15,
-                    9, 30
+                    0, 8,
+                    3, 20,
+                    5, 30,
+                    7, 40,
+                    9, 50,
+                    12, 60
                 ],
-                'heatmap-opacity': 0.8
+                'heatmap-opacity': [
+                    'interpolate',
+                    ['linear'],
+                    ['zoom'],
+                    0, 0.75,
+                    9, 0.65,
+                    12, 0.5
+                ]
             },
             layout: { visibility: historyVisibility }
         });
@@ -121,27 +141,24 @@ function addCustomLayers() {
                 'circle-color': [
                     'step',
                     ['get', 'point_count'],
-                    'rgba(132, 204, 34, 0.6)', 20, 
-                    'rgba(250, 204, 21, 0.6)', 50, 
-                    'rgba(249, 115, 22, 0.6)', 150, 
-                    'rgba(239, 68, 68, 0.6)'
+                    'rgba(181, 226, 140, 0.9)', 10, 
+                    'rgba(241, 211, 87, 0.9)', 100, 
+                    'rgba(253, 156, 115, 0.9)'
                 ],
                 'circle-radius': [
                     'step',
                     ['get', 'point_count'],
-                    16, 20,
-                    20, 50,
-                    24, 150,
-                    28
+                    16, 10,
+                    20, 100,
+                    24
                 ],
-                'circle-stroke-width': 12,
+                'circle-stroke-width': 10,
                 'circle-stroke-color': [
                     'step',
                     ['get', 'point_count'],
-                    'rgba(132, 204, 34, 0.25)', 20,
-                    'rgba(250, 204, 21, 0.25)', 50,
-                    'rgba(249, 115, 22, 0.25)', 150,
-                    'rgba(239, 68, 68, 0.25)'
+                    'rgba(110, 204, 57, 0.5)', 10,
+                    'rgba(240, 194, 12, 0.5)', 100,
+                    'rgba(241, 128, 23, 0.5)'
                 ]
             },
             layout: { visibility: historyVisibility }
@@ -204,8 +221,9 @@ let appMode = 'prediction';
 // Mode DOM Elements
 const btnModePrediction = document.getElementById('mode-prediction-btn');
 const btnModeHistory = document.getElementById('mode-history-btn');
-const heatmapToggleWrapper = document.getElementById('heatmap-toggle-wrapper');
-const heatmapToggle = document.getElementById('heatmap-toggle');
+const layerControlWrapper = document.getElementById('layer-control-wrapper');
+const layerIncendios = document.getElementById('layer-incendios');
+const layerHeatmap = document.getElementById('layer-heatmap');
 
 // Prediction UI Elements
 const headerCoords = document.getElementById('header-coords');
@@ -479,8 +497,16 @@ closeHistoryBtn.addEventListener('click', () => {
     closeHistoryPanel();
 });
 
-// Heatmap Toggle
-heatmapToggle.addEventListener('change', (e) => {
+// Layer Control: toggle incendios (clusters) layer
+layerIncendios.addEventListener('change', (e) => {
+    const vis = e.target.checked ? 'visible' : 'none';
+    if (map.getLayer('clusters')) map.setLayoutProperty('clusters', 'visibility', vis);
+    if (map.getLayer('cluster-count')) map.setLayoutProperty('cluster-count', 'visibility', vis);
+    if (map.getLayer('unclustered-point')) map.setLayoutProperty('unclustered-point', 'visibility', vis);
+});
+
+// Layer Control: toggle heatmap layer
+layerHeatmap.addEventListener('change', (e) => {
     if (map.getLayer('fires-heatmap')) {
         map.setLayoutProperty('fires-heatmap', 'visibility', e.target.checked ? 'visible' : 'none');
     }
@@ -492,7 +518,7 @@ btnModePrediction.addEventListener('click', () => {
     appMode = 'prediction';
     btnModePrediction.classList.add('active');
     btnModeHistory.classList.remove('active');
-    heatmapToggleWrapper.classList.add('hidden');
+    layerControlWrapper.classList.add('hidden');
     
     // Ocultar capas del histórico
     map.setLayoutProperty('fires-heatmap', 'visibility', 'none');
@@ -511,14 +537,15 @@ btnModeHistory.addEventListener('click', () => {
     appMode = 'history';
     btnModeHistory.classList.add('active');
     btnModePrediction.classList.remove('active');
-    heatmapToggleWrapper.classList.remove('hidden');
+    layerControlWrapper.classList.remove('hidden');
     
-    // Mostrar capas del histórico
-    const showHeatmap = heatmapToggle.checked ? 'visible' : 'none';
+    // Mostrar capas del histórico según checkboxes
+    const showHeatmap = layerHeatmap.checked ? 'visible' : 'none';
+    const showIncendios = layerIncendios.checked ? 'visible' : 'none';
     map.setLayoutProperty('fires-heatmap', 'visibility', showHeatmap);
-    map.setLayoutProperty('clusters', 'visibility', 'visible');
-    map.setLayoutProperty('cluster-count', 'visibility', 'visible');
-    map.setLayoutProperty('unclustered-point', 'visibility', 'visible');
+    map.setLayoutProperty('clusters', 'visibility', showIncendios);
+    map.setLayoutProperty('cluster-count', 'visibility', showIncendios);
+    map.setLayoutProperty('unclustered-point', 'visibility', showIncendios);
     
     map.getCanvas().style.cursor = 'pointer';
     closePanel();

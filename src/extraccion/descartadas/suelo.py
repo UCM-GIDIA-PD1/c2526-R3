@@ -11,8 +11,8 @@ import time
 from rasterio.windows import Window
 from dotenv import load_dotenv
 import asyncio
-from extraccion import minioFunctions
-from extraccion import interrupcion
+from .. import minioFunctions
+from .. import interrupcion
 from pathlib import Path
 
 def obtenerValorSuelo(lat, lon, src, transformer):

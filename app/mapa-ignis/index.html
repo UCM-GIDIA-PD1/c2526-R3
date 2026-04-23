@@ -1,121 +1,174 @@
 <!doctype html>
 <html lang="es">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/png" href="/favicon.png" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>IGNIS AI — Predicción Geográfica de Incendios</title>
-    <link href="https://api.mapbox.com/mapbox-gl-js/v3.0.0/mapbox-gl.css" rel="stylesheet" />
-    <link rel="stylesheet" href="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-geocoder/v5.0.3/mapbox-gl-geocoder.css" type="text/css">
-  </head>
-  <body>
-    <div id="map"></div>
-    
-    <!-- Top Left Search Area -->
-    <div id="top-left-controls">
-      <a href="/" id="brand" aria-label="IGNIS AI">
-        <img src="/logo.png" alt="IGNIS AI" />
-      </a>
-      <button id="target-btn" class="icon-btn" aria-label="Target Location">
-        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="3"></circle></svg>
+
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon" type="image/png" href="/imagen/favicon.png" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>IGNIS AI — Predicción Geográfica de Incendios</title>
+  <link href="https://api.mapbox.com/mapbox-gl-js/v3.0.0/mapbox-gl.css" rel="stylesheet" />
+  <link rel="stylesheet"
+    href="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-geocoder/v5.0.3/mapbox-gl-geocoder.css" type="text/css">
+</head>
+
+<body>
+  <div id="map"></div>
+
+  <!-- Top Left Search Area -->
+  <div id="top-left-controls">
+    <a href="/" id="brand" aria-label="IGNIS AI">
+      <img src="/imagen/logo.png" alt="IGNIS AI" />
+    </a>
+
+    <div class="nav-dropdown">
+      <button class="icon-btn" id="nav-menu-btn" aria-label="Menú de Navegación" title="Menú de Navegación">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
+          stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="3" y1="12" x2="21" y2="12"></line>
+          <line x1="3" y1="6" x2="21" y2="6"></line>
+          <line x1="3" y1="18" x2="21" y2="18"></line>
+        </svg>
       </button>
-      <button id="back-btn" class="icon-btn hidden" aria-label="Volver a la vista anterior" title="Volver a la vista anterior">
-        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
-      </button>
-      <div id="geocoder-container"></div>
-    </div>
-
-    <!-- Main Mode Toggle -->
-    <div id="mode-toggle-container">
-      <div class="mode-toggle">
-        <button id="mode-prediction-btn" class="mode-btn active">Predecir Incendios</button>
-        <button id="mode-history-btn" class="mode-btn">Ver Histórico</button>
+      <div class="nav-dropdown-content">
+        <a href="/info_incendios">
+          Modelo predicción de incendios
+        </a>
+        <a href="/info_frp">
+          Modelo predicción del FRP
+        </a>
       </div>
     </div>
-
-    <!-- Layer Control (bottom-left, independent) -->
-    <div id="layer-control-wrapper" class="hidden">
-      <div class="layer-control-item">
-        <input type="checkbox" id="layer-incendios" checked>
-        <label for="layer-incendios" class="layer-label">
-          <span class="layer-icon">🔥</span>
-          <span>Incendios</span>
-        </label>
-      </div>
-      <div class="layer-control-item">
-        <input type="checkbox" id="layer-heatmap" checked>
-        <label for="layer-heatmap" class="layer-label">
-          <span class="layer-icon">🌡️</span>
-          <span>Mapa de Calor</span>
-        </label>
-      </div>
-    </div>
-
-    <!-- Toggle to reopen the right panel -->
-    <button id="open-panel-btn" class="icon-btn hidden" aria-label="Abrir panel" title="Abrir panel">
-      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+    <button id="target-btn" class="icon-btn" aria-label="Target Location">
+      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
+        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="10"></circle>
+        <circle cx="12" cy="12" r="3"></circle>
+      </svg>
     </button>
+    <button id="back-btn" class="icon-btn hidden" aria-label="Volver a la vista anterior"
+      title="Volver a la vista anterior">
+      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
+        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="19" y1="12" x2="5" y2="12"></line>
+        <polyline points="12 19 5 12 12 5"></polyline>
+      </svg>
+    </button>
+    <div id="geocoder-container"></div>
+  </div>
 
-    <!-- Right Side Panel -->
-    <div id="prediction-panel" class="side-panel is-hidden">
-      <div class="panel-header">
-        <div class="panel-title-area">
-          <h2>Panel de Predicción de Riesgo de Incendios</h2>
-          <p class="subtitle">Paneles de predicción de riesgo de incendios</p>
-          <p class="header-coords" id="header-coords">--º N, --º W</p>
-        </div>
-        <button class="close-btn" id="close-panel-btn">✕</button>
+  <!-- Main Mode Toggle -->
+  <div id="mode-toggle-container">
+    <div class="mode-toggle">
+      <button id="mode-prediction-btn" class="mode-btn active">Predecir Incendios</button>
+      <button id="mode-history-btn" class="mode-btn">Ver Histórico</button>
+    </div>
+  </div>
+
+  <!-- Year Slider Container (for History mode) -->
+  <div id="year-slider-container" class="hidden">
+    <div class="slider-header">
+      <span class="slider-title">Año Histórico:</span>
+      <span id="year-display" class="year-value">2023</span>
+    </div>
+    <div class="slider-wrapper">
+      <input type="range" id="year-slider" min="2022" max="2025" value="2023" step="1" />
+      <div class="slider-ticks">
+        <span>2022</span>
+        <span>2023</span>
+        <span>2024</span>
+        <span>2025</span>
       </div>
+    </div>
+  </div>
 
-      <div class="input-group">
-        <label>Coordenadas</label>
-        <input type="text" id="coords-input" value="" placeholder="Ej: 40.4168, -3.7838" />
+  <!-- Layer Control (bottom-left, independent) -->
+  <div id="layer-control-wrapper" class="hidden">
+    <div class="layer-control-item">
+      <input type="checkbox" id="layer-incendios" checked>
+      <label for="layer-incendios" class="layer-label">
+        <span class="layer-icon">🔥</span>
+        <span>Incendios</span>
+      </label>
+    </div>
+    <div class="layer-control-item">
+      <input type="checkbox" id="layer-heatmap" checked>
+      <label for="layer-heatmap" class="layer-label">
+        <span class="layer-icon">🌡️</span>
+        <span>Mapa de Calor</span>
+      </label>
+    </div>
+  </div>
+
+  <!-- Toggle to reopen the right panel -->
+  <button id="open-panel-btn" class="icon-btn hidden" aria-label="Abrir panel" title="Abrir panel">
+    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="15 18 9 12 15 6"></polyline>
+    </svg>
+  </button>
+
+  <!-- Right Side Panel -->
+  <div id="prediction-panel" class="side-panel is-hidden">
+    <div class="panel-header">
+      <div class="panel-title-area">
+        <h2>Panel de Predicción de Riesgo de Incendios</h2>
+        <p class="subtitle">Paneles de predicción de riesgo de incendios</p>
+        <p class="header-coords" id="header-coords">--º N, --º W</p>
       </div>
+      <button class="close-btn" id="close-panel-btn">✕</button>
+    </div>
 
-      <div class="input-group">
-        <label>Fecha</label>
-        <input type="date" id="date-input" />
-      </div>
+    <div class="input-group">
+      <label>Coordenadas</label>
+      <input type="text" id="coords-input" value="" placeholder="Ej: 40.4168, -3.7838" />
+    </div>
 
-      <div class="tabs-section">
-        <label>Tipo de predicción de incendios</label>
-        <div class="tabs-container">
-          <button class="tab-btn active" id="tab-riesgo">
-            <span class="tab-icon">🔥</span>
-            <span>Predicción de Riesgo</span>
-          </button>
-          <button class="tab-btn" id="tab-frp">
-            <span class="tab-icon">⚡</span>
-            <span>Predicción de FRP</span>
-          </button>
-        </div>
-      </div>
+    <div class="input-group">
+      <label>Fecha</label>
+      <input type="date" id="date-input" />
+    </div>
 
-      <div id="results-container">
-        <!-- Results injected here by JS -->
-      </div>
-
-      <div class="action-section">
-        <button id="action-btn" class="primary-btn">Generar predicción</button>
+    <div class="tabs-section">
+      <label>Tipo de predicción de incendios</label>
+      <div class="tabs-container">
+        <button class="tab-btn active" id="tab-riesgo">
+          <span class="tab-icon">🔥</span>
+          <span>Predicción de Riesgo</span>
+        </button>
+        <button class="tab-btn" id="tab-frp">
+          <span class="tab-icon">⚡</span>
+          <span>Predicción de FRP</span>
+        </button>
       </div>
     </div>
 
-    <!-- History Panel -->
-    <div id="history-panel" class="side-panel is-hidden">
-      <div class="panel-header">
-        <div class="panel-title-area">
-          <h2>Información de Incendio</h2>
-          <p class="subtitle">Datos históricos registrados</p>
-          <p class="header-coords" id="history-header-coords">--º N, --º W</p>
-        </div>
-        <button class="close-btn" id="close-history-btn">✕</button>
-      </div>
-
-      <div id="history-content-container">
-        <!-- Data injected here by JS -->
-      </div>
+    <div id="results-container">
+      <!-- Results injected here by JS -->
     </div>
 
-    <script type="module" src="/src/main.js"></script>
-  </body>
+    <div class="action-section">
+      <button id="action-btn" class="primary-btn">Generar predicción</button>
+    </div>
+  </div>
+
+  <!-- History Panel -->
+  <div id="history-panel" class="side-panel is-hidden">
+    <div class="panel-header">
+      <div class="panel-title-area">
+        <h2>Información de Incendio</h2>
+        <p class="subtitle">Datos históricos registrados</p>
+        <p class="header-coords" id="history-header-coords">--º N, --º W</p>
+      </div>
+      <button class="close-btn" id="close-history-btn">✕</button>
+    </div>
+
+    <div id="history-content-container">
+      <!-- Data injected here by JS -->
+    </div>
+  </div>
+
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+
 </html>

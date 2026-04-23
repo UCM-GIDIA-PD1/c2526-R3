@@ -1,5 +1,5 @@
 import pandas as pd
-from extraccion import minioFunctions
+from .. import minioFunctions
 import numpy as np
 from sklearn.neighbors import BallTree
 import asyncio

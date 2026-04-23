@@ -4,8 +4,8 @@ from sklearn.cluster import DBSCAN
 import geopandas as gpd
 import pandas as pd
 from shapely.geometry import MultiPoint
-from extraccion import minioFunctions
-from extraccion import interrupcion
+from . import minioFunctions
+from . import interrupcion
 import datetime
 
 # Funciones encargadas transformar y limpiar los diferentes .csv de incendios en DataFrames utilizables y útiles

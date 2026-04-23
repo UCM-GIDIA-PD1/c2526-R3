@@ -106,40 +106,13 @@ def bajar_fichero_local(cliente, path_server: Path, path_local: Path):
         file_path=path_local,
     )
 
-def bajar_modelo(cliente, path_server: Path):
-    '''
-    Baja un modelo desde un archivo .joblib desde la ruta especificada.
-
-    :param cliente: cliente de MinIO (función crear_cliente())
-    :param path_server: path del modelo en MinIO
-    '''
-
-    response = cliente.get_object(
-            bucket_name="pd1",
-            object_name=path_server,
-            )
-    
-    buffer = io.BytesIO(response.read())
-
-    model = load(buffer)
-
-    response.close()
-
-    return model
 
 def bajar_imagen(cliente, path_server: Path):
     response = cliente.get_object(
         bucket_name="pd1",
         object_name=path_server
     )
-    
-    buffer = io.BytesIO(response.read())
-
-    imagen = load(buffer)
-
-    response.close()
-
-    return imagen
+    return response
 
 # Función encargada de automatizar la subida de .parquets a Minio
 

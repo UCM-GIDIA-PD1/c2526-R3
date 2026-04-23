@@ -4,8 +4,8 @@ import pandas as pd
 import time
 from datetime import datetime
 import numpy as np
-from extraccion import interrupcion
-from extraccion import minioFunctions
+from .. import interrupcion
+from .. import minioFunctions
 
 sem_global = asyncio.Semaphore(10)
 

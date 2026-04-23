@@ -1,4 +1,4 @@
-from extraccion import minioFunctions, incendios, filtros_no_incendio, puntos_no_incendio, construccion_df
+from . import minioFunctions, incendios, filtros_no_incendio, puntos_no_incendio, construccion_df
 from limpieza import limpieza
 import pandas as pd
 import asyncio

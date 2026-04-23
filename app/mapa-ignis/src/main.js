@@ -17,7 +17,7 @@ const europeBounds = [
 const map = new mapboxgl.Map({
     container: 'map',
     style: 'mapbox://styles/mapbox/satellite-streets-v12',
-    center: defaultCenter, 
+    center: defaultCenter,
     zoom: 5,
     pitch: 0,
     bearing: 0,
@@ -42,7 +42,7 @@ function addCustomLayers() {
         });
     }
     map.setTerrain({ 'source': 'mapbox-dem', 'exaggeration': 1.5 });
-    
+
     if (!map.getLayer('sky')) {
         map.addLayer({
             'id': 'sky',
@@ -59,7 +59,7 @@ function addCustomLayers() {
     if (!map.getSource('historical-fires-heatmap')) {
         map.addSource('historical-fires-heatmap', {
             type: 'geojson',
-            data: '/fires.geojson',
+            data: `${API_BASE_URL}/geojson/2023`,
             cluster: false
         });
     }
@@ -68,7 +68,7 @@ function addCustomLayers() {
     if (!map.getSource('historical-fires')) {
         map.addSource('historical-fires', {
             type: 'geojson',
-            data: '/fires.geojson',
+            data: `${API_BASE_URL}/geojson/2023`,
             cluster: true,
             clusterMaxZoom: 14,
             clusterRadius: 50
@@ -141,8 +141,8 @@ function addCustomLayers() {
                 'circle-color': [
                     'step',
                     ['get', 'point_count'],
-                    'rgba(181, 226, 140, 0.9)', 10, 
-                    'rgba(241, 211, 87, 0.9)', 100, 
+                    'rgba(181, 226, 140, 0.9)', 10,
+                    'rgba(241, 211, 87, 0.9)', 100,
                     'rgba(253, 156, 115, 0.9)'
                 ],
                 'circle-radius': [
@@ -216,7 +216,7 @@ document.getElementById('geocoder-container').appendChild(geocoder.onAdd(map));
 let currentMarker = null;
 let selectedLat = null;
 let selectedLon = null;
-const API_BASE_URL = 'http://localhost:8000'; // Ajusta si el puerto es diferente
+const API_BASE_URL = window.location.origin;
 
 // Application Mode: 'prediction' | 'history'
 let appMode = 'prediction';
@@ -245,10 +245,29 @@ const closeHistoryBtn = document.getElementById('close-history-btn');
 const historyContent = document.getElementById('history-content-container');
 const historyHeaderCoords = document.getElementById('history-header-coords');
 
+// Year Slider Elements
+const yearSliderContainer = document.getElementById('year-slider-container');
+const yearSlider = document.getElementById('year-slider');
+const yearDisplay = document.getElementById('year-display');
+
 const backBtn = document.getElementById('back-btn');
 const openPanelBtn = document.getElementById('open-panel-btn');
 
 let previousView = null;
+
+// Handle year slider changes
+yearSlider.addEventListener('input', (e) => {
+    const selectedYear = e.target.value;
+    yearDisplay.textContent = selectedYear;
+
+    // Update map sources dynamically
+    if (map.getSource('historical-fires-heatmap')) {
+        map.getSource('historical-fires-heatmap').setData(`${API_BASE_URL}/geojson/${selectedYear}`);
+    }
+    if (map.getSource('historical-fires')) {
+        map.getSource('historical-fires').setData(`${API_BASE_URL}/geojson/${selectedYear}`);
+    }
+});
 
 // Set today's date implicitly, restrict past dates and limit future to 15 days
 const today = new Date();
@@ -279,9 +298,9 @@ let hasPrediction = false;
 
 // Valid European country ISO codes
 const europeanCountries = [
-    'ad', 'al', 'at', 'ba', 'be', 'bg', 'by', 'ch', 'cy', 'cz', 'de', 'dk', 'ee', 
-    'es', 'fi', 'fr', 'gb', 'gr', 'hr', 'hu', 'ie', 'is', 'it', 'li', 'lt', 'lu', 
-    'lv', 'mc', 'md', 'me', 'mk', 'mt', 'nl', 'no', 'pl', 'pt', 'ro', 'rs', 'ru', 
+    'ad', 'al', 'at', 'ba', 'be', 'bg', 'by', 'ch', 'cy', 'cz', 'de', 'dk', 'ee',
+    'es', 'fi', 'fr', 'gb', 'gr', 'hr', 'hu', 'ie', 'is', 'it', 'li', 'lt', 'lu',
+    'lv', 'mc', 'md', 'me', 'mk', 'mt', 'nl', 'no', 'pl', 'pt', 'ro', 'rs', 'ru',
     'se', 'si', 'sk', 'sm', 'ua', 'va', 'xk'
 ];
 
@@ -320,7 +339,7 @@ map.on('click', async (e) => {
             openHistoryPanel(lng, lat, props);
             map.flyTo({
                 center: [lng, lat],
-                zoom: 14,
+                zoom: 10,
                 pitch: 45,
                 duration: 1500,
                 essential: true
@@ -333,7 +352,7 @@ map.on('click', async (e) => {
         // Check country via reverse geocoding
         const response = await fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?types=country&access_token=${mapboxgl.accessToken}`);
         const data = await response.json();
-        
+
         if (data.features && data.features.length > 0) {
             const countryCode = data.features[0].properties.short_code.toLowerCase();
             if (!europeanCountries.includes(countryCode)) {
@@ -341,9 +360,9 @@ map.on('click', async (e) => {
                 return;
             }
         } else {
-             // No country found (e.g. ocean)
-             alert("Ubicación en el mar o no válida. Por favor, selecciona un punto en tierra dentro de Europa.");
-             return;
+            // No country found (e.g. ocean)
+            alert("Ubicación en el mar o no válida. Por favor, selecciona un punto en tierra dentro de Europa.");
+            return;
         }
     } catch (err) {
         console.error("Geocoding error:", err);
@@ -355,7 +374,7 @@ map.on('click', async (e) => {
 
     map.flyTo({
         center: [lng, lat],
-        zoom: 14,
+        zoom: 9,
         pitch: 65,
         duration: 1500, // Smooth transition duration
         essential: true
@@ -406,7 +425,7 @@ function openHistoryPanel(lng, lat, data) {
         <div class="data-grid">
             <div class="data-item full-width">
                 <div class="data-label">Fecha de Registro</div>
-                <div class="data-value">${data.fecha || 'N/A'}</div>
+                <div class="data-value">${data.date || 'N/A'}</div>
             </div>
             <div class="data-item">
                 <div class="data-label">Temp Med (${data.temp_min} - ${data.temp_max})</div>
@@ -480,9 +499,9 @@ function setCoordinates(lng, lat) {
     const formatLat = lat.toFixed(4);
     const lngDir = lng >= 0 ? 'E' : 'W';
     const latDir = lat >= 0 ? 'N' : 'S';
-    
+
     const coordString = `${Math.abs(formatLat)}° ${latDir}, ${Math.abs(formatLng)}° ${lngDir}`;
-    
+
     headerCoords.textContent = coordString;
     coordsInput.value = coordString;
 
@@ -527,20 +546,21 @@ btnModePrediction.addEventListener('click', () => {
     btnModePrediction.classList.add('active');
     btnModeHistory.classList.remove('active');
     layerControlWrapper.classList.add('hidden');
-    
+    yearSliderContainer.classList.add('hidden');
+
     // Ocultar capas del histórico
     map.setLayoutProperty('fires-heatmap', 'visibility', 'none');
     map.setLayoutProperty('clusters', 'visibility', 'none');
     map.setLayoutProperty('cluster-count', 'visibility', 'none');
     map.setLayoutProperty('unclustered-point', 'visibility', 'none');
-    
+
     map.getCanvas().style.cursor = '';
     closeHistoryPanel();
-    
+
     if (panel.classList.contains('is-hidden')) {
         openPanelBtn.classList.remove('hidden');
     }
-    
+
     if (currentMarker) currentMarker.addTo(map);
 });
 
@@ -550,7 +570,8 @@ btnModeHistory.addEventListener('click', () => {
     btnModeHistory.classList.add('active');
     btnModePrediction.classList.remove('active');
     layerControlWrapper.classList.remove('hidden');
-    
+    yearSliderContainer.classList.remove('hidden');
+
     // Mostrar capas del histórico según checkboxes
     const showHeatmap = layerHeatmap.checked ? 'visible' : 'none';
     const showIncendios = layerIncendios.checked ? 'visible' : 'none';
@@ -558,11 +579,11 @@ btnModeHistory.addEventListener('click', () => {
     map.setLayoutProperty('clusters', 'visibility', showIncendios);
     map.setLayoutProperty('cluster-count', 'visibility', showIncendios);
     map.setLayoutProperty('unclustered-point', 'visibility', showIncendios);
-    
+
     map.getCanvas().style.cursor = 'pointer';
     closePanel();
     openPanelBtn.classList.add('hidden');
-    
+
     if (currentMarker) currentMarker.remove();
 });
 
@@ -595,14 +616,14 @@ tabFrp.addEventListener('click', () => {
 });
 
 actionBtn.addEventListener('click', async () => {
-    if(!selectedLat || !selectedLon) {
+    if (!selectedLat || !selectedLon) {
         alert("Por favor, selecciona una ubicación en el mapa primero.");
         return;
     }
-    
+
     actionBtn.disabled = true;
     actionBtn.textContent = 'Procesando...';
-    
+
     try {
         await performPrediction();
         hasPrediction = true;
@@ -655,7 +676,7 @@ function renderPredictionResults(data) {
     if (activeTab === 'riesgo') {
         const prob = (data.probabilidad * 100).toFixed(1);
         const riskClass = data.ocurrencia ? 'risk-high' : 'risk-low';
-        
+
         let variablesHtml = '';
         if (data.variables_clave) {
             variablesHtml = `
@@ -678,8 +699,8 @@ function renderPredictionResults(data) {
                 <div class="factors-title">Contribución al Riesgo (Importancia)</div>
                 <div class="importance-chart">
                     ${Object.entries(data.importancias).map(([name, imp]) => {
-                        const percent = (imp / maxImp * 100).toFixed(0);
-                        return `
+                const percent = (imp / maxImp * 100).toFixed(0);
+                return `
                             <div class="importance-item">
                                 <div class="importance-label">
                                     <span>${name}</span>
@@ -690,11 +711,11 @@ function renderPredictionResults(data) {
                                 </div>
                             </div>
                         `;
-                    }).join('')}
+            }).join('')}
                 </div>
             `;
         }
-        
+
         resultsContainer.innerHTML = `
             <div class="result-section">
                 <div class="result-header">Resultado de la Predicción</div>
@@ -717,7 +738,7 @@ function renderPredictionResults(data) {
         `;
     } else {
         const intensity = data.intensidad.toFixed(2);
-        
+
         let variablesHtml = '';
         if (data.variables_clave) {
             variablesHtml = `
@@ -772,7 +793,7 @@ coordsInput.addEventListener('change', async (e) => {
         if (lngDir === 'W') lng = -Math.abs(lng);
         if (latDir === 'N') lat = Math.abs(lat);
         if (lngDir === 'E') lng = Math.abs(lng);
-        
+
         // Basic check for Europe bounds
         if (lat < 27.6 || lat > 71.2 || lng < -31.8 || lng > 45.0) {
             alert("Atención: Las coordenadas introducidas están fuera de Europa. Por favor, selecciona un punto dentro del territorio europeo.");
@@ -804,7 +825,7 @@ coordsInput.addEventListener('change', async (e) => {
 
         setCoordinates(lng, lat);
         saveCurrentView();
-        
+
         map.flyTo({
             center: [lng, lat],
             zoom: 14,

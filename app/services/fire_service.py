@@ -16,8 +16,12 @@ from app.schemas import IncendioRequest
 async def extraer_variables_punto(lat: float, lon: float, fecha_str: str) -> tuple[dict, int]:
     """
     Extrae todas las variables requeridas para un punto en una fecha dada.
-    Si hay nulos, lo reintenta hasta 3 veces.
-    Retorna el diccionario de features y los datos faltantes.
+    Se hacen de forma paralela para mayor velocidad.
+
+    :params lat: Latitud del punto
+    :params lon: Longitud del punto
+    :params fecha_str: Fecha en formato string (se tomarán los primeros 10 caracteres)
+    :return tuple[dict, int]: Diccionario con las variables extraídas y el número de valores faltantes
     """
     features_esperadas = [
         'lat', 'lon', 'date', 'soil_temp', 'final', 'elevacion_centro',
@@ -41,48 +45,46 @@ async def extraer_variables_punto(lat: float, lon: float, fecha_str: str) -> tup
 
     df_temp = pd.DataFrame([{'lat': lat, 'lon': lon, 'date': fecha_str}])
     
+    
+    cliente = await asyncio.to_thread(minioFunctions.crear_cliente)
+    path_pobl = 'grupo3/maps/civilizaciones/poblaciones_clean.parquet'
+    df_pobl = await asyncio.to_thread(minioFunctions.bajar_fichero, cliente, path_pobl)
+    distancias = await asyncio.to_thread(civilizacion.calcular_distancias, df_pobl, df_temp)
+    dist_civ = distancias.flatten()[0] if distancias is not None else np.nan
+    
+
     intentos = 0
-    while intentos < 3:
-        try:
-            # Físicas
-            async with aiohttp.ClientSession() as session:
-                fisicas_data = await fisicas.fetch_environment(session, lat, lon, fecha_str, directo=True)
-            
-            # Vegetación
-            veg_data = await vegetacion.vegetacion(lat, lon, fecha_str)
-            
-            # Pendiente
-            pen_data = await pendiente.pendiente(lat, lon, fecha_str)
-            
-            # Suelo
-            suelo_list = await suelo2.soil_temp(lat, lon, fecha_str, 0)
-            suelo_data = suelo_list[0] if suelo_list and len(suelo_list) > 0 else {}
-            
-            cliente = await asyncio.to_thread(minioFunctions.crear_cliente)
-            path = 'grupo3/maps/civilizaciones/poblaciones_clean.parquet'
-            df_pobl = await asyncio.to_thread(minioFunctions.bajar_fichero, cliente, path)
-            # Civilización
-            distancias = await asyncio.to_thread(civilizacion.calcular_distancias, df_pobl, df_temp)
-            dist_civ = distancias.flatten()[0] if distancias is not None else np.nan
-            
-            features.update(fisicas_data)
-            features.update(veg_data)
-            features.update(pen_data)
-            features.update({
-                'soil_temp': suelo_data.get('soil_temp', np.nan),
-                'dist_civ': dist_civ
-            })
-            
-            faltantes = sum(pd.isna(v) or v is None for v in features.values())
-            if faltantes == 0:
-                break
+    async with aiohttp.ClientSession() as session:
+        while intentos < 3:
+            try:
+                tareas = [
+                    fisicas.fetch_environment(session, lat, lon, fecha_str, directo=True),
+                    vegetacion.vegetacion(lat, lon, fecha_str),
+                    pendiente.pendiente(lat, lon, fecha_str),
+                    suelo2.soil_temp(lat, lon, fecha_str, 0)
+                ]
                 
-        except Exception as e:
-            print(f"Error en intento {intentos + 1}: {e}")
+                resultados = await asyncio.gather(*tareas, return_exceptions=True)
+                
+                if not isinstance(resultados[0], Exception): features.update(resultados[0])
+                if not isinstance(resultados[1], Exception): features.update(resultados[1])
+                if not isinstance(resultados[2], Exception): features.update(resultados[2])
+                
+                if not isinstance(resultados[3], Exception) and len(resultados[3]) > 0:
+                    features['soil_temp'] = resultados[3][0].get('soil_temp', np.nan)
+                
+                features['dist_civ'] = dist_civ
+                
+                faltantes = sum(pd.isna(v) or v is None for v in features.values())
+                if faltantes <= 1: 
+                    break
+                    
+            except Exception as e:
+                print(f"Error en intento {intentos + 1}: {e}")
+                
+            intentos += 1
+            if intentos < 3: await asyncio.sleep(0.5)
             
-        intentos += 1
-        await asyncio.sleep(1) # Pausa entre intentos
-        
     faltantes = sum(pd.isna(v) or v is None for v in features.values())
     return features, faltantes
 

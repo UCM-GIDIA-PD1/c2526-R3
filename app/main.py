@@ -128,3 +128,28 @@ def get_root_static(filename: str):
     if os.path.isfile(file_path):
         return FileResponse(file_path)
     raise HTTPException(status_code=404, detail="Archivo no encontrado")
+
+@app.get("/geojson/{year}")
+def obtener_geojson_anio(year: int):
+    """
+    Endpoint para transmitir archivos GeoJSON desde MinIO según el año
+    """
+    try:
+        cliente = crear_cliente()
+        bucket_name = "pd1"
+        object_name = f"grupo3/cleaned/geojsons/fires_{year}.geojson" 
+
+        response = cliente.get_object(bucket_name, object_name)
+        
+        return StreamingResponse(
+            response.stream(32*1024), 
+            media_type="application/geo+json",
+            headers={"Content-Disposition": f"attachment; filename=fires_{year}.geojson"}
+        )
+        
+    except Exception as e:
+        print(f"Error al recuperar GeoJSON para el año {year}: {e}")
+        raise HTTPException(
+            status_code=404, 
+            detail=f"No se encontró el archivo GeoJSON para el año {year}."
+        )

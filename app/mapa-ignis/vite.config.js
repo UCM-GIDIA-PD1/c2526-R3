@@ -7,7 +7,8 @@ export default defineConfig({
       '/predict': 'http://localhost:8000',
       '/imagen': 'http://localhost:8000',
       '/info_incendios': 'http://localhost:8000',
-      '/info_frp': 'http://localhost:8000'
+      '/info_frp': 'http://localhost:8000',
+      '/geojson': 'http://localhost:8000'
     }
   }
 });

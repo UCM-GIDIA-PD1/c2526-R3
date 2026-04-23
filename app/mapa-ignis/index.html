@@ -3,7 +3,7 @@
 
 <head>
   <meta charset="UTF-8" />
-  <link rel="icon" type="image/png" href="/favicon.png" />
+  <link rel="icon" type="image/png" href="/imagen/favicon.png" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>IGNIS AI — Predicción Geográfica de Incendios</title>
   <link href="https://api.mapbox.com/mapbox-gl-js/v3.0.0/mapbox-gl.css" rel="stylesheet" />
@@ -61,6 +61,23 @@
     <div class="mode-toggle">
       <button id="mode-prediction-btn" class="mode-btn active">Predecir Incendios</button>
       <button id="mode-history-btn" class="mode-btn">Ver Histórico</button>
+    </div>
+  </div>
+
+  <!-- Year Slider Container (for History mode) -->
+  <div id="year-slider-container" class="hidden">
+    <div class="slider-header">
+      <span class="slider-title">Año Histórico:</span>
+      <span id="year-display" class="year-value">2023</span>
+    </div>
+    <div class="slider-wrapper">
+      <input type="range" id="year-slider" min="2022" max="2025" value="2023" step="1" />
+      <div class="slider-ticks">
+        <span>2022</span>
+        <span>2023</span>
+        <span>2024</span>
+        <span>2025</span>
+      </div>
     </div>
   </div>
 

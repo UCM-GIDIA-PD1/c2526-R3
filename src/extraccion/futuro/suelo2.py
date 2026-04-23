@@ -24,18 +24,30 @@ def formatear_fecha(fecha):
 
 async def soil_temp(lat, lon, date, indice):
     """
-    Extrae la temperatura del suelo de la API de NASA POWER para unas coordenadas y fecha dadas.
-    
-    :param lat: Latitud
-    :param lon: Longitud
-    :param date: Fecha objetivo
-    :param indice: Índice del procesamiento
-    :return list: Lista con un diccionario de resultados o vacía si falla
+    Extrae la temperatura del suelo de la API de NASA POWER.
+    Si la fecha es futura, intenta obtener el dato más reciente disponible.
+    Si es pasado pedimos la última fecha de los últimos 7 dias disponibles buscando el último no nulo.
+
+    :param lat: Latitud del punto
+    :param lon: Longitud del punto
+    :param date: Fecha en formato string (se tomarán los primeros 10 caracteres)
+    :param indice: Índice del punto
+    :return list: Lista con la temperatura del suelo
     """
     date_fmt = formatear_fecha(date)
     if date_fmt is None:
-        print(f"Fecha inválida para ({lat}, {lon}): {date}")
         return []
+
+    target_date = datetime.strptime(date_fmt, "%Y-%m-%d").date()
+    today = datetime.now().date()
+    
+    
+    if target_date >= today:
+        start_request = (today - pd.Timedelta(days=7)).strftime('%Y%m%d')
+        end_request = today.strftime('%Y%m%d')
+    else:
+        start_request = date_fmt.replace("-", "")
+        end_request = date_fmt.replace("-", "")
 
     async with sem_global:
         base_url = "https://power.larc.nasa.gov/api/temporal/daily/point"
@@ -44,8 +56,8 @@ async def soil_temp(lat, lon, date, indice):
             "community": "ag",
             "longitude": lon,
             "latitude": lat,
-            "start": date_fmt.replace("-", ""),
-            "end": date_fmt.replace("-", ""),
+            "start": start_request,
+            "end": end_request,
             "format": "JSON",
             "user": "test123"
         }
@@ -71,18 +83,22 @@ async def soil_temp(lat, lon, date, indice):
             print(f"No hay datos de TSOIL1 para ({lat}, {lon})")
             return []
 
-        fecha_objetivo_str = date_fmt.replace("-", "")
+        valid_temps = {k: v for k, v in ts_dict.items() if v is not None and v != -999.0}
+        
+        if not valid_temps:
+            return []
+            
+        # Cogemos la fecha más reciente disponible
+        ultima_fecha = sorted(valid_temps.keys())[-1]
+        temp = valid_temps[ultima_fecha]
 
-        resultados = []
-        temp = ts_dict.get(fecha_objetivo_str)
-        if temp is not None:
-            resultados.append({
-                'fire_index': indice,
-                'lat': lat,
-                'lon': lon,
-                'date': date_fmt,
-                'soil_temp': temp
-            })
+        resultados = [{
+            'fire_index': indice,
+            'lat': lat,
+            'lon': lon,
+            'date': date_fmt,
+            'soil_temp': temp
+        }]
 
         if indice is not None:
             print(f"Temperatura suelo {indice} extraída.")

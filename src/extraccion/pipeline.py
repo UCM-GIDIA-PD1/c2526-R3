@@ -112,7 +112,7 @@ def extraccion(df_final, anio):
     print("\n====================> PASO 4: EXTRACCIÓN, CONCATENACIÓN Y LIMPIEZA DE LAS VARIABLES ...")
 
     # Extraemos y concatenamos las variables
-    resultados_extraccion = asyncio.run(construccion_df.extraccion_pipeline(df_final, anio=anio))
+    resultados_extraccion = asyncio.run(construccion_df.extraccion_pipeline(df_final, anio=anio, limite_extraccion=-1))
     
     # Comprobamos que la extracción se ha realizado correctamente
     if resultados_extraccion is None:
@@ -121,6 +121,9 @@ def extraccion(df_final, anio):
         
     df_vegetacion, df_pendiente, df_fisicas, df_suelo2, df_civilizacion = resultados_extraccion
     df_entero = construccion_df.concatenar_variables(pipeline=True, anio=anio)
+
+    df_entero = pd.merge(df_entero, df_final[['lat', 'lon', 'date', 'final']], on=['lat', 'lon', 'date'], how='left')
+    df_entero = df_entero.drop(columns=['fire_index'], errors='ignore')
 
     # Transformamos la variable fecha
     df_entero['dia_sin'], df_entero['dia_cos'] = transformacion.tranformar_date(df_entero, pipeline=True)
@@ -162,7 +165,7 @@ def limpieza_nulos(df_entero, anio = None):
     
     # Hacemos la limpieza
     df_limpio = limpieza.limpieza_nulos(df_entero, pipeline=True, anio=anio)
-                    
+
     filas_despues = len(df_limpio)
     print(f"\n ¡Limpieza completada!")
     print(f" Filas eliminadas: {filas_antes - filas_despues}")

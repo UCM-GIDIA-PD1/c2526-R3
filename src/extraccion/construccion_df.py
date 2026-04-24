@@ -283,6 +283,7 @@ def concatenar_variables(pipeline=False, anio=None):
         
         for arch in archs:
             df_temp = minioFunctions.bajar_fichero(cliente, arch, "df")
+            print(f"Bajado {arch} para variable {variable}")
             
             if df_temp is not None:
                 df_temp.rename(columns={'lat_mean': 'lat', 'lon_mean': 'lon', 'date_first': 'date'}, inplace=True)
@@ -304,7 +305,10 @@ def concatenar_variables(pipeline=False, anio=None):
         print(f"Uniendo DataFrame {i} usando las columnas: {columnas_comunes}")
         
         df_final = pd.merge(df_final, df2, on=columnas_comunes, how='left')
-    
+
+    cols_basura = [col for col in df_final.columns if 'vegetacion2' in col]
+    df_final = df_final.drop(columns=cols_basura, errors='ignore')
+
     print(f"Columnas finales: {df_final.columns.tolist()}")
 
     if pipeline:

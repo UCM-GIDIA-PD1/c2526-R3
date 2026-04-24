@@ -57,16 +57,23 @@ def calcular_indices(img):
 
 def imagen(punto, fecha):
   '''
-  Obtiene la imagen del satélite Copernicus en un rango de 30 dias ignorando los datos con nubes
+  Obtiene la primera imagen de un satélite teniendo en cuenta que no haya nubes (Umbral de 30 días).
+  Si la fecha es futura, usa la fecha actual como límite final.
 
-  :param punto: ee.Geometry.Point con la ubicacion
-  :param fecha: Fecha base en formato string u objeto convertible a string
-  :return ee.Image: ee.Image con los datos de la imagen procesada (mediana de las imagenes disponibles en el rango de fechas)
+  :param punto: Objeto ee.Geometry.Point del cual se quiere obtener la imagen
+  :param fecha: Fecha en formato string (se tomarán los primeros 10 caracteres)
+  :return ee.Image: Imagen con las bandas 'NDVI' y 'NDWI' añadidas
   '''
-  fecha = str(fecha)[:10]
+  fecha_str = str(fecha)[:10]
+  target_date = datetime.strptime(fecha_str, '%Y-%m-%d').date()
+  today = datetime.now().date()
   
-  fecha_fin = fecha
-  fecha_ini = quitar_dias(fecha)
+  if target_date > today:
+      fecha_fin = today.strftime('%Y-%m-%d')
+  else:
+      fecha_fin = fecha_str
+      
+  fecha_ini = quitar_dias(fecha_fin)
 
   cloud_score = ee.ImageCollection('GOOGLE/CLOUD_SCORE_PLUS/V1/S2_HARMONIZED')
   umbral_nubes = 0.3

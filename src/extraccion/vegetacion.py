@@ -4,7 +4,7 @@ import numpy as np
 import os
 from dotenv import load_dotenv
 import asyncio
-from . import minioFunctions
+from extraccion import minioFunctions
 from . import interrupcion
 import pandas as pd
 import time
@@ -201,8 +201,8 @@ async def df_vegetacion(fires, limit = 20, fecha_ini = None, fecha_fin = None, p
     
   if pipeline:
       assert anio is not None, "Se requiere el año para subir a minio el archivo automáticamente"
-      cliente = minioFunctions.inicializar_cliente()
-      minioFunctions.subir_fichero(cliente, final_df, f"grupo3/raw/Vegetacion/Vegetacion_{anio}.parquet")
+      cliente = minioFunctions.crear_cliente()
+      minioFunctions.subir_fichero(cliente, f"grupo3/raw/Vegetacion/Vegetacion_{anio}.parquet", final_df)
   else:
       minioFunctions.preguntar_subida(final_df, "grupo3/raw/Vegetacion/")
   return final_df

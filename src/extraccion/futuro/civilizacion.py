@@ -85,8 +85,8 @@ async def civilizacion(df, limit=20, fecha_ini=None, fecha_fin=None, pipeline=Fa
 
     if pipeline:
         assert anio is not None, "Se requiere el año para subir a minio el archivo automáticamente"
-        cliente = minioFunctions.inicializar_cliente()
-        minioFunctions.subir_fichero(cliente, df_final, f"grupo3/raw/civilizacion/civilizacion_{anio}.parquet")
+        cliente = minioFunctions.crear_cliente()
+        minioFunctions.subir_fichero(cliente, f"grupo3/raw/civilizacion/civilizacion_{anio}.parquet", df_final)
     else:
         await asyncio.to_thread(minioFunctions.preguntar_subida, df_final, f'grupo3/raw/civilizacion/')
 

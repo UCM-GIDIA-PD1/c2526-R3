@@ -1,5 +1,5 @@
-from . import minioFunctions, incendios, filtros_no_incendio, puntos_no_incendio, construccion_df
-from limpieza import limpieza
+from extraccion import minioFunctions, incendios, filtros_no_incendio, puntos_no_incendio, construccion_df
+from limpieza import limpieza, transformacion
 import pandas as pd
 import asyncio
 
@@ -25,7 +25,7 @@ def extraccion_de_incendios(anio=None):
     print(f"\n>>>>>>>>>>Número de registros inicial: {len(df_raw)} <<<<<<<<<<<\n")
         
     # Procesamiento de los incendios 
-    df_procesado = incendios.fetch_fires(df_raw, question=True)
+    df_procesado = incendios.fetch_fires(df_raw, question=False, anio=anio)
     print(f"\n>>>>>>>>>>Número de registros tras agrupar los incendios: {len(df_procesado)} <<<<<<<<<<<\n")
 
     assert df_procesado is not None, "La función fetch_fires devolvió un DataFrame vacío, se esperaba un DataFrame con datos."
@@ -64,7 +64,7 @@ def filtracion_por_zonas(df_procesado):
 
     return df_inc
 
-def generacion_no_incendios(df_inc):
+def generacion_no_incendios(df_inc, anio=None):
     '''
     Funcion para generar los puntos de no incendio, crear la variable respuesta y 
     concatenar los DataFrames de incendios y no incendios.
@@ -77,7 +77,7 @@ def generacion_no_incendios(df_inc):
     print("\n====================> PASO 3: GENERACIÓN DE NO INCENDIOS ...")
     
     # Generamos los puntos de no incendio
-    df_no_inc = puntos_no_incendio.crearSinteticos(df_inc, True)
+    df_no_inc = puntos_no_incendio.crearSinteticos(df_inc, subir = False)
 
     # Creamos la variable respuesta
     print(f"La proporción de incendios es: {round(len(df_no_inc) / (len(df_inc) + len(df_no_inc)) * 100, 2)}%")
@@ -87,8 +87,10 @@ def generacion_no_incendios(df_inc):
 
     # Concateanmos incendios y no incendios
     df_final = pd.concat([df_inc, df_no_inc], ignore_index=True)
+    df_final['date'] = pd.to_datetime(df_final['date'])
 
     # Subimos a MinIO
+    assert anio is not None, "Se requiere el año para subir a minio el archivo automáticamente"
     cliente = minioFunctions.crear_cliente()
     minioFunctions.subir_fichero(cliente, f"grupo3/raw/Incendios_y_no_incendios/incendios_y_no_incendios_{anio}.parquet", df_final)
     
@@ -110,11 +112,22 @@ def extraccion(df_final, anio):
     print("\n====================> PASO 4: EXTRACCIÓN, CONCATENACIÓN Y LIMPIEZA DE LAS VARIABLES ...")
 
     # Extraemos y concatenamos las variables
-    df_vegetacion, df_pendiente, df_fisicas, df_suelo2, df_civilizacion = asyncio.run(construccion_df.extraccion_pipeline(df_final, anio = anio))
+    resultados_extraccion = asyncio.run(construccion_df.extraccion_pipeline(df_final, anio=anio))
+    
+    # Comprobamos que la extracción se ha realizado correctamente
+    if resultados_extraccion is None:
+        print("El pipeline de extracción se interrumpió y no devolvió los datos.")
+        return 
+        
+    df_vegetacion, df_pendiente, df_fisicas, df_suelo2, df_civilizacion = resultados_extraccion
     df_entero = construccion_df.concatenar_variables(pipeline=True, anio=anio)
 
     # Transformamos la variable fecha
-    df_entero['date']
+    df_entero['dia_sin'], df_entero['dia_cos'] = transformacion.tranformar_date(df_entero, pipeline=True)
+
+    # Subimos a MinIO
+    cliente = minioFunctions.crear_cliente()
+    minioFunctions.subir_fichero(cliente, f"grupo3/raw/Final/final_{anio}.parquet", df_entero)
 
     return df_entero
 
@@ -132,8 +145,8 @@ def limpieza_nulos(df_entero, anio = None):
     print("\n Analizando valores nulos...")
 
     # Vemos número de nulos en el DataFrame
-    resumen_nulos =  asyncio.to_thread(limpieza.mostrar_nulos, df_entero)
-                
+    resumen_nulos = limpieza.mostrar_nulos(df_entero)      
+
     if resumen_nulos is None:
         print("El DataFrame no tiene valores nulos.")
     else:
@@ -148,12 +161,16 @@ def limpieza_nulos(df_entero, anio = None):
     filas_antes = len(df_entero)
     
     # Hacemos la limpieza
-    df_limpio = asyncio.to_thread(limpieza.limpieza_nulos, df_entero, pipeline=True, anio=anio)
-                
+    df_limpio = limpieza.limpieza_nulos(df_entero, pipeline=True, anio=anio)
+                    
     filas_despues = len(df_limpio)
     print(f"\n ¡Limpieza completada!")
     print(f" Filas eliminadas: {filas_antes - filas_despues}")
     print(f" Filas restantes: {filas_despues}")
+
+    # Subimos a MinIO
+    cliente = minioFunctions.crear_cliente()
+    minioFunctions.subir_fichero(cliente, f"grupo3/cleaned/final_{anio}.parquet", df_limpio)
 
     return df_limpio
                 
@@ -172,13 +189,13 @@ def pipeline(anio=None):
     df_inc = filtracion_por_zonas(df_procesado)
 
     # ====================> PASO 3 : GENERACIÓN DE NO INCENDIOS Y CONCATENACIÓN
-    df_final = generacion_no_incendios(df_inc)
+    df_final = generacion_no_incendios(df_inc, anio=anio)
 
     # ====================> PASO 4 : EXTRACCIÓN, CONCATENACIÓN Y LIMPIEZA DE LAS VARIABLES
     df_entero = extraccion(df_final, anio=anio)
 
     # ====================> PASO 5 : LIMPIEZA DE NULOS
-    df_entero = limpieza_nulos(df_entero)
+    df_entero = limpieza_nulos(df_entero, anio=anio)
 
 
 

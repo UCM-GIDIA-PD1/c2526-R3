@@ -144,7 +144,7 @@ def separate_fire_events(df, dist_km=2.0, mes_inicial=1, mes_final=12):
 
     return df, resumen
 
-def fetch_fires(df, fecha_ini = None, fecha_fin = None, question=False, pipeline=False, anio = None):
+def fetch_fires(df, fecha_ini = None, fecha_fin = None, question=False, anio = None):
 
     """
     Función que procesa un DataFrame de incendios, limpiándolo, separando los eventos de incendio y calculando el área de cada incendio.
@@ -153,7 +153,6 @@ def fetch_fires(df, fecha_ini = None, fecha_fin = None, question=False, pipeline
     :param fecha_ini: Fecha inicial del rango de incendios a procesar (por defecto None)
     :param fecha_fin: Fecha final del rango de incendios a procesar (por defecto None)
     :param question: Booleano que indica si se debe preguntar al usuario si quiere subir el resumen a MinIO (por defecto False)
-    :param pipeline: Booleano que indica si se está ejecutando en un pipeline (por defecto False)
     :param anio: Año para subir el archivo a MinIO automáticamente (requerido si pipeline es True)
     :return pd.DataFrame: DataFrame resumen con la información relevante de cada incendio (lat, lon, FRP, COUNT, date, DATE_LAST, DURATION_DAYS, AREA_HA)
     """
@@ -195,7 +194,7 @@ def fetch_fires(df, fecha_ini = None, fecha_fin = None, question=False, pipeline
             print("No hay datos parciales para guardar.")
         raise
 
-    if question or not pipeline:
+    if question:
         minioFunctions.preguntar_subida(resumen.sort_values(by='count', ascending=False), "grupo3/raw/incendios/")
     else:
         assert anio is not None, "Se requiere el año para subir a minio el archivo automáticamente"

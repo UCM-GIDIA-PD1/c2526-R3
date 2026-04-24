@@ -1,4 +1,4 @@
-from . import incendios, pendiente, vegetacion, fisicas, minioFunctions, puntos_no_incendio, interrupcion, filtros_no_incendio
+from extraccion import incendios, pendiente, vegetacion, fisicas, minioFunctions, puntos_no_incendio, interrupcion, filtros_no_incendio
 from .futuro import suelo2, civilizacion
 import time
 import pandas as pd
@@ -265,13 +265,14 @@ def concatenar_variables(pipeline=False, anio=None):
     :param pipeline: si es true se automatiza la subida a Minio sin preguntar (por defecto False)
     :param anio: Año para subir el archivo a Minio automáticamente (requerido si pipeline es True)
     '''
+    lista_var = ['Pendiente', 'Fisicas', 'Suelo2', 'civilizacion', 'Vegetacion']
+    cliente = minioFunctions.crear_cliente()
 
     if pipeline:
         assert anio is not None, "Se requiere el año para subir a minio el archivo automáticamente"
+        nombre_parquet = str(anio)
     else:
         nombre_parquet = input("Introduce el nombre de los parquets a juntar (sin .parquet): ")
-        lista_var = ['Pendiente', 'Fisicas', 'Suelo2', 'civilizacion', 'Vegetacion']
-        cliente = minioFunctions.crear_cliente()
     
     dfs = []
 
@@ -287,7 +288,7 @@ def concatenar_variables(pipeline=False, anio=None):
                 df_temp.rename(columns={'lat_mean': 'lat', 'lon_mean': 'lon', 'date_first': 'date'}, inplace=True)
                 
                 if 'date' in df_temp.columns:
-                    df_temp['date'] = pd.to_datetime(df_temp['date']).dt.normalize()
+                    df_temp['date'] = pd.to_datetime(df_temp['date'], format='mixed').dt.normalize()
                 
                 dfs.append(df_temp)
 
@@ -309,9 +310,11 @@ def concatenar_variables(pipeline=False, anio=None):
     if pipeline:
         assert anio is not None, "Se requiere el año para subir a minio el archivo automáticamente"
         cliente = minioFunctions.crear_cliente()
-        minioFunctions.subir_fichero(cliente, f"grupo3/raw/Final/final_limpio_{anio}_modeloGeneral.parquet", df_final)
+        minioFunctions.subir_fichero(cliente, f"grupo3/raw/Final/final_{anio}.parquet", df_final)
     else:
-        minioFunctions.preguntar_subida(df_final, f"grupo3/raw/Nuevas_Zonas/")
+        minioFunctions.preguntar_subida(df_final, f"grupo3/raw/Final/")
+
+    return df_final
 
 async def extraccion_pipeline(df, limite_extraccion=100, anio=None):
     '''
@@ -357,27 +360,27 @@ async def extraccion_pipeline(df, limite_extraccion=100, anio=None):
         print("EXTRACCIÓN DE VEGETACIÓN")
         print("==============================")
 
-        df_vegetacion = await vegetacion.df_vegetacion(df, limit=limite_extraccion, pipeline=True)
+        df_vegetacion = await vegetacion.df_vegetacion(df, limit=limite_extraccion, pipeline=True, anio=anio)
             
         print("==============================")
         print("EXTRACCIÓN DE PENDIENTE")
         print("==============================")
-        df_pendiente = await pendiente.df_pendiente(df, limit=limite_extraccion, pipeline=True)
+        df_pendiente = await pendiente.df_pendiente(df, limit=limite_extraccion, pipeline=True, anio=anio)
         
         print("==============================")
         print("EXTRACCIÓN DE FÍSICAS")
         print("==============================")      
-        df_fisicas = await fisicas.df_fisicas(df, limit=limite_extraccion, directo=True, pipeline=True)
+        df_fisicas = await fisicas.df_fisicas(df, limit=limite_extraccion, directo=True, pipeline=True, anio=anio)
 
         print("==============================")
         print("EXTRACCIÓN DE SUELO")
         print("==============================") 
-        df_suelo2 = await suelo2.df_soil_temp(df, limit=limite_extraccion, pipeline=True)
+        df_suelo2 = await suelo2.df_soil_temp(df, limit=limite_extraccion, pipeline=True, anio=anio)
         
         print("==============================")
         print("EXTRACCIÓN DE CIVILIZACIÓN")
         print("==============================") 
-        df_civilizacion = await civilizacion.civilizacion(df, limit=limite_extraccion, pipeline=True)
+        df_civilizacion = await civilizacion.civilizacion(df, limit=limite_extraccion, pipeline=True, anio=anio)
             
         print("Extraídas todas las variables con éxito :)")
         return df_vegetacion, df_pendiente, df_fisicas, df_suelo2, df_civilizacion

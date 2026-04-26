@@ -1,8 +1,12 @@
 """
 analisis_fase4.py
 -----------------
-Análisis comparativo de distribuciones entre los datos de fase 3 (MINI.parquet)
-y los nuevos datos de 2026 (final_2026.parquet).
+Análisis exploratorio del dataset combinado (MINI.parquet + final_2026.parquet):
+- Nulos y calidad de datos
+- Distribución geográfica de puntos e incendios
+- Distribución temporal
+- Distribución de variables clave
+- Balance de clases
 
 Uso:
     uv run python src/analisis/analisis_fase4.py \
@@ -15,194 +19,237 @@ import argparse
 from pathlib import Path
 
 import matplotlib.pyplot as plt
-import matplotlib.gridspec as gridspec
 import numpy as np
 import pandas as pd
-from scipy import stats
 
-
-# ──────────────────────────────────────────────
-# Constantes
-# ──────────────────────────────────────────────
-
-VARIABLES_CLAVE = ["lon", "lat", "NDVI", "NDWI", "dist_civ"]
 VARIABLE_OBJETIVO = "final"
+VARIABLES_CLAVE = ["temp_mean", "humidity_mean", "NDVI", "NDWI", "dist_civ", "wind_speed_max"]
 
-COLORES = {
-    "fase3": "#2563EB",   # azul
-    "nuevos": "#DC2626",  # rojo
-}
-
-ETIQUETAS = {
-    "fase3": "Fase 3 (2022-2025)",
-    "nuevos": "Nuevos datos (2026)",
-}
+COLOR_NO_FUEGO = "#2563EB"
+COLOR_FUEGO    = "#DC2626"
 
 
 # ──────────────────────────────────────────────
-# Carga de datos
+# Carga
 # ──────────────────────────────────────────────
 
-def cargar_datos(ruta_fase3: str, ruta_nuevos: str) -> tuple[pd.DataFrame, pd.DataFrame]:
-    print(f"Cargando datos fase 3 desde: {ruta_fase3}")
+def cargar_y_combinar(ruta_fase3: str, ruta_nuevos: str) -> pd.DataFrame:
     df_fase3 = pd.read_parquet(ruta_fase3)
-    print(f"  → {df_fase3.shape[0]:,} registros, {df_fase3.shape[1]} columnas")
-
-    print(f"Cargando datos nuevos desde: {ruta_nuevos}")
     df_nuevos = pd.read_parquet(ruta_nuevos)
-    print(f"  → {df_nuevos.shape[0]:,} registros, {df_nuevos.shape[1]} columnas")
 
-    return df_fase3, df_nuevos
+    df_fase3["origen"] = "Fase 3 (2022-2025)"
+    df_nuevos["origen"] = "Nuevos (2026)"
 
+    df = pd.concat([df_fase3, df_nuevos], ignore_index=True)
+    df["date"] = pd.to_datetime(df["date"])
+    df["year"] = df["date"].dt.year
+    df["month"] = df["date"].dt.month
 
-# ──────────────────────────────────────────────
-# Análisis estadístico
-# ──────────────────────────────────────────────
-
-def resumen_estadistico(df_fase3: pd.DataFrame, df_nuevos: pd.DataFrame) -> pd.DataFrame:
-    """Genera tabla comparativa de estadísticos básicos para las variables clave."""
-    filas = []
-    for var in VARIABLES_CLAVE:
-        for nombre, df in [("Fase 3", df_fase3), ("2026", df_nuevos)]:
-            filas.append({
-                "Variable": var,
-                "Dataset": nombre,
-                "N": len(df[var]),
-                "Media": df[var].mean(),
-                "Std": df[var].std(),
-                "Min": df[var].min(),
-                "Max": df[var].max(),
-            })
-    return pd.DataFrame(filas)
-
-
-def test_ks(df_fase3: pd.DataFrame, df_nuevos: pd.DataFrame) -> pd.DataFrame:
-    """
-    Test de Kolmogorov-Smirnov para detectar diferencias significativas
-    en la distribución de cada variable clave.
-    """
-    filas = []
-    for var in VARIABLES_CLAVE:
-        stat, pval = stats.ks_2samp(df_fase3[var].dropna(), df_nuevos[var].dropna())
-        filas.append({
-            "Variable": var,
-            "KS statistic": round(stat, 4),
-            "p-valor": round(pval, 4),
-            "¿Distribución diferente? (p<0.05)": "SÍ" if pval < 0.05 else "NO",
-        })
-    return pd.DataFrame(filas)
-
-
-def resumen_objetivo(df_fase3: pd.DataFrame, df_nuevos: pd.DataFrame) -> None:
-    """Imprime resumen de la variable objetivo (incendio/no incendio)."""
-    print("\n" + "="*55)
-    print("VARIABLE OBJETIVO: incendio (final = 1)")
-    print("="*55)
-    for nombre, df in [("Fase 3 (2022-2025)", df_fase3), ("Nuevos datos (2026)", df_nuevos)]:
-        total = len(df)
-        fuego = df[VARIABLE_OBJETIVO].sum()
-        pct = fuego / total * 100
-        print(f"\n  {nombre}")
-        print(f"    Total registros : {total:,}")
-        print(f"    Incendios (1)   : {fuego:,}  ({pct:.2f}%)")
-        print(f"    No incendio (0) : {total - fuego:,}  ({100 - pct:.2f}%)")
+    print(f"Dataset combinado: {df.shape[0]:,} registros, {df.shape[1]} columnas")
+    print(f"  Fase 3  : {len(df_fase3):,} registros")
+    print(f"  2026    : {len(df_nuevos):,} registros")
+    return df
 
 
 # ──────────────────────────────────────────────
-# Visualizaciones
+# 1. Análisis de nulos
 # ──────────────────────────────────────────────
 
-def grafica_objetivo(df_fase3: pd.DataFrame, df_nuevos: pd.DataFrame, output_dir: Path) -> None:
-    """Gráfica comparativa de la variable objetivo."""
-    fig, axes = plt.subplots(1, 2, figsize=(10, 4))
-    fig.suptitle("Variable objetivo: proporción de incendios", fontsize=13, fontweight="bold")
+def analisis_nulos(df: pd.DataFrame, output_dir: Path) -> None:
+    print("\n" + "="*50)
+    print("1. ANÁLISIS DE NULOS")
+    print("="*50)
 
-    for ax, (nombre, df, color) in zip(axes, [
-        ("Fase 3 (2022-2025)", df_fase3, COLORES["fase3"]),
-        ("Nuevos datos (2026)", df_nuevos, COLORES["nuevos"]),
-    ]):
-        counts = df[VARIABLE_OBJETIVO].value_counts().sort_index()
-        labels = ["No incendio", "Incendio"]
-        valores = [counts.get(0, 0), counts.get(1, 0)]
-        bars = ax.bar(labels, valores, color=[color, color], edgecolor="white")
-        bars[0].set_alpha(0.4)
-        bars[1].set_alpha(1.0)
-        ax.set_title(nombre, fontsize=11)
-        ax.set_ylabel("Número de registros")
-        for bar, val in zip(bars, valores):
-            ax.text(bar.get_x() + bar.get_width() / 2, bar.get_height() + 5,
-                    f"{val:,}\n({val/sum(valores)*100:.1f}%)",
-                    ha="center", va="bottom", fontsize=9)
-        ax.set_ylim(0, max(valores) * 1.2)
+    nulos = df.isnull().sum()
+    pct = (nulos / len(df) * 100).round(2)
+    tabla = pd.DataFrame({"Nulos": nulos, "% Nulos": pct})
+
+    if tabla["Nulos"].sum() == 0:
+        print("Sin valores nulos en ninguna columna.")
+    else:
+        print(tabla[tabla["Nulos"] > 0])
+
+    cols = [c for c in df.columns if c not in ["date", "origen", "year", "month"]]
+    valores = [df[c].isnull().sum() for c in cols]
+    colores = [COLOR_FUEGO if v > 0 else COLOR_NO_FUEGO for v in valores]
+
+    fig, ax = plt.subplots(figsize=(12, 5))
+    ax.bar(cols, valores, color=colores)
+    ax.set_title("Valores nulos por columna", fontsize=13, fontweight="bold")
+    ax.set_ylabel("Número de nulos")
+    ax.set_xticklabels(cols, rotation=45, ha="right", fontsize=8)
+    ax.axhline(0, color="black", linewidth=0.5)
+    plt.tight_layout()
+    ruta = output_dir / "1_nulos.png"
+    plt.savefig(ruta, dpi=150, bbox_inches="tight")
+    plt.close()
+    print(f"  Guardada: {ruta}")
+    tabla.to_csv(output_dir / "1_nulos.csv")
+
+
+# ──────────────────────────────────────────────
+# 2. Distribución geográfica
+# ──────────────────────────────────────────────
+
+def analisis_geografico(df: pd.DataFrame, output_dir: Path) -> None:
+    print("\n" + "="*50)
+    print("2. DISTRIBUCIÓN GEOGRÁFICA")
+    print("="*50)
+    print(f"  Latitud  : {df['lat'].min():.2f} — {df['lat'].max():.2f}")
+    print(f"  Longitud : {df['lon'].min():.2f} — {df['lon'].max():.2f}")
+    print(f"  Registros con incendio: {df[VARIABLE_OBJETIVO].sum():,}")
+
+    no_fuego = df[df[VARIABLE_OBJETIVO] == 0]
+    fuego    = df[df[VARIABLE_OBJETIVO] == 1]
+
+    fig, axes = plt.subplots(1, 2, figsize=(14, 5))
+    fig.suptitle("Distribución geográfica de registros e incendios", fontsize=13, fontweight="bold")
+
+    ax = axes[0]
+    ax.scatter(no_fuego["lon"], no_fuego["lat"], s=1, alpha=0.1,
+               color=COLOR_NO_FUEGO, label=f"No incendio ({len(no_fuego):,})")
+    ax.scatter(fuego["lon"], fuego["lat"], s=8, alpha=0.7,
+               color=COLOR_FUEGO, label=f"Incendio ({len(fuego):,})")
+    ax.set_title("Todos los registros")
+    ax.set_xlabel("Longitud")
+    ax.set_ylabel("Latitud")
+    ax.legend(fontsize=8, markerscale=4)
+
+    ax = axes[1]
+    for origen, color in [("Fase 3 (2022-2025)", COLOR_NO_FUEGO), ("Nuevos (2026)", COLOR_FUEGO)]:
+        sub = fuego[fuego["origen"] == origen]
+        ax.scatter(sub["lon"], sub["lat"], s=15, alpha=0.8,
+                   color=color, label=f"{origen} ({len(sub)})")
+    ax.set_title("Incendios por origen del dato")
+    ax.set_xlabel("Longitud")
+    ax.set_ylabel("Latitud")
+    ax.legend(fontsize=8, markerscale=2)
 
     plt.tight_layout()
-    ruta = output_dir / "objetivo_comparacion.png"
+    ruta = output_dir / "2_distribucion_geografica.png"
     plt.savefig(ruta, dpi=150, bbox_inches="tight")
     plt.close()
     print(f"  Guardada: {ruta}")
 
 
-def graficas_variables(df_fase3: pd.DataFrame, df_nuevos: pd.DataFrame, output_dir: Path) -> None:
-    """Histogramas comparativos para cada variable clave."""
-    fig, axes = plt.subplots(2, 3, figsize=(15, 8))
-    fig.suptitle("Distribución de variables clave: Fase 3 vs. Datos 2026",
+# ──────────────────────────────────────────────
+# 3. Distribución temporal
+# ──────────────────────────────────────────────
+
+def analisis_temporal(df: pd.DataFrame, output_dir: Path) -> None:
+    print("\n" + "="*50)
+    print("3. DISTRIBUCIÓN TEMPORAL")
+    print("="*50)
+
+    fig, axes = plt.subplots(1, 2, figsize=(14, 5))
+    fig.suptitle("Distribución temporal de registros e incendios", fontsize=13, fontweight="bold")
+
+    ax = axes[0]
+    por_año = df.groupby("year")[VARIABLE_OBJETIVO].agg(["count", "sum"]).reset_index()
+    por_año.columns = ["year", "total", "incendios"]
+    x = np.arange(len(por_año))
+    w = 0.4
+    ax.bar(x - w/2, por_año["total"], width=w, label="Total registros",
+           color=COLOR_NO_FUEGO, alpha=0.7)
+    ax.bar(x + w/2, por_año["incendios"], width=w, label="Incendios",
+           color=COLOR_FUEGO, alpha=0.9)
+    ax.set_xticks(x)
+    ax.set_xticklabels(por_año["year"])
+    ax.set_title("Registros e incendios por año")
+    ax.set_ylabel("Número de registros")
+    ax.legend()
+
+    ax = axes[1]
+    por_mes = df[df[VARIABLE_OBJETIVO] == 1].groupby("month").size().reindex(range(1, 13), fill_value=0)
+    meses = ["Ene", "Feb", "Mar", "Abr", "May", "Jun",
+              "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"]
+    ax.bar(meses, por_mes.values, color=COLOR_FUEGO, alpha=0.85)
+    ax.set_title("Estacionalidad de incendios (todos los años)")
+    ax.set_ylabel("Número de incendios")
+    ax.set_xlabel("Mes")
+
+    plt.tight_layout()
+    ruta = output_dir / "3_distribucion_temporal.png"
+    plt.savefig(ruta, dpi=150, bbox_inches="tight")
+    plt.close()
+    print(f"  Guardada: {ruta}")
+
+
+# ──────────────────────────────────────────────
+# 4. Distribución de variables clave
+# ──────────────────────────────────────────────
+
+def analisis_variables(df: pd.DataFrame, output_dir: Path) -> None:
+    print("\n" + "="*50)
+    print("4. DISTRIBUCIÓN DE VARIABLES CLAVE")
+    print("="*50)
+
+    no_fuego = df[df[VARIABLE_OBJETIVO] == 0]
+    fuego    = df[df[VARIABLE_OBJETIVO] == 1]
+
+    ncols = 3
+    nrows = (len(VARIABLES_CLAVE) + ncols - 1) // ncols
+    fig, axes = plt.subplots(nrows, ncols, figsize=(15, 5 * nrows))
+    fig.suptitle("Distribución de variables clave: incendio vs. no incendio",
                  fontsize=13, fontweight="bold")
     axes_flat = axes.flatten()
 
     for i, var in enumerate(VARIABLES_CLAVE):
         ax = axes_flat[i]
-        v3 = df_fase3[var].dropna()
-        vn = df_nuevos[var].dropna()
-
-        # Rango común
-        xmin = min(v3.min(), vn.min())
-        xmax = max(v3.max(), vn.max())
+        v_no = no_fuego[var].dropna()
+        v_si = fuego[var].dropna()
+        xmin = min(v_no.quantile(0.01), v_si.quantile(0.01))
+        xmax = max(v_no.quantile(0.99), v_si.quantile(0.99))
         bins = np.linspace(xmin, xmax, 40)
-
-        ax.hist(v3, bins=bins, color=COLORES["fase3"], alpha=0.6,
-                label=ETIQUETAS["fase3"], density=True)
-        ax.hist(vn, bins=bins, color=COLORES["nuevos"], alpha=0.6,
-                label=ETIQUETAS["nuevos"], density=True)
-
-        # Líneas de media
-        ax.axvline(v3.mean(), color=COLORES["fase3"], linestyle="--", linewidth=1.5,
-                   label=f"Media F3: {v3.mean():.2f}")
-        ax.axvline(vn.mean(), color=COLORES["nuevos"], linestyle="--", linewidth=1.5,
-                   label=f"Media 2026: {vn.mean():.2f}")
-
+        ax.hist(v_no, bins=bins, color=COLOR_NO_FUEGO, alpha=0.6, density=True,
+                label=f"No incendio (n={len(v_no):,})")
+        ax.hist(v_si, bins=bins, color=COLOR_FUEGO, alpha=0.7, density=True,
+                label=f"Incendio (n={len(v_si):,})")
+        ax.axvline(v_no.mean(), color=COLOR_NO_FUEGO, linestyle="--", linewidth=1.5)
+        ax.axvline(v_si.mean(), color=COLOR_FUEGO, linestyle="--", linewidth=1.5)
         ax.set_title(var, fontsize=11, fontweight="bold")
         ax.set_ylabel("Densidad")
         ax.legend(fontsize=7)
 
-    # Ocultar eje sobrante
-    axes_flat[-1].set_visible(False)
+    for j in range(i + 1, len(axes_flat)):
+        axes_flat[j].set_visible(False)
 
     plt.tight_layout()
-    ruta = output_dir / "variables_comparacion.png"
+    ruta = output_dir / "4_variables_clave.png"
     plt.savefig(ruta, dpi=150, bbox_inches="tight")
     plt.close()
     print(f"  Guardada: {ruta}")
 
 
-def grafica_boxplots(df_fase3: pd.DataFrame, df_nuevos: pd.DataFrame, output_dir: Path) -> None:
-    """Boxplots comparativos normalizados para ver diferencias de escala."""
-    fig, axes = plt.subplots(1, len(VARIABLES_CLAVE), figsize=(16, 5))
-    fig.suptitle("Boxplots comparativos por variable", fontsize=13, fontweight="bold")
+# ──────────────────────────────────────────────
+# 5. Balance de clases
+# ──────────────────────────────────────────────
 
-    for ax, var in zip(axes, VARIABLES_CLAVE):
-        datos = [df_fase3[var].dropna(), df_nuevos[var].dropna()]
-        bp = ax.boxplot(datos, patch_artist=True, widths=0.5,
-                        medianprops=dict(color="black", linewidth=2))
-        bp["boxes"][0].set_facecolor(COLORES["fase3"])
-        bp["boxes"][0].set_alpha(0.7)
-        bp["boxes"][1].set_facecolor(COLORES["nuevos"])
-        bp["boxes"][1].set_alpha(0.7)
-        ax.set_title(var, fontsize=10, fontweight="bold")
-        ax.set_xticks([1, 2])
-        ax.set_xticklabels(["F3", "2026"], fontsize=8)
+def analisis_balance(df: pd.DataFrame, output_dir: Path) -> None:
+    print("\n" + "="*50)
+    print("5. BALANCE DE CLASES")
+    print("="*50)
+    total = len(df)
+    fuego = int(df[VARIABLE_OBJETIVO].sum())
+    print(f"  Total    : {total:,}")
+    print(f"  Incendio : {fuego:,}  ({fuego/total*100:.2f}%)")
+    print(f"  No incen.: {total-fuego:,}  ({(total-fuego)/total*100:.2f}%)")
+    print(f"  Ratio    : 1 incendio por cada {(total-fuego)//fuego} no-incendios")
 
+    fig, ax = plt.subplots(figsize=(6, 5))
+    labels = ["No incendio", "Incendio"]
+    valores = [total - fuego, fuego]
+    colores = [COLOR_NO_FUEGO, COLOR_FUEGO]
+    bars = ax.bar(labels, valores, color=colores, alpha=0.85, edgecolor="white")
+    for bar, val in zip(bars, valores):
+        ax.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 200,
+                f"{val:,}\n({val/total*100:.1f}%)",
+                ha="center", va="bottom", fontsize=10)
+    ax.set_title("Balance de clases — dataset combinado", fontsize=13, fontweight="bold")
+    ax.set_ylabel("Número de registros")
+    ax.set_ylim(0, max(valores) * 1.15)
     plt.tight_layout()
-    ruta = output_dir / "boxplots_comparacion.png"
+    ruta = output_dir / "5_balance_clases.png"
     plt.savefig(ruta, dpi=150, bbox_inches="tight")
     plt.close()
     print(f"  Guardada: {ruta}")
@@ -213,63 +260,27 @@ def grafica_boxplots(df_fase3: pd.DataFrame, df_nuevos: pd.DataFrame, output_dir
 # ──────────────────────────────────────────────
 
 def main():
-    parser = argparse.ArgumentParser(description="Análisis comparativo Fase 3 vs. datos 2026")
-    parser.add_argument(
-        "--datos_fase3",
-        type=str,
-        default="data/MINI.parquet",
-        help="Ruta al parquet de fase 3 (MINI.parquet)",
-    )
-    parser.add_argument(
-        "--datos_nuevos",
-        type=str,
-        default="data/final_2026.parquet",
-        help="Ruta al parquet de datos nuevos (final_2026.parquet)",
-    )
-    parser.add_argument(
-        "--output_dir",
-        type=str,
-        default="resultados/analisis_fase4",
-        help="Carpeta donde guardar las gráficas y tablas",
-    )
+    parser = argparse.ArgumentParser(description="Análisis exploratorio dataset combinado — Fase 4")
+    parser.add_argument("--datos_fase3", type=str, default="data/MINI.parquet",
+                        help="Ruta al parquet de fase 3 (MINI.parquet)")
+    parser.add_argument("--datos_nuevos", type=str, default="data/final_2026.parquet",
+                        help="Ruta al parquet de datos nuevos (final_2026.parquet)")
+    parser.add_argument("--output_dir", type=str, default="resultados/analisis_fase4",
+                        help="Carpeta donde guardar las gráficas y tablas")
     args = parser.parse_args()
 
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    # Carga
-    df_fase3, df_nuevos = cargar_datos(args.datos_fase3, args.datos_nuevos)
+    df = cargar_y_combinar(args.datos_fase3, args.datos_nuevos)
 
-    # Análisis variable objetivo
-    resumen_objetivo(df_fase3, df_nuevos)
+    analisis_nulos(df, output_dir)
+    analisis_geografico(df, output_dir)
+    analisis_temporal(df, output_dir)
+    analisis_variables(df, output_dir)
+    analisis_balance(df, output_dir)
 
-    # Estadísticos
-    print("\n" + "="*55)
-    print("ESTADÍSTICOS COMPARATIVOS")
-    print("="*55)
-    tabla_stats = resumen_estadistico(df_fase3, df_nuevos)
-    print(tabla_stats.to_string(index=False))
-    tabla_stats.to_csv(output_dir / "estadisticos.csv", index=False)
-    print(f"\n  Tabla guardada: {output_dir / 'estadisticos.csv'}")
-
-    # Test KS
-    print("\n" + "="*55)
-    print("TEST KOLMOGOROV-SMIRNOV (diferencias de distribución)")
-    print("="*55)
-    tabla_ks = test_ks(df_fase3, df_nuevos)
-    print(tabla_ks.to_string(index=False))
-    tabla_ks.to_csv(output_dir / "test_ks.csv", index=False)
-    print(f"\n  Tabla guardada: {output_dir / 'test_ks.csv'}")
-
-    # Gráficas
-    print("\n" + "="*55)
-    print("GENERANDO GRÁFICAS")
-    print("="*55)
-    grafica_objetivo(df_fase3, df_nuevos, output_dir)
-    graficas_variables(df_fase3, df_nuevos, output_dir)
-    grafica_boxplots(df_fase3, df_nuevos, output_dir)
-
-    print("\n Análisis completado. Archivos en:", output_dir)
+    print(f"\n Análisis completado. Archivos en: {output_dir}")
 
 
 if __name__ == "__main__":

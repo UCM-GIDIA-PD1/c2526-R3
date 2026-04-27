@@ -4,7 +4,7 @@ import numpy as np
 import os
 from dotenv import load_dotenv
 import asyncio
-from extraccion import minioFunctions
+from . import minioFunctions
 from . import interrupcion
 import pandas as pd
 import time

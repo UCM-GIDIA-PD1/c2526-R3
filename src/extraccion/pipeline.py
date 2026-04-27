@@ -122,9 +122,12 @@ def extraccion(df_final, anio):
     df_vegetacion, df_pendiente, df_fisicas, df_suelo2, df_civilizacion = resultados_extraccion
     df_entero = construccion_df.concatenar_variables(pipeline=True, anio=anio)
 
-    df_entero = pd.merge(df_entero, df_final[['lat', 'lon', 'date', 'final', 'frp', 'area_ha']], on=['lat', 'lon', 'date'], how='left')
+    df_entero = pd.merge(df_entero, df_final[['lat', 'lon', 'date', 'final', 'frp']], on=['lat', 'lon', 'date'], how='left')
     df_entero = df_entero.drop(columns=['fire_index'], errors='ignore')
 
+    cliente = minioFunctions.crear_cliente()
+
+    # Subimos a MinIO los incendios
     df_incendios = df_entero[df_entero['final'] == 1]
     minioFunctions.subir_fichero(cliente, f"grupo3/raw/Final/final_incendios_{anio}.parquet", df_incendios)
     
@@ -132,7 +135,6 @@ def extraccion(df_final, anio):
     df_entero['dia_sin'], df_entero['dia_cos'] = transformacion.tranformar_date(df_entero, pipeline=True)
     df_entero = df_entero.drop(columns = ["frp", "area_ha"], errors = 'ignore')
     # Subimos a MinIO
-    cliente = minioFunctions.crear_cliente()
     minioFunctions.subir_fichero(cliente, f"grupo3/raw/Final/final_{anio}.parquet", df_entero)
 
     return df_entero
@@ -177,6 +179,9 @@ def limpieza_nulos(df_entero, anio = None):
     # Subimos a MinIO
     cliente = minioFunctions.crear_cliente()
     minioFunctions.subir_fichero(cliente, f"grupo3/cleaned/final_{anio}.parquet", df_limpio)
+
+    df_incendios = df_limpio[df_limpio['final'] == 1]
+    minioFunctions.subir_fichero(cliente, f"grupo3/cleaned/final_incendios_{anio}.parquet", df_incendios)
 
     return df_limpio
                 

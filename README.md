@@ -146,8 +146,11 @@ Crea un archivo `.env` en la raíz del proyecto (`c2526-R3/`) con la siguiente e
 WANDB_KEY=TU_API_KEY_DE_WANDB
 AWS_ACCESS_KEY_ID=TU_ACCESS_KEY
 AWS_SECRET_ACCESS_KEY=TU_SECRET_KEY
+VITE_MAPBOX_TOKEN=TOKEN_DE_MAPBOX
 RUTA_CREDENCIALES=/ruta/completa/a/google-credentials.json
 ```
+
+Fijarse en .env.example 
 
 ### Descripción de las variables
 

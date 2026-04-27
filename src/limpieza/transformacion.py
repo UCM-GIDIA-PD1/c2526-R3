@@ -66,16 +66,19 @@ def obtener_df_pca(num_componentes):
     
     return df_pca[columnas_componentes + ["final"]]
 
-def tranformar_date(df=None):
+def tranformar_date(df=None, pipeline = False):
     '''
+    :param df: dataframe con columna date
+    :param pipeline: booleano para evitar preguntar si subir a minio
+
     Extrae de la columna "date" el día y lo transforma a un formato cíclico para 
     que el modelo pueda entenderlo mejor (usando senos y cosenos). Posteriormente lo sube a MinIO
     '''
 
-    if isinstance(df, pd.DataFrame):
-        print("Procesando el dataframe proporcionado...")
-    else:
+    if df is None and not pipeline:
         df = lp.bajar_df_final()
+    else:
+        print("Procesando el dataframe pasado por parámetro...")
     
     print(df.columns)
 
@@ -85,9 +88,12 @@ def tranformar_date(df=None):
     df['dia_sin'] = np.sin(2 * np.pi * dias / 365)
     df['dia_cos'] = np.cos(2 * np.pi * dias / 365)
 
-    # Subimos a minio
-    cliente = mf.crear_cliente()
-    mf.subir_fichero(cliente, "grupo3/cleaned/MINI.parquet", df)
+    if not pipeline:
+        # Subimos a minio
+        cliente = mf.crear_cliente()
+        mf.subir_fichero(cliente, "grupo3/cleaned/MINI.parquet", df)
+    else: 
+        return df['dia_sin'], df['dia_cos']
 
 def obtener_df_date_transformado():
     '''

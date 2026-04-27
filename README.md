@@ -227,6 +227,40 @@ Solo es necesaria si se quiere re-ejecutar la extracción de datos desde cero. P
 6. Ve a **"API y servicios" → "Credenciales"** y crea una cuenta de servicio con el rol **"Administrador de recursos de Earth Engine"**.
 7. Genera una clave en formato JSON, renómbrala a `google-credentials.json` y añade su ruta al `.env` como `RUTA_CREDENCIALES`.
 
+## Mapa Interactivo Mapbox 3D
+
+### Requisitos Previos
+
+- [Node.js](https://nodejs.org/) instalado.
+- Una cuenta de [Mapbox](https://account.mapbox.com/) para obtener un token de acceso (API Key).
+- Activar la VPN de la Complutense para poder cargar fotos y mapas desde el servidor MinIO
+
+### Configuración Inicial
+
+1. **Instalar dependencias**:
+   Abre una terminal en la carpeta de mapa-ignis y ejecuta:
+   ```bash
+   npm install
+   ```
+
+2. **Configurar el Token de Mapbox**:
+   Como medida de seguridad, el token de Mapbox se carga desde una variable de entorno. 
+   
+   - Abre el archivo `.env` y reemplaza el valor con tu propio token de Mapbox:
+     ```env
+     VITE_MAPBOX_TOKEN=tu_token_de_mapbox_aqui
+     ```
+
+### Ejecución del Mapa
+
+Para iniciar el servidor de desarrollo, ejecuta (en la carpeta de mapa-ignis) :
+
+```bash
+npm run dev
+```
+
+Luego, abre la URL que aparece en la terminal (usualmente `http://localhost:5173/`) en tu navegador.
+
 ---
 
 ## Equipo

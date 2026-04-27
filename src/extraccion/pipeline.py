@@ -133,7 +133,7 @@ def extraccion(df_final, anio):
     
     # Transformamos la variable fecha
     df_entero['dia_sin'], df_entero['dia_cos'] = transformacion.tranformar_date(df_entero, pipeline=True)
-    df_entero = df_entero.drop(columns = ["frp", "area_ha"], errors = 'ignore')
+    df_entero = df_entero.drop(columns = ["frp"], errors = 'ignore')
     # Subimos a MinIO
     minioFunctions.subir_fichero(cliente, f"grupo3/raw/Final/final_{anio}.parquet", df_entero)
 

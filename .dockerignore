@@ -2,13 +2,13 @@
 **/__pycache__
 **/*.pyc
 
-# Bloquear entornos virtuales (empiecen con punto o no)
-venv/
-env/
-.venv/
-.env/
+!.env
 
-# Bloquear carpetas de datos pesadas (descomenta o añade las tuyas si tienes)
-data/
-datasets/
-models/
+credenciales
+scratch
+
+src/limpieza
+src/modelos
+src/main.py
+
+

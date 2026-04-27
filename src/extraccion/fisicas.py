@@ -14,7 +14,7 @@ sleep = 3600
 async def fetch_environment(session, lat, lon, date, indice=None, intentos=3, directo=False):
     '''
     Función que utiliza la API Open-Meteo para obtener características físicas.
-    Detecta automáticamente si la fecha es histórica o futura.
+    Detecta automáticamente si la fecha es histórica, futura o actual.
     
     :param session: Sesión de aiohttp para realizar la petición
     :param lat: Latitud

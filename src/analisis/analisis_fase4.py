@@ -21,6 +21,7 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+from extraccion import minioFunctions as mf
 
 VARIABLE_OBJETIVO = "final"
 VARIABLES_CLAVE = ["temp_mean", "humidity_mean", "NDVI", "NDWI", "dist_civ", "wind_speed_max"]
@@ -34,8 +35,9 @@ COLOR_FUEGO    = "#DC2626"
 # ──────────────────────────────────────────────
 
 def cargar_y_combinar(ruta_fase3: str, ruta_nuevos: str) -> pd.DataFrame:
-    df_fase3 = pd.read_parquet(ruta_fase3)
-    df_nuevos = pd.read_parquet(ruta_nuevos)
+    cliente = mf.crear_cliente()
+    df_fase3 = mf.bajar_fichero(cliente, ruta_fase3)
+    df_nuevos = mf.bajar_fichero(cliente, ruta_nuevos)
 
     df_fase3["origen"] = "Fase 3 (2022-2025)"
     df_nuevos["origen"] = "Nuevos (2026)"
@@ -82,7 +84,6 @@ def analisis_nulos(df: pd.DataFrame, output_dir: Path) -> None:
     plt.tight_layout()
     ruta = output_dir / "1_nulos.png"
     plt.savefig(ruta, dpi=150, bbox_inches="tight")
-    plt.close()
     print(f"  Guardada: {ruta}")
     tabla.to_csv(output_dir / "1_nulos.csv")
 
@@ -128,7 +129,6 @@ def analisis_geografico(df: pd.DataFrame, output_dir: Path) -> None:
     plt.tight_layout()
     ruta = output_dir / "2_distribucion_geografica.png"
     plt.savefig(ruta, dpi=150, bbox_inches="tight")
-    plt.close()
     print(f"  Guardada: {ruta}")
 
 
@@ -171,7 +171,6 @@ def analisis_temporal(df: pd.DataFrame, output_dir: Path) -> None:
     plt.tight_layout()
     ruta = output_dir / "3_distribucion_temporal.png"
     plt.savefig(ruta, dpi=150, bbox_inches="tight")
-    plt.close()
     print(f"  Guardada: {ruta}")
 
 
@@ -217,7 +216,6 @@ def analisis_variables(df: pd.DataFrame, output_dir: Path) -> None:
     plt.tight_layout()
     ruta = output_dir / "4_variables_clave.png"
     plt.savefig(ruta, dpi=150, bbox_inches="tight")
-    plt.close()
     print(f"  Guardada: {ruta}")
 
 
@@ -251,7 +249,6 @@ def analisis_balance(df: pd.DataFrame, output_dir: Path) -> None:
     plt.tight_layout()
     ruta = output_dir / "5_balance_clases.png"
     plt.savefig(ruta, dpi=150, bbox_inches="tight")
-    plt.close()
     print(f"  Guardada: {ruta}")
 
 
@@ -261,10 +258,6 @@ def analisis_balance(df: pd.DataFrame, output_dir: Path) -> None:
 
 def main():
     parser = argparse.ArgumentParser(description="Análisis exploratorio dataset combinado — Fase 4")
-    parser.add_argument("--datos_fase3", type=str, default="data/MINI.parquet",
-                        help="Ruta al parquet de fase 3 (MINI.parquet)")
-    parser.add_argument("--datos_nuevos", type=str, default="data/final_2026.parquet",
-                        help="Ruta al parquet de datos nuevos (final_2026.parquet)")
     parser.add_argument("--output_dir", type=str, default="resultados/analisis_fase4",
                         help="Carpeta donde guardar las gráficas y tablas")
     args = parser.parse_args()
@@ -272,7 +265,7 @@ def main():
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    df = cargar_y_combinar(args.datos_fase3, args.datos_nuevos)
+    df = cargar_y_combinar("grupo3/cleaned/MINI.parquet", "grupo3/cleaned/final_cleaned_2026.parquet")
 
     analisis_nulos(df, output_dir)
     analisis_geografico(df, output_dir)
@@ -280,8 +273,12 @@ def main():
     analisis_variables(df, output_dir)
     analisis_balance(df, output_dir)
 
+    plt.show()
+    plt.close()
+    
     print(f"\n Análisis completado. Archivos en: {output_dir}")
 
 
 if __name__ == "__main__":
     main()
+    

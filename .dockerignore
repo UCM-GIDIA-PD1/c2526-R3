@@ -2,11 +2,8 @@
 **/__pycache__
 **/*.pyc
 
-# Bloquear entornos virtuales
-venv/
-env/
-.venv/
-.env/
+!.env
+
 
 credenciales
 scratch

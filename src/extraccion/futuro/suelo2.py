@@ -212,8 +212,8 @@ async def df_soil_temp(fires, limit=20, fecha_ini=None, fecha_fin=None, pipeline
 
     if pipeline:
         assert anio is not None, "Se requiere el año para subir a minio el archivo automáticamente"
-        cliente = minioFunctions.inicializar_cliente()
-        minioFunctions.subir_fichero(cliente, df_resultado, f"grupo3/raw/Suelo2/Suelo2_{anio}.parquet")
+        cliente = minioFunctions.crear_cliente()
+        minioFunctions.subir_fichero(cliente, f"grupo3/raw/Suelo2/Suelo2_{anio}.parquet", df_resultado)
     else:
         minioFunctions.preguntar_subida(df_resultado, "grupo3/raw/Suelo2/")
 

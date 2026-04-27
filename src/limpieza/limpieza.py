@@ -1,7 +1,7 @@
 from extraccion import minioFunctions as mf
 import pandas as pd
 
-def bajar_df_final(clasificacion):
+def bajar_df_final(clasificacion=True):
     cliente = mf.crear_cliente()
     if clasificacion:
         df = mf.bajar_fichero(cliente, "grupo3/cleaned/MINI.parquet", "df")

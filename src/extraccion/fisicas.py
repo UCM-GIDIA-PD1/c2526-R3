@@ -299,7 +299,9 @@ async def df_fisicas(fires, limit=20, fecha_ini=None, fecha_fin=None, directo=Fa
     print(f"Total de requests: {contador}")
     
     if pipeline:
-        minioFunctions.subir_fichero(minioFunctions.inicializar_cliente(), final_df, f"grupo3/raw/Fisicas/Fisicas_{anio}.parquet")
+        assert anio is not None, "Se requiere el año para subir a minio el archivo automáticamente"
+        cliente = minioFunctions.crear_cliente()
+        minioFunctions.subir_fichero(cliente, f"grupo3/raw/Fisicas/Fisicas_{anio}.parquet", final_df)
     else:
         minioFunctions.preguntar_subida(final_df, "grupo3/raw/Fisicas/")
     

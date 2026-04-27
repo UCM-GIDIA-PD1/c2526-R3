@@ -4,17 +4,8 @@
 
 !.env
 
-
 credenciales
 scratch
-
-src/analisis
-
-src/extraccion/descartadas
-
-src/extraccion/futuro/analisis_suelo.ipynb
-src/extraccion/futuro/PruebasMapas.ipynb
-src/extraccion/futuro/ganado.py
 
 src/limpieza
 src/modelos

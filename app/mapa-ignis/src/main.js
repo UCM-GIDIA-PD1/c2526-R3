@@ -787,6 +787,7 @@ function renderChart(importanciasData, bgColor, borderColor) {
     
     if (currentChart) {
         currentChart.destroy();
+        currentChart = null;
     }
     
     const labels = Object.keys(importanciasData);

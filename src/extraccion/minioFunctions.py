@@ -6,6 +6,7 @@ import geopandas as gpd
 import os
 from dotenv import load_dotenv
 from joblib import load
+import pickle
 
 '''
 Comprobar:
@@ -78,7 +79,8 @@ def bajar_fichero(cliente, path_server: Path, type = "df"):
             object_name=path_server,
         )
 
-        buffer = io.BytesIO(response.read()) #Almacenamos fichero en buffer de memoria
+        data = response.read()
+        buffer = io.BytesIO(data) #Almacenamos fichero en buffer de memoria
         
         if (type == "gdf"):
             gdf = gpd.read_parquet(buffer)
@@ -86,7 +88,7 @@ def bajar_fichero(cliente, path_server: Path, type = "df"):
             return gdf
         elif(type == "pkl"):
             print(f"pkl {path_server.split("/")[-1]} importado correctamente")
-            return load(buffer)
+            return pickle.loads(data)
         else:
             df = pd.read_parquet(buffer)
             print(f"Dataframe {path_server.split("/")[-1]} importado correctamente")

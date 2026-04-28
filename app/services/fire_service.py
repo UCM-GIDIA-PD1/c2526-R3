@@ -94,14 +94,7 @@ def realizar_inferencia_ocurrencia(modelo_ocurrencia, features: dict) -> tuple[f
         
     try:
         df_predict = pd.DataFrame([features])
-        columnas_ocurrencia = [
-            'lat', 'lon', 'soil_temp', 'final', 'elevacion_centro',
-            'grados', 'porcentaje', 'temp_mean', 'temp_max', 'temp_min',
-            'humidity_mean', 'precipitation', 'wind_speed_max', 'wind_gusts_max',
-            'pressure_mean', 'cloud_cover', 'radiation', 'evapotranspiration',
-            'sunshine_seconds', 'NDVI', 'NDWI', 'dist_civ', 'dia_sin', 'dia_cos'
-        ]
-        
+        columnas_ocurrencia = modelo_ocurrencia.feature_names_in_
         df_predict_ocurrencia = df_predict[columnas_ocurrencia]
         proba = float(modelo_ocurrencia.predict_proba(df_predict_ocurrencia)[0][1])
         ocurrencia = proba > 0.5
@@ -114,21 +107,14 @@ def realizar_inferencia_ocurrencia(modelo_ocurrencia, features: dict) -> tuple[f
 def realizar_inferencia_intensidad(modelo_frp, features: dict) -> float:
     if not modelo_frp:
         return 0.0
-        
+
     try:
         df_predict = pd.DataFrame([features])
 
-        # Sin la columna 'final'
-        columnas_frp = [
-            'lat', 'lon', 'soil_temp', 'elevacion_centro',
-            'grados', 'porcentaje', 'temp_mean', 'temp_max', 'temp_min',
-            'humidity_mean', 'precipitation', 'wind_speed_max', 'wind_gusts_max',
-            'pressure_mean', 'cloud_cover', 'radiation', 'evapotranspiration',
-            'sunshine_seconds', 'NDVI', 'NDWI', 'dist_civ', 'dia_sin', 'dia_cos'
-        ]
-        df_predict_frp = df_predict[columnas_frp]
+        columnas_modelo = modelo_frp.feature_names_in_
+        df_predict_frp = df_predict[columnas_modelo]
         intensidad = float(modelo_frp.predict(df_predict_frp)[0])
-        
+         
         return max(0.0, intensidad)
     except Exception as e:
         print(f"Error en predicción de intensidad: {e}")
@@ -243,7 +229,10 @@ async def procesar_intensidad(request: IncendioRequest, modelo_frp) -> dict:
     fecha_procesada = fecha_obj.strftime("%Y-%m-%d")
 
     features_completas, datos_faltantes = await extraer_variables_punto(request.latitud, request.longitud, fecha_procesada)
-    
+    features_completas['VPD'] = 0
+    features_completas['dry_fuel_index'] = 0
+    features_completas['fuel_stress'] = 0
+
     if datos_faltantes >= 5:
         return {
             "intensidad": 0.0,
@@ -266,11 +255,11 @@ async def procesar_intensidad(request: IncendioRequest, modelo_frp) -> dict:
     importancias = {}
     if modelo_frp and hasattr(modelo_frp, 'feature_importances_'):
         feat_names = [
-            'lat', 'lon', 'date', 'soil_temp', 'elevacion_centro',
+            'lat', 'lon', 'soil_temp', 'elevacion_centro',
             'grados', 'porcentaje', 'temp_mean', 'temp_max', 'temp_min',
             'humidity_mean', 'precipitation', 'wind_speed_max', 'wind_gusts_max',
             'pressure_mean', 'cloud_cover', 'radiation', 'evapotranspiration',
-            'sunshine_seconds', 'NDVI', 'NDWI', 'dist_civ', 'dia_sin', 'dia_cos'
+            'sunshine_seconds', 'NDVI', 'NDWI', 'dist_civ',  'dry_fuel_index', 'VPD', 'fuel_stress'
         ]
         importances = modelo_frp.feature_importances_
         sorted_idx = np.argsort(importances)[::-1][:5]

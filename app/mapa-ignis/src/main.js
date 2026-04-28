@@ -694,24 +694,10 @@ function renderPredictionResults(data) {
 
         let importanciasHtml = '';
         if (data.importancias && Object.keys(data.importancias).length > 0) {
-            const maxImp = Math.max(...Object.values(data.importancias));
             importanciasHtml = `
                 <div class="factors-title">Contribución al Riesgo (Importancia)</div>
-                <div class="importance-chart">
-                    ${Object.entries(data.importancias).map(([name, imp]) => {
-                const percent = (imp / maxImp * 100).toFixed(0);
-                return `
-                            <div class="importance-item">
-                                <div class="importance-label">
-                                    <span>${name}</span>
-                                    <span>${(imp * 100).toFixed(1)}%</span>
-                                </div>
-                                <div class="importance-bar-bg">
-                                    <div class="importance-bar" style="width: ${percent}%"></div>
-                                </div>
-                            </div>
-                        `;
-            }).join('')}
+                <div style="position: relative; height: 180px; width: 100%; margin-top: 10px;">
+                    <canvas id="importanceChartCanvas"></canvas>
                 </div>
             `;
         }
@@ -736,6 +722,10 @@ function renderPredictionResults(data) {
                 </div>
             </div>
         `;
+        
+        if (data.importancias && Object.keys(data.importancias).length > 0) {
+            renderChart(data.importancias, 'rgba(239, 68, 68, 0.6)', 'rgba(239, 68, 68, 1)');
+        }
     } else {
         const intensity = data.intensidad.toFixed(2);
 
@@ -754,6 +744,16 @@ function renderPredictionResults(data) {
             `;
         }
 
+        let importanciasHtml = '';
+        if (data.importancias && Object.keys(data.importancias).length > 0) {
+            importanciasHtml = `
+                <div class="factors-title">Contribución a la Intensidad (Importancia)</div>
+                <div style="position: relative; height: 180px; width: 100%; margin-top: 10px;">
+                    <canvas id="importanceChartCanvas"></canvas>
+                </div>
+            `;
+        }
+
         resultsContainer.innerHTML = `
             <div class="result-section">
                 <div class="result-header">Resultado de la Predicción de FRP</div>
@@ -765,13 +765,73 @@ function renderPredictionResults(data) {
                 ${data.nota_informativa ? `<div class="note-msg" style="color: #f59e0b; font-size: 0.8rem; margin-top: 10px;">⚠️ ${data.nota_informativa}</div>` : ''}
                 
                 ${variablesHtml}
+                ${importanciasHtml}
 
                 <div style="margin-top: 15px; font-size: 0.7rem; opacity: 0.6; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 10px;">
                     Fecha: ${data.fecha_procesada} | Versión: ${data.modelo_version}
                 </div>
             </div>
         `;
+        
+        if (data.importancias && Object.keys(data.importancias).length > 0) {
+            renderChart(data.importancias, 'rgba(249, 115, 22, 0.6)', 'rgba(249, 115, 22, 1)');
+        }
     }
+}
+
+let currentChart = null;
+
+function renderChart(importanciasData, bgColor, borderColor) {
+    const ctx = document.getElementById('importanceChartCanvas');
+    if (!ctx) return;
+    
+    if (currentChart) {
+        currentChart.destroy();
+    }
+    
+    const labels = Object.keys(importanciasData);
+    const values = Object.values(importanciasData).map(v => (v * 100).toFixed(1));
+    
+    currentChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Importancia (%)',
+                data: values,
+                backgroundColor: bgColor,
+                borderColor: borderColor,
+                borderWidth: 1,
+                borderRadius: 4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            indexAxis: 'y',
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return context.raw + '%';
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    beginAtZero: true,
+                    grid: { color: 'rgba(255, 255, 255, 0.1)' },
+                    ticks: { color: '#cbd5e1' }
+                },
+                y: {
+                    grid: { display: false },
+                    ticks: { color: '#cbd5e1' }
+                }
+            }
+        }
+    });
 }
 
 

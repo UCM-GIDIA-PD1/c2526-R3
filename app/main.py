@@ -30,7 +30,7 @@ async def lifespan(app: FastAPI):
     try:
         print("Cargando modelo de intensidad (FRP) desde MinIO...")
         cliente = crear_cliente()
-        path_modelo_frp = "grupo3/Modelos/modelo_xgboost_frp.pkl" 
+        path_modelo_frp = "grupo3/modelo_xgboost_frp.pkl" 
         ml_models["xgboost_frp"] = bajar_fichero(cliente, path_modelo_frp, type="pkl")
         print("Modelo de intensidad cargado exitosamente.")
     except Exception as e:

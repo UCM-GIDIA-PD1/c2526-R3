@@ -88,20 +88,34 @@ async def extraer_variables_punto(lat: float, lon: float, fecha_str: str) -> tup
     faltantes = sum(pd.isna(v) or v is None for v in features.values())
     return features, faltantes
 
+def get_model_features(modelo, fallback_features):
+    if hasattr(modelo, 'feature_names_in_'):
+        return list(modelo.feature_names_in_)
+    elif hasattr(modelo, 'feature_names'):
+        return list(modelo.feature_names)
+    elif hasattr(modelo, 'get_booster'):
+        return list(modelo.get_booster().feature_names)
+    return fallback_features
+
 def realizar_inferencia_ocurrencia(modelo_ocurrencia, features: dict) -> tuple[float, bool]:
     if not modelo_ocurrencia:
         return 0.5, True
         
     try:
         df_predict = pd.DataFrame([features])
-        columnas_ocurrencia = [
+        fallback = [
             'lat', 'lon', 'soil_temp', 'final', 'elevacion_centro',
             'grados', 'porcentaje', 'temp_mean', 'temp_max', 'temp_min',
             'humidity_mean', 'precipitation', 'wind_speed_max', 'wind_gusts_max',
             'pressure_mean', 'cloud_cover', 'radiation', 'evapotranspiration',
             'sunshine_seconds', 'NDVI', 'NDWI', 'dist_civ', 'dia_sin', 'dia_cos'
         ]
+        columnas_ocurrencia = get_model_features(modelo_ocurrencia, fallback)
         
+        for col in columnas_ocurrencia:
+            if col not in df_predict.columns:
+                df_predict[col] = 0.0
+                
         df_predict_ocurrencia = df_predict[columnas_ocurrencia]
         proba = float(modelo_ocurrencia.predict_proba(df_predict_ocurrencia)[0][1])
         ocurrencia = proba > 0.5
@@ -118,14 +132,19 @@ def realizar_inferencia_intensidad(modelo_frp, features: dict) -> float:
     try:
         df_predict = pd.DataFrame([features])
 
-        # Sin la columna 'final'
-        columnas_frp = [
+        fallback = [
             'lat', 'lon', 'soil_temp', 'elevacion_centro',
             'grados', 'porcentaje', 'temp_mean', 'temp_max', 'temp_min',
             'humidity_mean', 'precipitation', 'wind_speed_max', 'wind_gusts_max',
             'pressure_mean', 'cloud_cover', 'radiation', 'evapotranspiration',
             'sunshine_seconds', 'NDVI', 'NDWI', 'dist_civ', 'dia_sin', 'dia_cos'
         ]
+        columnas_frp = get_model_features(modelo_frp, fallback)
+        
+        for col in columnas_frp:
+            if col not in df_predict.columns:
+                df_predict[col] = 0.0
+
         df_predict_frp = df_predict[columnas_frp]
         intensidad = float(modelo_frp.predict(df_predict_frp)[0])
         
@@ -182,13 +201,14 @@ async def procesar_ocurrencia(request: IncendioRequest, modelo_ocurrencia) -> di
 
     importancias = {}
     if modelo_ocurrencia and hasattr(modelo_ocurrencia, 'feature_importances_'):
-        feat_names = [
+        fallback = [
             'lat', 'lon', 'date', 'soil_temp', 'final', 'elevacion_centro',
             'grados', 'porcentaje', 'temp_mean', 'temp_max', 'temp_min',
             'humidity_mean', 'precipitation', 'wind_speed_max', 'wind_gusts_max',
             'pressure_mean', 'cloud_cover', 'radiation', 'evapotranspiration',
             'sunshine_seconds', 'NDVI', 'NDWI', 'dist_civ', 'dia_sin', 'dia_cos'
         ]
+        feat_names = get_model_features(modelo_ocurrencia, fallback)
         importances = modelo_ocurrencia.feature_importances_
         sorted_idx = np.argsort(importances)[::-1][:5]
         name_map = {
@@ -265,13 +285,14 @@ async def procesar_intensidad(request: IncendioRequest, modelo_frp) -> dict:
 
     importancias = {}
     if modelo_frp and hasattr(modelo_frp, 'feature_importances_'):
-        feat_names = [
+        fallback = [
             'lat', 'lon', 'date', 'soil_temp', 'elevacion_centro',
             'grados', 'porcentaje', 'temp_mean', 'temp_max', 'temp_min',
             'humidity_mean', 'precipitation', 'wind_speed_max', 'wind_gusts_max',
             'pressure_mean', 'cloud_cover', 'radiation', 'evapotranspiration',
             'sunshine_seconds', 'NDVI', 'NDWI', 'dist_civ', 'dia_sin', 'dia_cos'
         ]
+        feat_names = get_model_features(modelo_frp, fallback)
         importances = modelo_frp.feature_importances_
         sorted_idx = np.argsort(importances)[::-1][:5]
         name_map = {

@@ -126,9 +126,16 @@ def extraccion(df_final, anio):
     df_entero = df_entero.drop(columns=['fire_index'], errors='ignore')
 
     cliente = minioFunctions.crear_cliente()
+    def calcular_vpd(temp, rh):
+        svp = 610.7 * (10**((7.5 * temp) / (237.3 + temp)))
+        vpd = (1 - (rh / 100)) * svp
+        return vpd
 
     # Subimos a MinIO los incendios
     df_incendios = df_entero[df_entero['final'] == 1]
+    df_incendios['fuel_stress'] = df_incendios['NDVI'] - df_incendios['NDWI']
+    df_incendios['VPD'] = calcular_vpd(df_incendios['temp_mean'], df_incendios['humidity_mean'])
+    df_incendios['dry_fuel_index'] = df_incendios['NDVI'] / (df_incendios['NDWI'] + 1) 
     minioFunctions.subir_fichero(cliente, f"grupo3/raw/Final/final_incendios_{anio}.parquet", df_incendios)
     
     # Transformamos la variable fecha

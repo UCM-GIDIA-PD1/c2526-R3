@@ -13,7 +13,12 @@ from src.extraccion import minioFunctions
 
 from app.schemas import IncendioRequest
 
-async def extraer_variables_punto(lat: float, lon: float, fecha_str: str) -> tuple[dict, int]:
+async def extraer_variables_punto(
+    lat: float,
+    lon: float,
+    fecha_str: str,
+    progress_cb=None   # async callable(step: int, total: int, label: str)
+) -> tuple[dict, int]:
     """
     Extrae todas las variables requeridas para un punto en una fecha dada.
     Se hacen de forma paralela para mayor velocidad.
@@ -21,8 +26,15 @@ async def extraer_variables_punto(lat: float, lon: float, fecha_str: str) -> tup
     :params lat: Latitud del punto
     :params lon: Longitud del punto
     :params fecha_str: Fecha en formato string (se tomarán los primeros 10 caracteres)
+    :params progress_cb: Callback async opcional para emitir progreso (step, total, label)
     :return tuple[dict, int]: Diccionario con las variables extraídas y el número de valores faltantes
     """
+    TOTAL_STEPS = 6
+
+    async def _emit(step: int, label: str):
+        if progress_cb:
+            await progress_cb(step, TOTAL_STEPS, label)
+
     features_esperadas = [
         'lat', 'lon', 'date', 'soil_temp', 'final', 'elevacion_centro',
         'grados', 'porcentaje', 'temp_mean', 'temp_max', 'temp_min',
@@ -39,20 +51,24 @@ async def extraer_variables_punto(lat: float, lon: float, fecha_str: str) -> tup
         'final': 0
     })
     
+    await _emit(1, "Inicializando variables geoespaciales...")
+
     dias = pd.to_datetime(fecha_str).dayofyear
     features['dia_sin'] = np.sin(2 * np.pi * dias / 365)
     features['dia_cos'] = np.cos(2 * np.pi * dias / 365)
 
     df_temp = pd.DataFrame([{'lat': lat, 'lon': lon, 'date': fecha_str}])
-    
-    
+
+    await _emit(2, "Conectando a MinIO y cargando datos...")
     cliente = await asyncio.to_thread(minioFunctions.crear_cliente)
     path_pobl = 'grupo3/maps/civilizaciones/poblaciones_clean.parquet'
     df_pobl = await asyncio.to_thread(minioFunctions.bajar_fichero, cliente, path_pobl)
+
+    await _emit(3, "Calculando distancia a núcleos de población...")
     distancias = await asyncio.to_thread(civilizacion.calcular_distancias, df_pobl, df_temp)
     dist_civ = distancias.flatten()[0] if distancias is not None else np.nan
-    
 
+    await _emit(4, "Extrayendo datos climáticos, vegetación y terreno...")
     intentos = 0
     async with aiohttp.ClientSession() as session:
         while intentos < 3:
@@ -76,7 +92,7 @@ async def extraer_variables_punto(lat: float, lon: float, fecha_str: str) -> tup
                 features['dist_civ'] = dist_civ
                 
                 faltantes = sum(pd.isna(v) or v is None for v in features.values())
-                if faltantes <= 1: 
+                if faltantes <= 1:
                     break
                     
             except Exception as e:
@@ -84,7 +100,8 @@ async def extraer_variables_punto(lat: float, lon: float, fecha_str: str) -> tup
                 
             intentos += 1
             if intentos < 3: await asyncio.sleep(0.5)
-            
+
+    await _emit(5, "Validando datos extraídos...")
     faltantes = sum(pd.isna(v) or v is None for v in features.values())
     return features, faltantes
 

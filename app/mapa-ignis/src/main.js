@@ -605,14 +605,14 @@ tabRiesgo.addEventListener('click', () => {
     activeTab = 'riesgo';
     tabRiesgo.classList.add('active');
     tabFrp.classList.remove('active');
-    if (hasPrediction) generateMockPrediction();
+    if (hasPrediction) performPrediction();
 });
 
 tabFrp.addEventListener('click', () => {
     activeTab = 'frp';
     tabFrp.classList.add('active');
     tabRiesgo.classList.remove('active');
-    if (hasPrediction) generateMockPrediction();
+    if (hasPrediction) performPrediction();
 });
 
 actionBtn.addEventListener('click', async () => {
@@ -622,27 +622,80 @@ actionBtn.addEventListener('click', async () => {
     }
 
     actionBtn.disabled = true;
-    actionBtn.textContent = 'Procesando...';
+    actionBtn.textContent = 'Analizando...';
 
     try {
         await performPrediction();
         hasPrediction = true;
     } catch (error) {
         console.error("Prediction error:", error);
-        alert("Error al realizar la predicción: " + error.message);
+        resultsContainer.innerHTML = `<div class="error-msg">❌ Error: ${error.message}</div>`;
     } finally {
         actionBtn.disabled = false;
         updateUIState();
     }
 });
 
+// ── Loading progress bar renderer ────────────────────────────────
+const STEP_ICONS = [
+    '',       // placeholder for 1-index
+    '📍',      // 1: init
+    '🗄️',      // 2: MinIO
+    '🏙️',      // 3: distances
+    '🌤️',      // 4: climate + veg + terrain
+    '✅',      // 5: validation
+    '🤖',      // 6: model
+];
+
+function showLoadingProgress(step, total, label) {
+    const pct = Math.round((step / total) * 100);
+    const icon = STEP_ICONS[step] || '⧗';
+
+    const stepsHtml = Array.from({ length: total }, (_, i) => {
+        const s = i + 1;
+        const done  = s < step;
+        const active = s === step;
+        return `<div class="loading-step ${done ? 'step-done' : active ? 'step-active' : 'step-pending'}">
+            <span class="step-dot"></span>
+            <span class="step-label">${STEP_ICONS[s]} ${getStepName(s)}</span>
+        </div>`;
+    }).join('');
+
+    resultsContainer.innerHTML = `
+        <div class="loading-overlay">
+            <div class="loading-header">
+                <span class="loading-icon pulse">${icon}</span>
+                <div>
+                    <div class="loading-title">Extrayendo datos...</div>
+                    <div class="loading-label">${label}</div>
+                </div>
+            </div>
+
+            <div class="loading-bar-track">
+                <div class="loading-bar-fill" style="width:${pct}%"></div>
+                <span class="loading-bar-pct">${pct}%</span>
+            </div>
+
+            <div class="loading-steps">${stepsHtml}</div>
+        </div>
+    `;
+}
+
+function getStepName(s) {
+    const names = ['','Variables geo.','MinIO / datos','Distancias','Clima & terreno','Validación','Modelo IA'];
+    return names[s] || `Paso ${s}`;
+}
+
+// ── SSE-based prediction ─────────────────────────────────────
 async function performPrediction() {
-    const endpoint = activeTab === 'riesgo' ? '/predict/ocurrencia' : '/predict/intensidad';
+    const endpoint = activeTab === 'riesgo'
+        ? '/predict/ocurrencia/stream'
+        : '/predict/intensidad/stream';
+
+    // SSE via fetch (POST + ReadableStream)
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
             latitud: selectedLat,
             longitud: selectedLon,
@@ -652,11 +705,48 @@ async function performPrediction() {
 
     if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.detail || "Error en el servidor");
+        throw new Error(errorData.detail || 'Error en el servidor');
     }
 
-    const data = await response.json();
-    renderPredictionResults(data);
+    // Show initial loading state immediately
+    showLoadingProgress(1, 6, 'Iniciando extracción de datos...');
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    return new Promise((resolve, reject) => {
+        function processChunk({ done, value }) {
+            if (done) { resolve(); return; }
+
+            buffer += decoder.decode(value, { stream: true });
+            const parts = buffer.split('\n\n');
+            buffer = parts.pop(); // keep incomplete last part
+
+            for (const part of parts) {
+                const eventLine = part.match(/^event:\s*(.+)$/m);
+                const dataLine  = part.match(/^data:\s*(.+)$/ms);
+                if (!eventLine || !dataLine) continue;
+
+                const eventType = eventLine[1].trim();
+                let payload;
+                try { payload = JSON.parse(dataLine[1].trim()); }
+                catch { continue; }
+
+                if (eventType === 'progress') {
+                    showLoadingProgress(payload.step, payload.total, payload.label);
+                } else if (eventType === 'result') {
+                    renderPredictionResults(payload);
+                    resolve();
+                    return;
+                }
+            }
+
+            reader.read().then(processChunk).catch(reject);
+        }
+
+        reader.read().then(processChunk).catch(reject);
+    });
 }
 
 function updateUIState() {
@@ -672,10 +762,54 @@ function updateUIState() {
     }
 }
 
+function getRiskLevel(prob) {
+    if (prob >= 75) return { label: 'MUY ALTO', cls: 'risk-very-high', color: '#dc2626' };
+    if (prob >= 50) return { label: 'ALTO',     cls: 'risk-high',      color: '#f97316' };
+    if (prob >= 25) return { label: 'MODERADO', cls: 'risk-medium',    color: '#eab308' };
+    return            { label: 'BAJO',      cls: 'risk-low',       color: '#22c55e' };
+}
+
+function buildImportanciasHtml(importancias, accentColor) {
+    if (!importancias || Object.keys(importancias).length === 0) return '';
+    const sorted = Object.entries(importancias)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 8); // top 8 variables
+    const maxVal = sorted[0][1];
+    const bars = sorted.map(([name, val], i) => {
+        const pct = maxVal > 0 ? ((val / maxVal) * 100).toFixed(1) : 0;
+        const absPct = (val * 100).toFixed(1);
+        return `
+            <div class="imp-row" style="--delay:${i * 60}ms">
+                <div class="imp-label-row">
+                    <span class="imp-name">${name}</span>
+                    <span class="imp-pct">${absPct}%</span>
+                </div>
+                <div class="imp-bar-bg">
+                    <div class="imp-bar-fill" style="--target-width:${pct}%; background:${accentColor};"></div>
+                </div>
+            </div>
+        `;
+    }).join('');
+    return `
+        <div class="factors-title" style="margin-top:16px;">Contribución al Riesgo</div>
+        <div class="imp-list" id="imp-list-container">${bars}</div>
+    `;
+}
+
+function animateProgressBars() {
+    // Trigger CSS animation for importance bars (delayed fills)
+    requestAnimationFrame(() => {
+        document.querySelectorAll('.imp-bar-fill').forEach(el => {
+            el.style.width = el.style.getPropertyValue('--target-width') || '0%';
+        });
+    });
+}
+
 function renderPredictionResults(data) {
     if (activeTab === 'riesgo') {
-        const prob = (data.probabilidad * 100).toFixed(1);
-        const riskClass = data.ocurrencia ? 'risk-high' : 'risk-low';
+        const probRaw = data.probabilidad * 100;
+        const prob = probRaw.toFixed(1);
+        const risk = getRiskLevel(probRaw);
 
         let variablesHtml = '';
         if (data.variables_clave) {
@@ -692,42 +826,51 @@ function renderPredictionResults(data) {
             `;
         }
 
-        let importanciasHtml = '';
-        if (data.importancias && Object.keys(data.importancias).length > 0) {
-            importanciasHtml = `
-                <div class="factors-title">Contribución al Riesgo (Importancia)</div>
-                <div style="position: relative; height: 180px; width: 100%; margin-top: 10px;">
-                    <canvas id="importanceChartCanvas"></canvas>
-                </div>
-            `;
-        }
+        const importanciasHtml = buildImportanciasHtml(data.importancias, risk.color);
 
         resultsContainer.innerHTML = `
             <div class="result-section">
                 <div class="result-header">Resultado de la Predicción</div>
-                <div class="risk-probability ${riskClass}">
-                    ${data.ocurrencia ? 'ALTO RIESGO' : 'RIESGO BAJO'}: ${prob}%
+
+                <!-- Main probability progress bar -->
+                <div class="prob-bar-wrapper">
+                    <div class="prob-bar-header">
+                        <span class="prob-label ${risk.cls}">${risk.label}</span>
+                        <span class="prob-value">${prob}%</span>
+                    </div>
+                    <div class="prob-bar-track">
+                        <div class="prob-bar-fill ${risk.cls}" id="main-prob-bar" style="--target-width:${prob}%"></div>
+                    </div>
+                    <div class="prob-bar-scale">
+                        <span>0%</span><span>25%</span><span>50%</span><span>75%</span><span>100%</span>
+                    </div>
                 </div>
-                
-                ${data.error ? `<div class="error-msg" style="color: #ef4444; margin-top: 10px;">${data.error}</div>` : ''}
-                ${data.nota_informativa ? `<div class="note-msg" style="color: #f59e0b; font-size: 0.8rem; margin-top: 10px;">⚠️ ${data.nota_informativa}</div>` : ''}
+
+                ${data.error ? `<div class="error-msg">${data.error}</div>` : ''}
+                ${data.nota_informativa ? `<div class="note-msg">⚠️ ${data.nota_informativa}</div>` : ''}
 
                 ${variablesHtml}
                 ${importanciasHtml}
 
-                <div class="factor-item" style="margin-top: 15px; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 10px;">
-                    <div class="factor-header" style="font-size: 0.7rem; opacity: 0.6;">
-                        Fecha: ${data.fecha_procesada} | Modelo: ${data.modelo_version}
-                    </div>
+                <div class="meta-row">
+                    Fecha: ${data.fecha_procesada} | Modelo: ${data.modelo_version}
                 </div>
             </div>
         `;
-        
-        if (data.importancias && Object.keys(data.importancias).length > 0) {
-            renderChart(data.importancias, 'rgba(239, 68, 68, 0.6)', 'rgba(239, 68, 68, 1)');
-        }
+
+        // Animate bars after DOM insertion
+        requestAnimationFrame(() => {
+            const mainBar = document.getElementById('main-prob-bar');
+            if (mainBar) mainBar.style.width = mainBar.style.getPropertyValue('--target-width') || prob + '%';
+            animateProgressBars();
+        });
+
     } else {
         const intensity = data.intensidad.toFixed(2);
+        // FRP intensity: normalize against a reference max of ~500 MW for display purposes
+        const frpMax = 500;
+        const frpPct = Math.min((data.intensidad / frpMax) * 100, 100).toFixed(1);
+        const frpColor = data.intensidad > 200 ? '#dc2626' : data.intensidad > 80 ? '#f97316' : '#eab308';
 
         let variablesHtml = '';
         if (data.variables_clave) {
@@ -744,15 +887,7 @@ function renderPredictionResults(data) {
             `;
         }
 
-        let importanciasHtml = '';
-        if (data.importancias && Object.keys(data.importancias).length > 0) {
-            importanciasHtml = `
-                <div class="factors-title">Contribución a la Intensidad (Importancia)</div>
-                <div style="position: relative; height: 180px; width: 100%; margin-top: 10px;">
-                    <canvas id="importanceChartCanvas"></canvas>
-                </div>
-            `;
-        }
+        const importanciasHtml = buildImportanciasHtml(data.importancias, '#f97316');
 
         resultsContainer.innerHTML = `
             <div class="result-section">
@@ -760,80 +895,39 @@ function renderPredictionResults(data) {
                 <div class="frp-title">FRP ESTIMADO:</div>
                 <div class="frp-value">${intensity} MW</div>
                 <div class="frp-subtitle">Potencia Radiativa del Fuego Estimada</div>
-                
-                ${data.error ? `<div class="error-msg" style="color: #ef4444; margin-top: 10px;">${data.error}</div>` : ''}
-                ${data.nota_informativa ? `<div class="note-msg" style="color: #f59e0b; font-size: 0.8rem; margin-top: 10px;">⚠️ ${data.nota_informativa}</div>` : ''}
-                
+
+                <!-- FRP intensity progress bar -->
+                <div class="prob-bar-wrapper" style="margin-top:14px;">
+                    <div class="prob-bar-header">
+                        <span style="font-size:0.75rem;color:var(--text-muted);">Intensidad relativa</span>
+                        <span class="prob-value">${frpPct}% (ref. 500 MW)</span>
+                    </div>
+                    <div class="prob-bar-track">
+                        <div class="prob-bar-fill" id="main-prob-bar" style="--target-width:${frpPct}%; background:${frpColor};"></div>
+                    </div>
+                </div>
+
+                ${data.error ? `<div class="error-msg">${data.error}</div>` : ''}
+                ${data.nota_informativa ? `<div class="note-msg">⚠️ ${data.nota_informativa}</div>` : ''}
+
                 ${variablesHtml}
                 ${importanciasHtml}
 
-                <div style="margin-top: 15px; font-size: 0.7rem; opacity: 0.6; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 10px;">
+                <div class="meta-row">
                     Fecha: ${data.fecha_procesada} | Versión: ${data.modelo_version}
                 </div>
             </div>
         `;
-        
-        if (data.importancias && Object.keys(data.importancias).length > 0) {
-            renderChart(data.importancias, 'rgba(249, 115, 22, 0.6)', 'rgba(249, 115, 22, 1)');
-        }
+
+        requestAnimationFrame(() => {
+            const mainBar = document.getElementById('main-prob-bar');
+            if (mainBar) mainBar.style.width = mainBar.style.getPropertyValue('--target-width') || frpPct + '%';
+            animateProgressBars();
+        });
     }
 }
 
-let currentChart = null;
-
-function renderChart(importanciasData, bgColor, borderColor) {
-    const ctx = document.getElementById('importanceChartCanvas');
-    if (!ctx) return;
-    
-    if (currentChart) {
-        currentChart.destroy();
-        currentChart = null;
-    }
-    
-    const labels = Object.keys(importanciasData);
-    const values = Object.values(importanciasData).map(v => (v * 100).toFixed(1));
-    
-    currentChart = new Chart(ctx, {
-        type: 'bar',
-        data: {
-            labels: labels,
-            datasets: [{
-                label: 'Importancia (%)',
-                data: values,
-                backgroundColor: bgColor,
-                borderColor: borderColor,
-                borderWidth: 1,
-                borderRadius: 4
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            indexAxis: 'y',
-            plugins: {
-                legend: { display: false },
-                tooltip: {
-                    callbacks: {
-                        label: function(context) {
-                            return context.raw + '%';
-                        }
-                    }
-                }
-            },
-            scales: {
-                x: {
-                    beginAtZero: true,
-                    grid: { color: 'rgba(255, 255, 255, 0.1)' },
-                    ticks: { color: '#cbd5e1' }
-                },
-                y: {
-                    grid: { display: false },
-                    ticks: { color: '#cbd5e1' }
-                }
-            }
-        }
-    });
-}
+// Chart.js replaced by native CSS progress bars (renderPredictionResults handles rendering)
 
 
 coordsInput.addEventListener('change', async (e) => {

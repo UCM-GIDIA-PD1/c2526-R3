@@ -1,5 +1,8 @@
-# 1. Python 3. (versión oficial de python de uv) 
-FROM ghcr.io/astral-sh/uv:python3.12-slim
+# 1. Python 3.12
+FROM python:3.12-slim
+
+# Instalar UV
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
 # 2. Carpeta de trabajo dentro del contenedor
 WORKDIR /app

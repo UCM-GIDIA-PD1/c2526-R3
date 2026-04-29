@@ -264,10 +264,6 @@ async def procesar_intensidad(request: IncendioRequest, modelo_frp) -> dict:
     fecha_procesada = fecha_obj.strftime("%Y-%m-%d")
 
     features_completas, datos_faltantes = await extraer_variables_punto(request.latitud, request.longitud, fecha_procesada)
-    features_completas['VPD'] = 0
-    features_completas['dry_fuel_index'] = 0
-    features_completas['fuel_stress'] = 0
-
     if datos_faltantes >= 5:
         return {
             "intensidad": 0.0,

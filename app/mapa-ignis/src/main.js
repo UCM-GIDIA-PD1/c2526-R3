@@ -374,7 +374,7 @@ map.on('click', async (e) => {
 
     map.flyTo({
         center: [lng, lat],
-        zoom: 9,
+        zoom: 13,
         pitch: 65,
         duration: 1500, // Smooth transition duration
         essential: true
@@ -653,7 +653,7 @@ function showLoadingProgress(step, total, label) {
 
     const stepsHtml = Array.from({ length: total }, (_, i) => {
         const s = i + 1;
-        const done  = s < step;
+        const done = s < step;
         const active = s === step;
         return `<div class="loading-step ${done ? 'step-done' : active ? 'step-active' : 'step-pending'}">
             <span class="step-dot"></span>
@@ -682,7 +682,7 @@ function showLoadingProgress(step, total, label) {
 }
 
 function getStepName(s) {
-    const names = ['','Variables geo.','MinIO / datos','Distancias','Clima & terreno','Validación','Modelo IA'];
+    const names = ['', 'Variables geo.', 'MinIO / datos', 'Distancias', 'Clima & terreno', 'Validación', 'Modelo IA'];
     return names[s] || `Paso ${s}`;
 }
 
@@ -725,7 +725,7 @@ async function performPrediction() {
 
             for (const part of parts) {
                 const eventLine = part.match(/^event:\s*(.+)$/m);
-                const dataLine  = part.match(/^data:\s*(.+)$/ms);
+                const dataLine = part.match(/^data:\s*(.+)$/ms);
                 if (!eventLine || !dataLine) continue;
 
                 const eventType = eventLine[1].trim();
@@ -764,9 +764,9 @@ function updateUIState() {
 
 function getRiskLevel(prob) {
     if (prob >= 75) return { label: 'MUY ALTO', cls: 'risk-very-high', color: '#dc2626' };
-    if (prob >= 50) return { label: 'ALTO',     cls: 'risk-high',      color: '#f97316' };
-    if (prob >= 25) return { label: 'MODERADO', cls: 'risk-medium',    color: '#eab308' };
-    return            { label: 'BAJO',      cls: 'risk-low',       color: '#22c55e' };
+    if (prob >= 50) return { label: 'ALTO', cls: 'risk-high', color: '#f97316' };
+    if (prob >= 25) return { label: 'MODERADO', cls: 'risk-medium', color: '#eab308' };
+    return { label: 'BAJO', cls: 'risk-low', color: '#22c55e' };
 }
 
 function buildImportanciasHtml(importancias, accentColor) {
@@ -960,7 +960,7 @@ coordsInput.addEventListener('change', async (e) => {
             // Check country via reverse geocoding
             const response = await fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?types=country&access_token=${mapboxgl.accessToken}`);
             const data = await response.json();
-            
+
             if (data.features && data.features.length > 0) {
                 const countryCode = data.features[0].properties.short_code.toLowerCase();
                 if (!europeanCountries.includes(countryCode)) {
@@ -969,10 +969,10 @@ coordsInput.addEventListener('change', async (e) => {
                     return;
                 }
             } else {
-                 // No country found (e.g. ocean)
-                 alert("Ubicación en el mar o no válida. Por favor, selecciona un punto en tierra dentro de Europa.");
-                 coordsInput.value = headerCoords.textContent;
-                 return;
+                // No country found (e.g. ocean)
+                alert("Ubicación en el mar o no válida. Por favor, selecciona un punto en tierra dentro de Europa.");
+                coordsInput.value = headerCoords.textContent;
+                return;
             }
         } catch (err) {
             console.error("Geocoding error:", err);

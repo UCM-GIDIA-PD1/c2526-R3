@@ -22,4 +22,10 @@ prueba.html
 
 # Frontend build output (may contain embedded API keys)
 app/mapa-ignis/dist/
-app/mapa-ignis/node_modules/
+app/mapa-ignis/node_modules/
+
+# Jupyter
+**/.ipynb_checkpoints/
+
+# Imágenes generadas
+**/*.png

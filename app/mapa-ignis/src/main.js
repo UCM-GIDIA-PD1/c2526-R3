@@ -585,6 +585,16 @@ btnModeHistory.addEventListener('click', () => {
     openPanelBtn.classList.add('hidden');
 
     if (currentMarker) currentMarker.remove();
+
+    // Reset view to default smoothly
+    map.flyTo({
+        center: defaultCenter,
+        zoom: 5,
+        pitch: 0,
+        bearing: 0,
+        duration: 1500,
+        essential: true
+    });
 });
 
 // Cursors per history point hovering

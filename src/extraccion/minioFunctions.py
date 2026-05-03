@@ -5,7 +5,6 @@ import pandas as pd
 import geopandas as gpd
 import os
 from dotenv import load_dotenv
-from joblib import load
 import pickle
 
 '''
@@ -17,7 +16,9 @@ con las claves de acceso a MinIO
 
 def importar_keys():
     '''
-    Importa las claves desde el archivo .env
+    Importa las claves desde el archivo .env.
+
+    :return tuple: Una tupla conteniendo (access_key, secret_key).
     '''
     load_dotenv()
 
@@ -28,7 +29,9 @@ def importar_keys():
 
 def crear_cliente():
     '''
-    Crea el cliente de acceso a minio
+    Crea el cliente de acceso a minio.
+
+    :return Minio: Cliente de MinIO inicializado.
     '''
     ak, sk = importar_keys()
     
@@ -102,6 +105,14 @@ def bajar_fichero(cliente, path_server: Path, type = "df"):
             response.close()
 
 def bajar_fichero_local(cliente, path_server: Path, path_local: Path):
+    '''
+    Descarga un fichero de MinIO y lo guarda en el sistema de archivos local.
+
+    :param cliente: Cliente de MinIO.
+    :param path_server: Ruta del archivo en MinIO.
+    :param path_local: Ruta de destino local.
+    :return: None
+    '''
     cliente.fget_object(
         bucket_name="pd1",
         object_name=path_server,
@@ -110,6 +121,13 @@ def bajar_fichero_local(cliente, path_server: Path, path_local: Path):
 
 
 def bajar_imagen(cliente, path_server: Path):
+    '''
+    Obtiene un objeto de imagen desde MinIO.
+
+    :param cliente: Cliente de MinIO.
+    :param path_server: Ruta del archivo de imagen en MinIO.
+    :return: Respuesta de MinIO con el flujo de la imagen.
+    '''
     response = cliente.get_object(
         bucket_name="pd1",
         object_name=path_server
@@ -121,6 +139,10 @@ def bajar_imagen(cliente, path_server: Path):
 def preguntar_subida(df, ruta_carpeta = "grupo3/Datos/"):
     """
     Pregunta al usuario si desea subir un DataFrame/GeoDataFrame a MinIO.
+
+    :param df: DataFrame o GeoDataFrame a subir.
+    :param ruta_carpeta: Carpeta de destino en el bucket de MinIO.
+    :return bool: True si se subió correctamente, False en caso contrario.
     """
     nombre_sugerido="datos.parquet"
 
@@ -186,7 +208,11 @@ def bajar_csv(cliente, path_server: Path, sep = ','):
 
 def listar_bucket(cliente, path_carpeta):
     '''
-    Lista todos los objetos de una carpeta en MinIO
+    Lista todos los objetos de una carpeta en MinIO.
+
+    :param cliente: Cliente de MinIO.
+    :param path_carpeta: Prefijo de la carpeta a listar.
+    :return list: Lista con los nombres de los objetos encontrados.
     '''
     objects = cliente.list_objects(
             bucket_name = "pd1", 

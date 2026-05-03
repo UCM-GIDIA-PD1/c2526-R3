@@ -106,6 +106,13 @@ async def extraer_variables_punto(
     return features, faltantes
 
 def get_model_features(modelo, fallback_features):
+    """
+    Obtiene los nombres de las características que espera el modelo.
+
+    :param modelo: El modelo de machine learning (XGBoost, RandomForest, etc.).
+    :param fallback_features: Lista de características por defecto en caso de no encontrarlas en el modelo.
+    :return: Lista de nombres de características.
+    """
     if hasattr(modelo, 'feature_names_in_'):
         return list(modelo.feature_names_in_)
     elif hasattr(modelo, 'feature_names'):
@@ -115,6 +122,13 @@ def get_model_features(modelo, fallback_features):
     return fallback_features
 
 def realizar_inferencia_ocurrencia(modelo_ocurrencia, features: dict) -> tuple[float, bool]:
+    """
+    Realiza la inferencia para predecir la ocurrencia de un incendio.
+
+    :param modelo_ocurrencia: El modelo de clasificación cargado.
+    :param features: Diccionario con las variables de entrada.
+    :return: Tupla con la probabilidad (float) y si ocurre o no (bool).
+    """
     if not modelo_ocurrencia:
         return 0.5, True
         
@@ -143,6 +157,13 @@ def realizar_inferencia_ocurrencia(modelo_ocurrencia, features: dict) -> tuple[f
         return 0.0, False
 
 def realizar_inferencia_intensidad(modelo_frp, features: dict) -> float:
+    """
+    Realiza la inferencia para predecir la intensidad (FRP) de un incendio.
+
+    :param modelo_frp: El modelo de regresión cargado.
+    :param features: Diccionario con las variables de entrada.
+    :return: Valor de intensidad predicha (FRP).
+    """
     if not modelo_frp:
         return 0.0
 
@@ -172,6 +193,13 @@ def realizar_inferencia_intensidad(modelo_frp, features: dict) -> float:
         return 0.0
 
 async def procesar_ocurrencia(request: IncendioRequest, modelo_ocurrencia) -> dict:
+    """
+    Orquesta el proceso de extracción de variables y predicción de ocurrencia.
+
+    :param request: Objeto de solicitud con coordenadas y fecha.
+    :param modelo_ocurrencia: El modelo de clasificación a utilizar.
+    :return: Diccionario con el resultado de la predicción y metadatos.
+    """
     hoy = date.today()
     
     if request.fecha:
@@ -260,6 +288,13 @@ async def procesar_ocurrencia(request: IncendioRequest, modelo_ocurrencia) -> di
 
 
 async def procesar_intensidad(request: IncendioRequest, modelo_frp) -> dict:
+    """
+    Orquesta el proceso de extracción de variables y predicción de intensidad.
+
+    :param request: Objeto de solicitud con coordenadas y fecha.
+    :param modelo_frp: El modelo de regresión a utilizar.
+    :return: Diccionario con el resultado de la predicción y metadatos.
+    """
     hoy = date.today()
     
     if request.fecha:

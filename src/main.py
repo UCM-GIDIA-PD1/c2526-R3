@@ -2,14 +2,10 @@ import sys
 import os
 from pathlib import Path
 from modelos.regresion.arboles import frp_rdForest
-import pandas as pd
-import numpy as np
 import asyncio
 from dotenv import load_dotenv
 import traceback
 from extraccion import mascaras, minioFunctions
-from shapely.geometry import box
-import geopandas as gpd
 from limpieza import limpieza
 from modelos.evaluacion import evaluacion_final
 from modelos.clasificacion import decisiontree, balanced_random_forest, random_forest, m_xgboost, regresion_logistica, modelo_inversa, modelo_incremental
@@ -22,7 +18,11 @@ sys.path.append(str(src_path))
 load_dotenv()
 
 def setup_earth_engine():
-    """Configura Earth Engine usando la variable RUTA_CREDENCIALES."""
+    """
+    Configura Earth Engine usando la variable RUTA_CREDENCIALES.
+
+    :return bool: True si se inicializó correctamente, False en caso contrario.
+    """
 
     try:
         import ee
@@ -126,9 +126,21 @@ except Exception as e:
     input("\nPresiona Enter para continuar...")
 
 def limpiar_pantalla():
+    """
+    Limpia la pantalla de la consola.
+    
+    :return: None
+    """
     os.system('cls' if os.name == 'nt' else 'clear')
 
 def formatear_ruta(ruta, max_len=50):
+    """
+    Recorta una ruta de archivo si excede la longitud máxima.
+
+    :param ruta: La ruta de archivo a formatear.
+    :param max_len: Longitud máxima permitida.
+    :return str: La ruta formateada (posiblemente con puntos suspensivos).
+    """
     if not ruta:
         return "No definida"
     if len(ruta) > max_len:
@@ -136,7 +148,11 @@ def formatear_ruta(ruta, max_len=50):
     return ruta
 
 def obtener_parametros():
-    """Pregunta al usuario si quiere especificar parámetros y los devuelve."""
+    """
+    Pregunta al usuario si quiere especificar parámetros personalizados (limit, fechas).
+
+    :return tuple: (limit, fecha_ini, fecha_fin) o (None, None, None) si no se personaliza.
+    """
     print("\n--- Personalización de parámetros ---")
     resp = input("¿Desea especificar parámetros personalizados? (s/n): ").strip().lower()
     if resp != 's':
@@ -158,6 +174,11 @@ def obtener_parametros():
     return limit, fecha_ini, fecha_fin
 
 async def mostrar_menu():
+    """
+    Muestra el menú principal en la consola con el estado del sistema.
+
+    :return: None
+    """
     limpiar_pantalla()
     print("\n" + "-"*60)
     print("  SISTEMA DE ANÁLISIS DE INCENDIOS ")
@@ -197,6 +218,11 @@ async def mostrar_menu():
     print(" "*60)
 
 async def diagnosticar_sistema():
+    """
+    Realiza un diagnóstico completo del sistema (Python, variables de entorno, módulos, Earth Engine).
+
+    :return: None
+    """
     print("\n🔍 DIAGNÓSTICO COMPLETO")
     print(" "*50)
 
@@ -244,6 +270,15 @@ async def diagnosticar_sistema():
     print(f"\n    Earth Engine inicializado: {'✅ Sí' if EE_OK else '❌ No'}")
 
 async def ejecutar_funcion(nombre, func, *args, **kwargs):
+    """
+    Ejecuta una función (síncrona o asíncrona) de forma segura y muestra mensajes de estado.
+
+    :param nombre: Nombre descriptivo de la operación.
+    :param func: La función a ejecutar.
+    :param args: Argumentos posicionales para la función.
+    :param kwargs: Argumentos de palabra clave para la función.
+    :return: El resultado de la ejecución de la función.
+    """
     print(f"Ejecutando: {nombre}")
     try:
         resultado = await func(*args, **kwargs) if asyncio.iscoroutinefunction(func) else func(*args, **kwargs)
@@ -253,6 +288,11 @@ async def ejecutar_funcion(nombre, func, *args, **kwargs):
         print(f"Error en {nombre}: {e}")
 
 def pedirDatos():
+    """
+    Solicita al usuario la ruta del archivo de datos en MinIO y el formato de retorno deseado.
+
+    :return: DataFrame, GeoDataFrame, bytes de Parquet o None según la selección.
+    """
     cliente = minioFunctions.crear_cliente()
     
     tipo_ruta = input("""

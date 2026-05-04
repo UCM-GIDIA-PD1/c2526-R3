@@ -270,6 +270,76 @@ podman rm -f ignis-app
 
 ---
 
+## Guía de Uso de la API
+
+La API de IgnisAI permite integrar las capacidades de predicción de incendios en otras aplicaciones o scripts. Está construida con **FastAPI** y ofrece predicciones basadas en modelos XGBoost entrenados con datos meteorológicos y satelitales.
+
+### Documentación Interactiva
+Una vez que la API está en ejecución, puedes acceder a la documentación interactiva y probar los endpoints directamente desde el navegador:
+- **Swagger UI**: `http://localhost:8000/docs`
+- **ReDoc**: `http://localhost:8000/redoc`
+
+### Funcionalidades Principales
+1. **Predicción de Ocurrencia**: Estima la probabilidad de que ocurra un incendio en una ubicación y fecha específicas.
+2. **Estimación de Intensidad (FRP)**: Predice la potencia radiativa del fuego (Fire Radiative Power) si ocurriera un incendio.
+3. **Streaming de Progreso (SSE)**: Permite recibir actualizaciones en tiempo real mientras el sistema extrae las variables necesarias para la predicción.
+4. **Consulta Histórica**: Acceso a datos históricos de incendios en formato GeoJSON.
+
+### Parámetros de Solicitud (Request Body)
+Todos los endpoints de predicción aceptan un objeto JSON con la siguiente estructura:
+
+| Campo | Tipo | Descripción | Requerido |
+|-------|------|-------------|-----------|
+| `latitud` | `float` | Latitud del punto geográfico. | Sí |
+| `longitud` | `float` | Longitud del punto geográfico. | Sí |
+| `fecha` | `string` | Fecha en formato `YYYY-MM-DD`. | No (por defecto hoy) |
+
+### Endpoints de Predicción
+
+#### 1. Ocurrencia de Incendio
+- **Endpoint**: `POST /predict/ocurrencia`
+- **Ejemplo con curl**:
+  ```bash
+  curl -X 'POST' \
+    'http://localhost:8000/predict/ocurrencia' \
+    -H 'Content-Type: application/json' \
+    -d '{
+    "latitud": 40.4167,
+    "longitud": -3.7033,
+    "fecha": "2026-05-10"
+  }'
+  ```
+
+#### 2. Intensidad (FRP)
+- **Endpoint**: `POST /predict/intensidad`
+- **Ejemplo con curl**:
+  ```bash
+  curl -X 'POST' \
+    'http://localhost:8000/predict/intensidad' \
+    -H 'Content-Type: application/json' \
+    -d '{
+    "latitud": 40.4167,
+    "longitud": -3.7033
+  }'
+  ```
+
+### Endpoints de Streaming (Server-Sent Events)
+Estos endpoints son ideales para interfaces de usuario, ya que notifican cada paso del proceso (extracción de datos meteorológicos, topográficos, etc.) antes de devolver el resultado final.
+
+- **Endpoints**: 
+  - `POST /predict/ocurrencia/stream`
+  - `POST /predict/intensidad/stream`
+
+### Otros Endpoints
+
+- **GeoJSON Histórico**: `GET /geojson/{year}`
+  - Ejemplo: `GET /geojson/2024` devuelve los incendios detectados en ese año.
+- **Imágenes de Satélite**: `GET /imagen/{filename}`
+  - Recupera imágenes almacenadas en el servidor MinIO.
+
+---
+
+
 ## Configuración de Google Earth Engine
 
 Solo es necesaria si se quiere re-ejecutar la extracción de datos desde cero. Para ello:

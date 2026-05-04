@@ -205,7 +205,7 @@ def pipeline(anio=None):
 
     # ====================> PASO 2 : FILTRAMOS LOS INCENDIOS POR ZONAS
     df_inc = filtracion_por_zonas(df_procesado)
-
+ 
     # ====================> PASO 3 : GENERACIÓN DE NO INCENDIOS Y CONCATENACIÓN
     df_final = generacion_no_incendios(df_inc, anio=anio)
 

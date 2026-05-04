@@ -7,7 +7,7 @@ import numpy as np
 import asyncio
 from dotenv import load_dotenv
 import traceback
-from extraccion import mascaras, minioFunctions
+from extraccion import mascaras, minioFunctions, pipeline
 from shapely.geometry import box
 import geopandas as gpd
 from limpieza import limpieza
@@ -196,6 +196,9 @@ async def mostrar_menu():
     print("  0. Salir")
     print(" "*60)
 
+    print("\n📋 PIPELINE:")
+    print("Para ejecutar el pipeline completo pulse 'P': ")
+
 async def diagnosticar_sistema():
     print("\n🔍 DIAGNÓSTICO COMPLETO")
     print(" "*50)
@@ -310,11 +313,11 @@ async def main():
     df_incendios = None
     pregunta = True
 
-    exclusiones_pedir_datos = ["0", "7", "9", "10", "11", "13", "14", "15", "16", "17"]
+    exclusiones_pedir_datos = ["0", "7", "9", "10", "11", "13", "14", "15", "16", "17", "P", "p"]
 
     while True:
         await mostrar_menu()
-        opcion = input("\n🔷 Selecciona una opción (0-17): ").strip()
+        opcion = input("\n🔷 Selecciona una opción (0-17) o 'P' para iniciar el pipeline: ").strip()
 
         if pregunta and opcion not in exclusiones_pedir_datos:
             resultado = pedirDatos()
@@ -669,6 +672,21 @@ async def main():
             else:
                 print(f"Fallo al guardar la ruta")
             continue
+
+        elif opcion == "P" or opcion == "p" and MODULOS_CARGADOS:
+            print("¿Qué año deseas procesar?")
+            anio = int(input("Año: "))
+
+            # Comprobamos que estáb bien configurado MinIO para iniciar el pipeline.
+            cliente = minioFunctions.crear_cliente()
+            bucket = minioFunctions.listar_bucket(cliente, "grupo3/raw/incendios/")
+            assert f"grupo3/raw/incendios/{anio}.csv" in bucket, f"No se encuentra el archivo {anio}.csv para iniciar el pipeline. Consulte el README para más información."
+            print(f"Archivo de incendios {anio}.csv encontrado.")
+
+            print("Ejecutando el pipeline... \n")
+            pipeline.pipeline(anio)
+            
+
 
         elif opcion == "0":
             print("\n   ¡Adios! Pasa un buen día ")

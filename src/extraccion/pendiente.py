@@ -8,7 +8,7 @@ import pandas as pd
 
 sem_global = asyncio.Semaphore(10)
 
-async def pendiente(lat, lon, date, indice = None): #Ignacio: añadido date
+async def pendiente(lat, lon, date, indice = None): 
   '''
     Calcula la elevacion y pendiente (en grados y porcentaje) de un punto usando Google Earth Engine.
     

@@ -659,45 +659,44 @@ async def main():
             print(" INFORMACIÓN DEL PROYECTO")
             print(" "*60)
             print("""
-            Este código es el núcleo centralizado para la extracción, limpieza, análisis y modelado de datos de incendios.
+             Este código es el núcleo centralizado para la extracción, limpieza, análisis y modelado de datos de incendios forestales.
 
-            A tener en cuenta que cada extracción puede ser subida a MinIO si así lo desea su creador.
-            Todo está automatizado, siendo el uso de rutas en .env utilizadas para pruebas sin conexión con el servidor.
+            A tener en cuenta que cada extracción puede ser subida a MinIO si así lo desea su creador. Todo está automatizado, siendo el uso de rutas en .env utilizadas para pruebas sin conexión con el servidor.
 
             El proyecto cuenta con una arquitectura modular y se reparte de la siguiente manera:
 
-             ARCHIVO PRINCIPAL
-            - main.py: Compuesto por un menú que indica dependencias, librerías y orquesta todas las funciones.
+             ARCHIVO PRINCIPAL (src/)
+            - main.py: Menú interactivo CLI para la gestión masiva de datos y entrenamiento de modelos. Orquesta todo el pipeline desde la descarga de datos hasta la evaluación final.
 
-             EXTRACCIÓN (src/extraccion/)
-            - construccion_df.py: Se le pasa una ruta de MinIO y construye un DataFrame y un parquet completo con todas las variables a estudiar.
-            - fisicas.py: Saca las características físicas al mandar una ruta a un .parquet con la API Open-Meteo.
-            - incendios.py: Extrae, limpia y aúna los datos de cada incendio al obtener una ruta de MinIO.
-            - pendiente.py: Extrae los datos de la pendiente al mandar una ruta .parquet con Google Earth Engine.
-            - vegetacion.py: Extrae los datos de la vegetación al mandar una ruta .parquet con Google Earth.
-            - puntos_no_incendio.py: Creación de puntos por incendio basado en cercanía, área, intensidad y aleatoriedad.
-            - filtros_no_incendio.py: Funciones para filtrar la creación de puntos de no incendio.
-            - mascaras.py: Diferentes funciones de parse y de filtro de máscaras y parquets.
-            - minioFunctions.py / parquet.py: Funciones para subir, bajar, ordenar y manejar archivos en MinIO.
-            - interrupcion.py: Lógica para el manejo de procesos interrumpidos.
-            - descartadas/ (suelo.py, vegetacion2.py): Variables descartadas (ej. rasterización de un .tif para saber si se encuentra en agua o zona urbana).
-            - futuro/ (civilizacion.py, ganado.py, suelo2.py): Extracción de variables experimentales para integraciones futuras.
+             API REST Y SERVICIOS (app/)
+            - main.py: Servidor backend basado en FastAPI. Implementa endpoints para predicción síncrona y mediante streaming (Server-Sent Events) para actualizaciones en tiempo real durante la extracción de variables.
+            - schemas.py: Contratos de datos robustos usando Pydantic para validar latitud, longitud y fechas en las peticiones.
+            - services/fire_service.py: El "cerebro" de la API. Gestiona la extracción dinámica de variables ambientales (NDVI, meteorología, topografía) para puntos geográficos arbitrarios y realiza la inferencia con los modelos XGBoost cargados desde MinIO.
+            - mapa-ignis/: Dashboard interactivo de última generación. Desarrollado con Vite + React y Mapbox 3D, permite visualizar el riesgo de incendio en un mapa global y consultar el histórico de focos activos en tiempo real.
 
-             LIMPIEZA (src/limpieza/)
-            - limpieza.py: Funciones encargadas del análisis y tratamiento de valores nulos.
-            - transformacion.py: Funciones para la transformación y adaptación de los datos.
+             EXTRACCIÓN DE DATOS (src/extraccion/)
+            - construccion_df.py: Motor de ensamblaje de datasets. Combina múltiples fuentes en archivos Parquet optimizados para el entrenamiento.
+            - fisicas.py / vegetacion.py / pendiente.py: Integración con APIs externas (Open-Meteo) y procesamiento de imágenes satelitales vía Google Earth Engine para obtener variables críticas como NDVI, NDWI, Temperatura, Humedad y Elevación.
+            - incendios.py: Automatización de la descarga de datos históricos de incendios desde el sistema FIRMS de la NASA.
+            - puntos_no_incendio.py: Lógica de submuestreo espacial para generar puntos de control (no incendio) y combatir el desbalanceo de clases intrínseco al problema.
+            - minioFunctions.py: Gestión del ciclo de vida de los datos en el servidor de almacenamiento de objetos (MinIO), permitiendo la persistencia distribuida y el trabajo en equipo.
 
-             MODELOS (src/modelos/)
-            - clasificacion/: Modelos predictivos para la ocurrencia de incendios (balanced_random_forest, decisiontree, m_xgboost, random_forest, regresion_logistica, modelo_inversa) y ventanas_temporales.
-            - regresion/: Modelos para la predicción de la severidad o FRP. Se subdividen en métodos basados en árboles (frp_rdForest, frp_xgBoost), KNN y regresión lineal.
-            - evaluacion/evaluacion_final.py: Scripts para la validación y obtención de métricas de los modelos.
-            - generico/modelo_xgboost.py: Configuración general y de sweeps para XGBoost.
+             LIMPIEZA Y PREPROCESAMIENTO (src/limpieza/)
+            - limpieza.py: Pipeline de tratamiento de valores nulos, eliminación de columnas redundantes y aseguramiento de la consistencia de tipos.
+            - transformacion.py: Ingeniería de características, normalización, escalado y codificación de variables temporales (ciclos estacionales).
 
-             ANÁLISIS Y EXPLORACIÓN
-            - analisis/ y modelos/baseline/: Múltiples cuadernos Jupyter (.ipynb) dedicados al análisis exploratorio de datos (EDA), restauración de datasets, resolución de problemas y modelos base.
+             MODELADO PREDICTIVO (src/modelos/)
+            - clasificacion/: Implementaciones de XGBoostClassifier, BalancedRandomForest y Regresión Logística para predecir la probabilidad de ignición. Incluye técnicas avanzadas de búsqueda de hiperparámetros (Grid, Random, Bayes).
+            - regresion/: Algoritmos para estimar el Fire Radiative Power (FRP), permitiendo prever no solo si habrá fuego, sino su intensidad potencial.
+            - evaluacion/: Generación automática de informes de rendimiento, matrices de confusión y curvas de importancia de características, integrándose con Weights & Biases (W&B) para el seguimiento de experimentos.
 
-             UTILIDADES (src/utils/)
-            - parser.py: Funciones de utilidad para el formateo de datos.
+             ANÁLISIS Y EXPERIMENTACIÓN
+            - analisis/: Laboratorio de ideas en formato Jupyter Notebook. Contiene el análisis exploratorio (EDA), pruebas de hipótesis y validación de nuevas fuentes de datos.
+            - modelos/baseline/: Implementaciones de referencia para comparar el salto de rendimiento de los modelos finales.
+
+             INFRAESTRUCTURA Y DESPLIEGUE
+            - Dockerfile / Podman: Configuración para el empaquetado del sistema en contenedores ligeros y reproducibles.
+            - .env: Gestión centralizada de secretos y rutas (WandB, MinIO, Google Earth Engine, Mapbox).
                   
             """)
             print("="*60)

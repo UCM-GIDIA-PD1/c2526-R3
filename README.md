@@ -218,6 +218,128 @@ En caso de error, revisar especialmente:
 
 ---
 
+## Despliegue con Podman (Contenedores)
+
+El proyecto incluye un `Dockerfile` para empaquetar y desplegar la API del proyecto fácilmente mediante contenedores. Se recomienda el uso de [Podman](https://podman.io/) (aunque los comandos son idénticos si usas Docker).
+
+### 1. Construir la imagen
+
+Abre una terminal en la raíz del proyecto y ejecuta el siguiente comando para construir la imagen localmente. Esto instalará automáticamente todas las dependencias del proyecto utilizando `uv`:
+
+```bash
+podman build -t ignis-ai .
+```
+
+### 2. Ejecutar el contenedor
+
+Una vez construida la imagen, levanta el contenedor con el siguiente comando:
+
+```bash
+podman run -d -p 8000:8000 --env-file .env --name ignis-app ignis-ai
+```
+
+**Explicación de los parámetros:**
+- `-d`: Ejecuta el contenedor en segundo plano (*detached*).
+- `-p 8000:8000`: Expone el puerto 8000 del contenedor (donde escucha la API) en el puerto 8000 de tu máquina local.
+- `--env-file .env`: Carga automáticamente las credenciales y configuraciones importantes (como accesos a MinIO o W&B) desde tu archivo `.env`.
+- `--name ignis-app`: Asigna el nombre `ignis-app` al contenedor para facilitar su administración en pasos posteriores.
+
+Una vez en ejecución, la API estará accesible desde tu navegador o cliente REST en: `http://localhost:8000`.
+
+### 3. Comandos útiles de gestión
+
+Para ver los logs en tiempo real (útil para ver peticiones a la API o errores):
+```bash
+podman logs -f ignis-app
+```
+
+Para detener el contenedor:
+```bash
+podman stop ignis-app
+```
+
+Para iniciar un contenedor que habías detenido previamente:
+```bash
+podman start ignis-app
+```
+
+Para eliminar el contenedor (por ejemplo, si necesitas recrearlo tras un cambio en el código):
+```bash
+podman rm -f ignis-app
+```
+
+---
+
+## Guía de Uso de la API
+
+La API de IgnisAI permite integrar las capacidades de predicción de incendios en otras aplicaciones o scripts. Está construida con **FastAPI** y ofrece predicciones basadas en modelos XGBoost entrenados con datos meteorológicos y satelitales.
+
+### Documentación Interactiva
+Una vez que la API está en ejecución, puedes acceder a la documentación interactiva y probar los endpoints directamente desde el navegador:
+- **Swagger UI**: `http://localhost:8000/docs`
+- **ReDoc**: `http://localhost:8000/redoc`
+
+### Funcionalidades Principales
+1. **Predicción de Ocurrencia**: Estima la probabilidad de que ocurra un incendio en una ubicación y fecha específicas.
+2. **Estimación de Intensidad (FRP)**: Predice la potencia radiativa del fuego (Fire Radiative Power) si ocurriera un incendio.
+3. **Streaming de Progreso (SSE)**: Permite recibir actualizaciones en tiempo real mientras el sistema extrae las variables necesarias para la predicción.
+4. **Consulta Histórica**: Acceso a datos históricos de incendios en formato GeoJSON.
+
+### Parámetros de Solicitud (Request Body)
+Todos los endpoints de predicción aceptan un objeto JSON con la siguiente estructura:
+
+| Campo | Tipo | Descripción | Requerido |
+|-------|------|-------------|-----------|
+| `latitud` | `float` | Latitud del punto geográfico. | Sí |
+| `longitud` | `float` | Longitud del punto geográfico. | Sí |
+| `fecha` | `string` | Fecha en formato `YYYY-MM-DD`. | No (por defecto hoy) |
+
+### Endpoints de Predicción
+
+#### 1. Ocurrencia de Incendio
+- **Endpoint**: `POST /predict/ocurrencia`
+- **Ejemplo con curl**:
+  ```bash
+  curl -X 'POST' \
+    'http://localhost:8000/predict/ocurrencia' \
+    -H 'Content-Type: application/json' \
+    -d '{
+    "latitud": 40.4167,
+    "longitud": -3.7033,
+    "fecha": "2026-05-10"
+  }'
+  ```
+
+#### 2. Intensidad (FRP)
+- **Endpoint**: `POST /predict/intensidad`
+- **Ejemplo con curl**:
+  ```bash
+  curl -X 'POST' \
+    'http://localhost:8000/predict/intensidad' \
+    -H 'Content-Type: application/json' \
+    -d '{
+    "latitud": 40.4167,
+    "longitud": -3.7033
+  }'
+  ```
+
+### Endpoints de Streaming (Server-Sent Events)
+Estos endpoints son ideales para interfaces de usuario, ya que notifican cada paso del proceso (extracción de datos meteorológicos, topográficos, etc.) antes de devolver el resultado final.
+
+- **Endpoints**: 
+  - `POST /predict/ocurrencia/stream`
+  - `POST /predict/intensidad/stream`
+
+### Otros Endpoints
+
+- **GeoJSON Histórico**: `GET /geojson/{year}`
+  - Ejemplo: `GET /geojson/2024` devuelve los incendios detectados en ese año.
+- **Imágenes de Satélite**: `GET /imagen/{filename}`
+  - Recupera imágenes almacenadas en el servidor MinIO.
+
+---
+
+
 ## Configuración de Google Earth Engine
 
 Solo es necesaria si se quiere re-ejecutar la extracción de datos desde cero. Para ello:

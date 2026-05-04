@@ -13,7 +13,12 @@ from src.extraccion import minioFunctions
 
 from app.schemas import IncendioRequest
 
-async def extraer_variables_punto(lat: float, lon: float, fecha_str: str) -> tuple[dict, int]:
+async def extraer_variables_punto(
+    lat: float,
+    lon: float,
+    fecha_str: str,
+    progress_cb=None   # async callable(step: int, total: int, label: str)
+) -> tuple[dict, int]:
     """
     Extrae todas las variables requeridas para un punto en una fecha dada.
     Se hacen de forma paralela para mayor velocidad.
@@ -21,8 +26,15 @@ async def extraer_variables_punto(lat: float, lon: float, fecha_str: str) -> tup
     :params lat: Latitud del punto
     :params lon: Longitud del punto
     :params fecha_str: Fecha en formato string (se tomarán los primeros 10 caracteres)
+    :params progress_cb: Callback async opcional para emitir progreso (step, total, label)
     :return tuple[dict, int]: Diccionario con las variables extraídas y el número de valores faltantes
     """
+    TOTAL_STEPS = 6
+
+    async def _emit(step: int, label: str):
+        if progress_cb:
+            await progress_cb(step, TOTAL_STEPS, label)
+
     features_esperadas = [
         'lat', 'lon', 'date', 'soil_temp', 'final', 'elevacion_centro',
         'grados', 'porcentaje', 'temp_mean', 'temp_max', 'temp_min',
@@ -39,20 +51,24 @@ async def extraer_variables_punto(lat: float, lon: float, fecha_str: str) -> tup
         'final': 0
     })
     
+    await _emit(1, "Inicializando variables geoespaciales...")
+
     dias = pd.to_datetime(fecha_str).dayofyear
     features['dia_sin'] = np.sin(2 * np.pi * dias / 365)
     features['dia_cos'] = np.cos(2 * np.pi * dias / 365)
 
     df_temp = pd.DataFrame([{'lat': lat, 'lon': lon, 'date': fecha_str}])
-    
-    
+
+    await _emit(2, "Conectando a MinIO y cargando datos...")
     cliente = await asyncio.to_thread(minioFunctions.crear_cliente)
     path_pobl = 'grupo3/maps/civilizaciones/poblaciones_clean.parquet'
     df_pobl = await asyncio.to_thread(minioFunctions.bajar_fichero, cliente, path_pobl)
+
+    await _emit(3, "Calculando distancia a núcleos de población...")
     distancias = await asyncio.to_thread(civilizacion.calcular_distancias, df_pobl, df_temp)
     dist_civ = distancias.flatten()[0] if distancias is not None else np.nan
-    
 
+    await _emit(4, "Extrayendo datos climáticos, vegetación y terreno...")
     intentos = 0
     async with aiohttp.ClientSession() as session:
         while intentos < 3:
@@ -76,7 +92,7 @@ async def extraer_variables_punto(lat: float, lon: float, fecha_str: str) -> tup
                 features['dist_civ'] = dist_civ
                 
                 faltantes = sum(pd.isna(v) or v is None for v in features.values())
-                if faltantes <= 1: 
+                if faltantes <= 1:
                     break
                     
             except Exception as e:
@@ -84,11 +100,19 @@ async def extraer_variables_punto(lat: float, lon: float, fecha_str: str) -> tup
                 
             intentos += 1
             if intentos < 3: await asyncio.sleep(0.5)
-            
+
+    await _emit(5, "Validando datos extraídos...")
     faltantes = sum(pd.isna(v) or v is None for v in features.values())
     return features, faltantes
 
 def get_model_features(modelo, fallback_features):
+    """
+    Obtiene los nombres de las características que espera el modelo.
+
+    :param modelo: El modelo de machine learning (XGBoost, RandomForest, etc.).
+    :param fallback_features: Lista de características por defecto en caso de no encontrarlas en el modelo.
+    :return: Lista de nombres de características.
+    """
     if hasattr(modelo, 'feature_names_in_'):
         return list(modelo.feature_names_in_)
     elif hasattr(modelo, 'feature_names'):
@@ -98,6 +122,13 @@ def get_model_features(modelo, fallback_features):
     return fallback_features
 
 def realizar_inferencia_ocurrencia(modelo_ocurrencia, features: dict) -> tuple[float, bool]:
+    """
+    Realiza la inferencia para predecir la ocurrencia de un incendio.
+
+    :param modelo_ocurrencia: El modelo de clasificación cargado.
+    :param features: Diccionario con las variables de entrada.
+    :return: Tupla con la probabilidad (float) y si ocurre o no (bool).
+    """
     if not modelo_ocurrencia:
         return 0.5, True
         
@@ -126,6 +157,13 @@ def realizar_inferencia_ocurrencia(modelo_ocurrencia, features: dict) -> tuple[f
         return 0.0, False
 
 def realizar_inferencia_intensidad(modelo_frp, features: dict) -> float:
+    """
+    Realiza la inferencia para predecir la intensidad (FRP) de un incendio.
+
+    :param modelo_frp: El modelo de regresión cargado.
+    :param features: Diccionario con las variables de entrada.
+    :return: Valor de intensidad predicha (FRP).
+    """
     if not modelo_frp:
         return 0.0
 
@@ -155,6 +193,13 @@ def realizar_inferencia_intensidad(modelo_frp, features: dict) -> float:
         return 0.0
 
 async def procesar_ocurrencia(request: IncendioRequest, modelo_ocurrencia) -> dict:
+    """
+    Orquesta el proceso de extracción de variables y predicción de ocurrencia.
+
+    :param request: Objeto de solicitud con coordenadas y fecha.
+    :param modelo_ocurrencia: El modelo de clasificación a utilizar.
+    :return: Diccionario con el resultado de la predicción y metadatos.
+    """
     hoy = date.today()
     
     if request.fecha:
@@ -243,6 +288,13 @@ async def procesar_ocurrencia(request: IncendioRequest, modelo_ocurrencia) -> di
 
 
 async def procesar_intensidad(request: IncendioRequest, modelo_frp) -> dict:
+    """
+    Orquesta el proceso de extracción de variables y predicción de intensidad.
+
+    :param request: Objeto de solicitud con coordenadas y fecha.
+    :param modelo_frp: El modelo de regresión a utilizar.
+    :return: Diccionario con el resultado de la predicción y metadatos.
+    """
     hoy = date.today()
     
     if request.fecha:

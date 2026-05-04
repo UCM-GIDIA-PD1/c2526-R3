@@ -11,7 +11,7 @@ WORKDIR /app
 COPY pyproject.toml uv.lock README.md ./
 
 # 4. Instalar las dependencias 
-RUN uv sync --no-cache
+RUN UV_HTTP_TIMEOUT=300 UV_CONCURRENT_DOWNLOADS=4 uv sync --no-cache
 
 # 5. Copiar el resto del código
 COPY . .

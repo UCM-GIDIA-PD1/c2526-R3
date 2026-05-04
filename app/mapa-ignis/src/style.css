@@ -395,7 +395,7 @@ input:checked+.slider:before {
   border-radius: 12px;
   width: 360px;
   max-width: calc(100vw - 40px);
-  max-height: calc(100vh - 40px);
+  max-height: calc(100vh - 130px);
   display: flex;
   flex-direction: column;
   box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.7);
@@ -940,4 +940,377 @@ input:checked+.slider:before {
   padding: 0 2px;
   font-size: 0.75rem;
   color: var(--text-muted);
+}
+
+/* ── Main Probability Progress Bar ─────────────────────────── */
+.prob-bar-wrapper {
+  margin-bottom: 14px;
+}
+
+.prob-bar-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.prob-label {
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.prob-label.risk-very-high {
+  background: rgba(220, 38, 38, 0.18);
+  color: #f87171;
+}
+
+.prob-label.risk-high {
+  background: rgba(249, 115, 22, 0.18);
+  color: #fb923c;
+}
+
+.prob-label.risk-medium {
+  background: rgba(234, 179, 8, 0.18);
+  color: #facc15;
+}
+
+.prob-label.risk-low {
+  background: rgba(34, 197, 94, 0.18);
+  color: #4ade80;
+}
+
+.prob-value {
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: #fff;
+}
+
+.prob-bar-track {
+  width: 100%;
+  height: 14px;
+  background: rgba(255, 255, 255, 0.07);
+  border-radius: 8px;
+  overflow: hidden;
+  position: relative;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.4);
+}
+
+.prob-bar-fill {
+  height: 100%;
+  width: 0%;
+  border-radius: 8px;
+  transition: width 0.9s cubic-bezier(0.22, 1, 0.36, 1);
+  position: relative;
+}
+
+/* Sheen sweep animation on the bar */
+.prob-bar-fill::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -60%;
+  width: 50%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.25), transparent);
+  animation: sheen 1.6s ease 0.4s 1;
+}
+
+@keyframes sheen {
+  0% {
+    left: -60%;
+  }
+
+  100% {
+    left: 120%;
+  }
+}
+
+/* Fill color variants by risk class */
+.prob-bar-fill.risk-very-high {
+  background: linear-gradient(90deg, #7f1d1d, #dc2626);
+  box-shadow: 0 0 10px rgba(220, 38, 38, 0.5);
+}
+
+.prob-bar-fill.risk-high {
+  background: linear-gradient(90deg, #9a3412, #f97316);
+  box-shadow: 0 0 10px rgba(249, 115, 22, 0.5);
+}
+
+.prob-bar-fill.risk-medium {
+  background: linear-gradient(90deg, #713f12, #eab308);
+  box-shadow: 0 0 10px rgba(234, 179, 8, 0.5);
+}
+
+.prob-bar-fill.risk-low {
+  background: linear-gradient(90deg, #14532d, #22c55e);
+  box-shadow: 0 0 10px rgba(34, 197, 94, 0.4);
+}
+
+/* Scale ticks below main bar */
+.prob-bar-scale {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 4px;
+  font-size: 0.68rem;
+  color: rgba(255, 255, 255, 0.3);
+}
+
+/* ── Importance Progress Bars ───────────────────────────────── */
+.imp-list {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  margin-bottom: 8px;
+}
+
+.imp-row {
+  animation: fadeSlideIn 0.35s ease both;
+  animation-delay: var(--delay, 0ms);
+}
+
+@keyframes fadeSlideIn {
+  from {
+    opacity: 0;
+    transform: translateX(-6px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.imp-label-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+}
+
+.imp-name {
+  font-size: 0.73rem;
+  color: #c9d1d9;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 75%;
+}
+
+.imp-pct {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.imp-bar-bg {
+  width: 100%;
+  height: 7px;
+  background: rgba(255, 255, 255, 0.07);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.imp-bar-fill {
+  height: 100%;
+  width: 0%;
+  border-radius: 4px;
+  opacity: 0.85;
+  transition: width 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+  transition-delay: var(--delay, 0ms);
+}
+
+/* ── Error / Note / Meta ────────────────────────────────────── */
+.error-msg {
+  color: #ef4444;
+  font-size: 0.8rem;
+  margin-top: 10px;
+  padding: 6px 10px;
+  background: rgba(239, 68, 68, 0.08);
+  border-radius: 6px;
+  border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+.note-msg {
+  color: #f59e0b;
+  font-size: 0.78rem;
+  margin-top: 8px;
+  padding: 6px 10px;
+  background: rgba(245, 158, 11, 0.08);
+  border-radius: 6px;
+  border: 1px solid rgba(245, 158, 11, 0.2);
+}
+
+.meta-row {
+  margin-top: 14px;
+  font-size: 0.68rem;
+  opacity: 0.45;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  padding-top: 10px;
+  color: var(--text-muted);
+}
+
+/* ── Loading Overlay (SSE progress) ──────────────────────────── */
+.loading-overlay {
+  background: rgba(255, 255, 255, 0.025);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 10px;
+  padding: 16px;
+  animation: fadeIn 0.25s ease;
+}
+
+.loading-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.loading-icon {
+  font-size: 1.6rem;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.loading-icon.pulse {
+  animation: pulse-icon 1s ease-in-out infinite;
+}
+
+@keyframes pulse-icon {
+
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+
+  50% {
+    transform: scale(1.2);
+    opacity: 0.7;
+  }
+}
+
+.loading-title {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #fff;
+  margin-bottom: 3px;
+}
+
+.loading-label {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  min-height: 1.1em;
+  transition: opacity 0.2s;
+}
+
+/* Loading bar */
+.loading-bar-track {
+  position: relative;
+  width: 100%;
+  height: 10px;
+  background: rgba(255, 255, 255, 0.07);
+  border-radius: 6px;
+  overflow: hidden;
+  margin-bottom: 14px;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.4);
+}
+
+.loading-bar-fill {
+  height: 100%;
+  border-radius: 6px;
+  background: linear-gradient(90deg, #f97316, #dc2626, #f97316);
+  background-size: 200% 100%;
+  animation: bar-shimmer 1.4s linear infinite;
+  transition: width 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+  box-shadow: 0 0 8px rgba(249, 115, 22, 0.5);
+}
+
+@keyframes bar-shimmer {
+  0% {
+    background-position: 100% 0;
+  }
+
+  100% {
+    background-position: -100% 0;
+  }
+}
+
+.loading-bar-pct {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 0.62rem;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.85);
+  line-height: 1;
+  pointer-events: none;
+}
+
+/* Step list */
+.loading-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.loading-step {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.73rem;
+  transition: opacity 0.3s, color 0.3s;
+}
+
+.loading-step.step-pending {
+  opacity: 0.28;
+  color: var(--text-muted);
+}
+
+.loading-step.step-active {
+  opacity: 1;
+  color: #fff;
+  font-weight: 600;
+}
+
+.loading-step.step-done {
+  opacity: 0.55;
+  color: #4ade80;
+}
+
+.step-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: currentColor;
+  transition: background 0.3s;
+}
+
+.loading-step.step-active .step-dot {
+  background: var(--accent-fire);
+  box-shadow: 0 0 6px rgba(249, 115, 22, 0.7);
+  animation: dot-pulse 0.9s ease-in-out infinite;
+}
+
+@keyframes dot-pulse {
+
+  0%,
+  100% {
+    transform: scale(1);
+  }
+
+  50% {
+    transform: scale(1.5);
+  }
+}
+
+.step-label {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }

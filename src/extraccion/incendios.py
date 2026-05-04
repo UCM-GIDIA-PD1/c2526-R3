@@ -2,7 +2,6 @@ import pandas as pd
 import numpy as np
 from sklearn.cluster import DBSCAN
 import geopandas as gpd
-import pandas as pd
 from shapely.geometry import MultiPoint
 from . import minioFunctions
 from . import interrupcion
@@ -77,15 +76,14 @@ def calcular_area_incendios(df, pixel_res_meters=1000):
     return area[['fire_id', 'area_ha']]
 
 def separate_fire_events(df, dist_km=2.0, mes_inicial=1, mes_final=12):
-
     """
     Asigna un ID único a cada grupo de puntos que pertenezcan al mismo incendio.
 
-    :param df: DataFrame de FIRMS
-    :param dist_km: Distancia máxima para considerar que dos puntos son del mismo incendio
-    :param mes_inicial: Mes inicial
-    :param mes_final: Mes final
-    :return tuple: DataFrame con una nueva columna 'fire_id' y un DataFrame resumen del incendio
+    :param df: DataFrame de FIRMS con columnas 'lat', 'lon' y 'date'.
+    :param dist_km: Distancia máxima en km para considerar que dos puntos son del mismo incendio.
+    :param mes_inicial: Mes inicial del rango a filtrar.
+    :param mes_final: Mes final del rango a filtrar.
+    :return tuple: (DataFrame con columna 'fire_id', DataFrame resumen con estadísticas por incendio).
     """
 
     assert not df.empty, "El DataFrame contenia fuegos poco relevantes y se vacio, no se pueden separar eventos de incendios"

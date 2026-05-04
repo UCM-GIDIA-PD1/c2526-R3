@@ -4,6 +4,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
+import asyncio
+import json
 import os
 import sys
 
@@ -63,7 +65,10 @@ app.mount("/assets", StaticFiles(directory="app/mapa-ignis/dist/assets"), name="
 @app.get("/", response_class=HTMLResponse)
 def index(request: Request):
     """
-    Endpoint para mostrar la página principal
+    Endpoint para mostrar la página principal.
+
+    :param request: El objeto de solicitud de FastAPI.
+    :return: Una respuesta de plantilla con el archivo index.html.
     """
     return template_index.TemplateResponse(request=request, name="index.html")
 
@@ -74,14 +79,20 @@ templates = Jinja2Templates(directory="app/templates")
 @app.get("/info_incendios", response_class=HTMLResponse)
 def info_incendios(request: Request):
     """
-    Endpoint para mostrar la página informativa del modelo de incendios
+    Endpoint para mostrar la página informativa del modelo de incendios.
+
+    :param request: El objeto de solicitud de FastAPI.
+    :return: Una respuesta de plantilla con el archivo info_incendios.html.
     """
     return templates.TemplateResponse(request=request, name="info_incendios.html")
 
 @app.get("/info_frp", response_class=HTMLResponse)
 def info_frp(request: Request):
     """
-    Endpoint para mostrar la página informativa del modelo de frp
+    Endpoint para mostrar la página informativa del modelo de frp.
+
+    :param request: El objeto de solicitud de FastAPI.
+    :return: Una respuesta de plantilla con el archivo info_frp.html.
     """
     return templates.TemplateResponse(request=request, name="info_frp.html")
 
@@ -90,6 +101,9 @@ def info_frp(request: Request):
 def obtener_imagen_minio(filename: str):
     """
     Endpoint para descargar imágenes en tiempo real desde MinIO.
+
+    :param filename: Nombre del archivo de imagen a descargar.
+    :return: Un StreamingResponse con la imagen o un diccionario de error.
     """
     try:
         cliente = crear_cliente()
@@ -105,6 +119,9 @@ def obtener_imagen_minio(filename: str):
 async def predict_ocurrencia(request: IncendioRequest):
     """
     Endpoint para predecir si habrá un incendio o no basado en variables espaciales y meteorológicas.
+
+    :param request: Objeto IncendioRequest con latitud, longitud y fecha.
+    :return: OcurrenciaResponse con la predicción y variables clave.
     """
     modelo_ocurrencia = ml_models.get("xgboost_ocurrencia")
     response_data = await procesar_ocurrencia(request, modelo_ocurrencia)
@@ -114,6 +131,9 @@ async def predict_ocurrencia(request: IncendioRequest):
 async def predict_intensidad(request: IncendioRequest):
     """
     Endpoint para predecir la intensidad teórica (FRP) de un incendio en una ubicación y fecha.
+
+    :param request: Objeto IncendioRequest con latitud, longitud y fecha.
+    :return: IntensidadResponse con la intensidad predicha y variables clave.
     """
     modelo_frp = ml_models.get("xgboost_frp")
     response_data = await procesar_intensidad(request, modelo_frp)
@@ -122,7 +142,10 @@ async def predict_intensidad(request: IncendioRequest):
 @app.get("/{filename}")
 def get_root_static(filename: str):
     """
-    Endpoint Catch-All para servir archivos en la raíz del build (como fires.geojson, ico, png, etc)
+    Endpoint Catch-All para servir archivos en la raíz del build (como fires.geojson, ico, png, etc).
+
+    :param filename: Nombre del archivo estático solicitado.
+    :return: FileResponse con el archivo o HTTPException 404.
     """
     file_path = os.path.join("app/mapa-ignis/dist", filename)
     if os.path.isfile(file_path):
@@ -132,7 +155,10 @@ def get_root_static(filename: str):
 @app.get("/geojson/{year}")
 def obtener_geojson_anio(year: int):
     """
-    Endpoint para transmitir archivos GeoJSON desde MinIO según el año
+    Endpoint para transmitir archivos GeoJSON desde MinIO según el año.
+
+    :param year: Año del cual se desea obtener el GeoJSON.
+    :return: StreamingResponse con el archivo GeoJSON.
     """
     try:
         cliente = crear_cliente()
@@ -153,3 +179,190 @@ def obtener_geojson_anio(year: int):
             status_code=404, 
             detail=f"No se encontró el archivo GeoJSON para el año {year}."
         )
+
+
+# ── SSE helpers ─────────────────────────────────────────────────────────────
+def sse_event(event: str, data: dict) -> str:
+    """
+    Format a single Server-Sent Event message.
+
+    :param event: Event name (e.g., 'progress', 'result').
+    :param data: Dictionary with the event payload.
+    :return: Formatted SSE message string.
+    """
+    return f"event: {event}\ndata: {json.dumps(data, ensure_ascii=False)}\n\n"
+
+
+async def stream_prediction(request_body: IncendioRequest, tipo: str, modelo):
+    """
+    Async generator that yields SSE progress events while extracting features,
+    then yields the final prediction result.
+
+    :param request_body: Objeto IncendioRequest con latitud, longitud y fecha.
+    :param tipo: Tipo de predicción ('ocurrencia' o 'intensidad').
+    :param modelo: El modelo cargado para realizar la inferencia.
+    :yield: Formatted SSE strings for progress and final result.
+    """
+    from app.services.fire_service import (
+        extraer_variables_punto,
+        realizar_inferencia_ocurrencia,
+        realizar_inferencia_intensidad,
+        get_model_features,
+    )
+    from datetime import date, datetime
+    import numpy as np
+    import pandas as pd
+
+    hoy = date.today()
+    try:
+        fecha_obj = datetime.strptime(request_body.fecha, "%Y-%m-%d").date() if request_body.fecha else hoy
+    except ValueError:
+        fecha_obj = hoy
+
+    if fecha_obj < hoy:
+        error_payload = {"error": "Solo se permiten predicciones para hoy o para el futuro (hasta 15 días)."}
+        if tipo == "ocurrencia":
+            error_payload.update({"ocurrencia": False, "probabilidad": 0.0,
+                                   "fecha_procesada": str(fecha_obj), "modelo_version": "XGBoost-Ocurrencia"})
+        else:
+            error_payload.update({"intensidad": 0.0,
+                                   "fecha_procesada": str(fecha_obj), "modelo_version": "XGBoost-FRP"})
+        yield sse_event("result", error_payload)
+        return
+
+    fecha_procesada = fecha_obj.strftime("%Y-%m-%d")
+
+    # Queue for progress messages produced inside the async callback
+    progress_queue: asyncio.Queue = asyncio.Queue()
+
+    async def progress_cb(step: int, total: int, label: str):
+        await progress_queue.put({"step": step, "total": total, "label": label})
+
+    # Run extraction in a task so we can drain the queue concurrently
+    extraction_task = asyncio.create_task(
+        extraer_variables_punto(request_body.latitud, request_body.longitud, fecha_procesada, progress_cb)
+    )
+
+    # Stream progress events until extraction finishes
+    while not extraction_task.done():
+        try:
+            msg = await asyncio.wait_for(progress_queue.get(), timeout=0.2)
+            yield sse_event("progress", msg)
+        except asyncio.TimeoutError:
+            pass  # keep looping
+
+    # Drain any remaining messages
+    while not progress_queue.empty():
+        msg = progress_queue.get_nowait()
+        yield sse_event("progress", msg)
+
+    features_completas, datos_faltantes = extraction_task.result()
+
+    # Step 6 — running model
+    yield sse_event("progress", {"step": 6, "total": 6, "label": "Ejecutando modelo de predicción..."})
+
+    if datos_faltantes >= 5:
+        error_msg = "No se pudieron extraer los datos suficientes. Faltan más de 5 valores."
+        if tipo == "ocurrencia":
+            yield sse_event("result", {"ocurrencia": False, "probabilidad": 0.0,
+                                        "fecha_procesada": fecha_procesada, "modelo_version": "XGBoost-Ocurrencia",
+                                        "error": error_msg})
+        else:
+            yield sse_event("result", {"intensidad": 0.0, "fecha_procesada": fecha_procesada,
+                                        "modelo_version": "XGBoost-FRP", "error": error_msg})
+        return
+
+    nota = (f"No se extrajeron todos los datos. Faltan {datos_faltantes} valores."
+            if 0 < datos_faltantes < 5 else None)
+
+    # ── Build result payload identical to the normal endpoints ────────────
+    name_map = {
+        'temp_max': 'Temperatura Max', 'humidity_mean': 'Humedad',
+        'NDVI': 'Vegetación (NDVI)', 'wind_speed_max': 'Viento',
+        'radiation': 'Radiación Solar', 'soil_temp': 'Temp. Suelo',
+        'grados': 'Pendiente', 'dist_civ': 'Dist. Civilización',
+    }
+
+    if tipo == "ocurrencia":
+        probabilidad, ocurrencia = realizar_inferencia_ocurrencia(modelo, features_completas)
+        variables_clave = {
+            "Temperatura": f"{features_completas.get('temp_max', 0):.1f} °C",
+            "Humedad": f"{features_completas.get('humidity_mean', 0):.1f} %",
+            "Viento": f"{features_completas.get('wind_speed_max', 0):.1f} km/h",
+            "NDVI (Vegetación)": f"{features_completas.get('NDVI', 0):.3f}",
+            "NDWI (Agua)": f"{features_completas.get('NDWI', 0):.3f}",
+            "Pendiente": f"{features_completas.get('grados', 0):.1f}°"
+        }
+        importancias = {}
+        if modelo and hasattr(modelo, 'feature_importances_'):
+            fallback = ['lat','lon','date','soil_temp','final','elevacion_centro','grados','porcentaje',
+                        'temp_mean','temp_max','temp_min','humidity_mean','precipitation','wind_speed_max',
+                        'wind_gusts_max','pressure_mean','cloud_cover','radiation','evapotranspiration',
+                        'sunshine_seconds','NDVI','NDWI','dist_civ','dia_sin','dia_cos']
+            feat_names = get_model_features(modelo, fallback)
+            imps = modelo.feature_importances_
+            for i in np.argsort(imps)[::-1][:5]:
+                importancias[name_map.get(feat_names[i], feat_names[i])] = float(imps[i])
+        payload = {"ocurrencia": ocurrencia, "probabilidad": probabilidad,
+                   "fecha_procesada": fecha_procesada, "modelo_version": "XGBoost-Ocurrencia",
+                   "variables_clave": variables_clave, "importancias": importancias}
+    else:
+        intensidad = realizar_inferencia_intensidad(modelo, features_completas)
+        variables_clave = {
+            "Temperatura": f"{features_completas.get('temp_max', 0):.1f} °C",
+            "Humedad": f"{features_completas.get('humidity_mean', 0):.1f} %",
+            "NDVI (Vegetación)": f"{features_completas.get('NDVI', 0):.3f}",
+            "Radiación": f"{features_completas.get('radiation', 0):.1f} J/m²"
+        }
+        importancias = {}
+        if modelo and hasattr(modelo, 'feature_importances_'):
+            fallback = ['lat','lon','soil_temp','elevacion_centro','grados','porcentaje','temp_mean',
+                        'temp_max','temp_min','humidity_mean','precipitation','wind_speed_max',
+                        'wind_gusts_max','pressure_mean','cloud_cover','radiation','evapotranspiration',
+                        'sunshine_seconds','NDVI','NDWI','dist_civ','dry_fuel_index','VPD','fuel_stress']
+            feat_names = get_model_features(modelo, fallback)
+            imps = modelo.feature_importances_
+            for i in np.argsort(imps)[::-1][:5]:
+                importancias[name_map.get(feat_names[i], feat_names[i])] = float(imps[i])
+        payload = {"intensidad": intensidad, "fecha_procesada": fecha_procesada,
+                   "modelo_version": "XGBoost-FRP", "variables_clave": variables_clave,
+                   "importancias": importancias}
+
+    if nota:
+        payload["nota_informativa"] = nota
+
+    yield sse_event("result", payload)
+
+
+@app.post("/predict/ocurrencia/stream")
+async def stream_ocurrencia(request: IncendioRequest):
+    """
+    SSE endpoint: emite eventos de progreso en tiempo real durante la extracción
+    y finalmente el resultado de predicción de ocurrencia.
+
+    :param request: Objeto IncendioRequest con latitud, longitud y fecha.
+    :return: StreamingResponse con el flujo SSE.
+    """
+    modelo = ml_models.get("xgboost_ocurrencia")
+    return StreamingResponse(
+        stream_prediction(request, "ocurrencia", modelo),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
+
+
+@app.post("/predict/intensidad/stream")
+async def stream_intensidad(request: IncendioRequest):
+    """
+    SSE endpoint: emite eventos de progreso en tiempo real durante la extracción
+    y finalmente el resultado de predicción de intensidad (FRP).
+
+    :param request: Objeto IncendioRequest con latitud, longitud y fecha.
+    :return: StreamingResponse con el flujo SSE.
+    """
+    modelo = ml_models.get("xgboost_frp")
+    return StreamingResponse(
+        stream_prediction(request, "intensidad", modelo),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )

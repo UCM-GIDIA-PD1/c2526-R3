@@ -122,7 +122,7 @@ def extraccion(df_final, anio):
     df_vegetacion, df_pendiente, df_fisicas, df_suelo2, df_civilizacion = resultados_extraccion
     df_entero = construccion_df.concatenar_variables(pipeline=True, anio=anio)
 
-    df_entero = pd.merge(df_entero, df_final[['lat', 'lon', 'date', 'final', 'frp']], on=['lat', 'lon', 'date'], how='left')
+    df_entero = pd.merge(df_entero, df_final[['lat', 'lon', 'date', 'final', 'frp_mean']], on=['lat', 'lon', 'date'], how='left')
     df_entero = df_entero.drop(columns=['fire_index'], errors='ignore')
 
     cliente = minioFunctions.crear_cliente()
@@ -140,7 +140,7 @@ def extraccion(df_final, anio):
     
     # Transformamos la variable fecha
     df_entero['dia_sin'], df_entero['dia_cos'] = transformacion.tranformar_date(df_entero, pipeline=True)
-    df_entero = df_entero.drop(columns = ["frp"], errors = 'ignore')
+    df_entero = df_entero.drop(columns = ["frp_mean"], errors = 'ignore')
     # Subimos a MinIO
     minioFunctions.subir_fichero(cliente, f"grupo3/raw/Final/final_{anio}.parquet", df_entero)
 

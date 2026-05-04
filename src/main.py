@@ -725,7 +725,7 @@ async def main():
             print(f"Archivo de incendios {anio}.csv encontrado.")
 
             print("Ejecutando el pipeline... \n")
-            pipeline.pipeline(anio)
+            await pipeline.pipeline(anio)
             
 
 

@@ -96,7 +96,7 @@ def generacion_no_incendios(df_inc, anio=None):
     
     return df_final
 
-def extraccion(df_final, anio):
+async def extraccion(df_final, anio):
     '''
     Función para realizar la extracción de los datos
     físicos, de vegetación, pendiente, suelo y civilización, 
@@ -112,7 +112,7 @@ def extraccion(df_final, anio):
     print("\n====================> PASO 4: EXTRACCIÓN, CONCATENACIÓN Y LIMPIEZA DE LAS VARIABLES ...")
 
     # Extraemos y concatenamos las variables
-    resultados_extraccion = asyncio.run(construccion_df.extraccion_pipeline(df_final, anio=anio, limite_extraccion=-1))
+    resultados_extraccion = asyncio.run(await construccion_df.extraccion_pipeline(df_final, anio=anio, limite_extraccion=-1))
     
     # Comprobamos que la extracción se ha realizado correctamente
     if resultados_extraccion is None:
@@ -193,7 +193,7 @@ def limpieza_nulos(df_entero, anio = None):
     return df_limpio
                 
 
-def pipeline(anio=None):
+async def pipeline(anio=None):
     '''
     Función para ejecutar el pipeline completo de construcción del dataframe.
     :param anio: Año datado de los incendios.
@@ -210,7 +210,7 @@ def pipeline(anio=None):
     df_final = generacion_no_incendios(df_inc, anio=anio)
 
     # ====================> PASO 4 : EXTRACCIÓN, CONCATENACIÓN Y LIMPIEZA DE LAS VARIABLES
-    df_entero = extraccion(df_final, anio=anio)
+    df_entero = await extraccion(df_final, anio=anio)
 
     # ====================> PASO 5 : LIMPIEZA DE NULOS
     df_entero = limpieza_nulos(df_entero, anio=anio)

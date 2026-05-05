@@ -132,6 +132,13 @@ async def fetch_environment_batch(session, coords_list, date, intentos=3, direct
     '''
     Extrae características físicas para múltiples coordenadas en una sola petición (batching).
     Optimiza drásticamente el tiempo de extracción y reduce el número de requests.
+
+    :param session: Sesión de aiohttp
+    :param coords_list: Lista de puntos (lat, lon)
+    :param date: Fecha 
+    :param intentos: Número de intentos 
+    :param directo: Booleano para rate limit
+    :return list: datos extraídos
     '''
     global contador
     async with sem_global:
@@ -268,6 +275,15 @@ async def fetch_environment_batch(session, coords_list, date, intentos=3, direct
 async def df_fisicas(fires, limit=20, fecha_ini=None, fecha_fin=None, directo=False, pipeline=False, anio=None):
     '''
     Extrae características físicas de forma optimizada mediante batching.
+
+    :param fires: DataFrame con los puntos de incendio
+    :param limit: Límite de puntos a procesar (-1 para todos)
+    :param fecha_ini: Fecha inicial de filtrado
+    :param fecha_fin: Fecha final de filtrado
+    :param directo: Booleano para control de rate limit
+    :param pipeline: Booleano para ejecución en pipeline (subida automática)
+    :param anio: Año correspondiente a los datos
+    :return pd.DataFrame: DataFrame con las características físicas extraídas
     '''
     global contador
     contador = 0 

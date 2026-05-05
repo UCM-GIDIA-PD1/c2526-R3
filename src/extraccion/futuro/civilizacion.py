@@ -26,6 +26,13 @@ def limpieza_inicial():
     minioFunctions.subir_fichero(cliente, 'grupo3/maps/civilizaciones/poblaciones_clean.parquet', df)
 
 def calcular_distancias(df_pobl, df_inc):
+    '''
+    Calcula las distancias entre puntos de incendio y poblaciones más cercanas.
+    
+    :param df_pobl: DataFrame con datos de poblaciones
+    :param df_inc: DataFrame con datos de incendios
+    :return np.ndarray: Array con las distancias calculadas en km
+    '''
     # Pasar a radianes
     pobl_rad = np.deg2rad(np.array(df_pobl[['lat', 'lon']]))
     inc_rad = np.deg2rad(np.array(df_inc[['lat', 'lon']]))

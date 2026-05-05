@@ -127,6 +127,13 @@ async def extraccion(df_final, anio):
 
     cliente = minioFunctions.crear_cliente()
     def calcular_vpd(temp, rh):
+        '''
+        Calcula el Vapor Pressure Deficit (VPD).
+        
+        :param temp: Temperatura en grados Celsius
+        :param rh: Humedad relativa en porcentaje
+        :return float: Valor del VPD
+        '''
         svp = 610.7 * (10**((7.5 * temp) / (237.3 + temp)))
         vpd = (1 - (rh / 100)) * svp
         return vpd
@@ -196,7 +203,9 @@ def limpieza_nulos(df_entero, anio = None):
 async def pipeline(anio=None):
     '''
     Función para ejecutar el pipeline completo de construcción del dataframe.
+
     :param anio: Año datado de los incendios.
+    :return None: Realiza todo el proceso de extracción, filtrado, generación y limpieza
     '''
     assert anio is not None, "Se requiere el año para ejecutar el pipeline completo"
 

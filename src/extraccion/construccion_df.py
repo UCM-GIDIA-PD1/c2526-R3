@@ -21,6 +21,12 @@ async def procesar_fila_completa(session, row, index, directo):
     Importante:
     - Asume que 'row' es una tupla que contiene los atributos 'date', 'lat' y 'lon'.
     - Aplica un retraso escalonado (index * 0.1) para disminuir el riesgo de bloqueos por parte de las APIs
+
+    :param session: Sesión de aiohttp
+    :param row: Fila del DataFrame 
+    :param index: Índice de la fila
+    :param directo: Booleano para rate limit
+    :return dict: Datos extraidos
     """
 
     async with sem_global:
@@ -50,6 +56,13 @@ async def build_environmental_df(file, limit=100, fecha_ini=None, fecha_fin=None
     Importante:
     - Se asume que el indice generado por fetch_fires coincide secuencialmente 
       con el orden procesado lo que permite la concatenacion lateral (axis=1) directa
+
+    :param file: DataFrame con datos de incendios
+    :param limit: Límite de puntos
+    :param fecha_ini: Fecha inicial
+    :param fecha_fin: Fecha final
+    :param directo: Booleano para rate limit
+    :return pd.DataFrame: DataFrame con variables ambientales 
     """
 
     ini = time.time()
@@ -202,6 +215,8 @@ def juntar_incendios():
     - Se supone que los archivos de incendios y no incendios estan organizados en carpetas separadas 
       y que cada archivo de una carpeta tiene un archivo correspondiente en la otra carpeta con el mismo año cronologico. 
     - Define la variable objetivo 'final', asignando 1 a eventos de incendio y 0 a puntos de no incendio para clasificar
+
+    :return None: Realiza la subida a MinIO directamente
     """
 
     #Definir paths
@@ -235,6 +250,12 @@ def juntar_incendios():
         print(f"Subidos a: {path_destino}")
 
 def concatenar_df():
+    """
+    Concatena archivos .parquet de una variable específica almacenados en MinIO.
+    Solicita al usuario la variable y el año a procesar.
+
+    :return None: Realiza la subida a MinIO directamente
+    """
     variable = input("Que variable quieres concatenar: ")
 
     anyo = input(f'De que año quieres concatenar los archivos para {variable}? (2022-2025) (pon -1 para concatenar todo el bucket)')
@@ -264,6 +285,7 @@ def concatenar_variables(pipeline=False, anio=None):
 
     :param pipeline: si es true se automatiza la subida a Minio sin preguntar (por defecto False)
     :param anio: Año para subir el archivo a Minio automáticamente (requerido si pipeline es True)
+    :return pd.DataFrame: DataFrame con todas las variables unidas
     '''
     lista_var = ['Pendiente', 'Fisicas', 'Suelo2', 'civilizacion', 'Vegetacion']
     cliente = minioFunctions.crear_cliente()

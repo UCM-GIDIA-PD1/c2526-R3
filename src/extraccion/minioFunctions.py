@@ -44,14 +44,15 @@ def crear_cliente():
     return cliente
     
 def subir_fichero(cliente, path_server: Path, df):
-    assert isinstance(df, gpd.GeoDataFrame) or isinstance(df, pd.DataFrame), f"Ningún dataframe o geodataframe se pasó por parámetro"
     '''
     Sube un dataframe o geodataframe como parquet a la ruta especificada de minio.
     
     :param cliente: cliente de MinIO (función crear_cliente())
     :param path_server: path del archivo en MinIO
     :param df: DataFrame o GeoDataFrame
+    :return None: Realiza la subida a MinIO directamente
     '''
+    assert isinstance(df, gpd.GeoDataFrame) or isinstance(df, pd.DataFrame), f"Ningún dataframe o geodataframe se pasó por parámetro"
     buffer = io.BytesIO()
     df.to_parquet(buffer)
     lenght = buffer.tell() #Obtenemos longitud de los datos
@@ -72,6 +73,7 @@ def bajar_fichero(cliente, path_server: Path, type = "df"):
     :param cliente: cliente de MinIO (función crear_cliente())
     :param path_server: path del archivo en MinIO
     :param type: especificar el tipo "df", "gdf" o "pkl"
+    :return: DataFrame, GeoDataFrame o objeto deserializado
     '''
     assert type == "gdf" or type == "df" or type == "pkl", f"Tipo especificado no válido: {type}, especifique 'df' o 'gdf'"
     

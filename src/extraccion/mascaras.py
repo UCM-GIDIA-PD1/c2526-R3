@@ -13,6 +13,13 @@ Las demás funciones han sido usadas para la creación de los .parquet
 '''
 
 def minio_a_local(carpeta_local, path_minio):
+    '''
+    Descarga archivos desde MinIO a una carpeta local en el directorio 'data'.
+    
+    :param carpeta_local: Nombre de la carpeta local de destino
+    :param path_minio: Prefijo de la carpeta en MinIO
+    :return None: Realiza la descarga directamente
+    '''
      #Guardaremos los archivos en local (al trabajar con distintos tipos de archivo)
     path = Path(__file__).resolve().parent.parent.parent / "data"
     if not path.exists(): #Creamos si no está creada data
@@ -131,9 +138,10 @@ def extraer_pais(pais = None):
 
 def bioregions_to_parquet(mascaras: dict):
     '''
-    Guarda varios GeoDataFrames en distintos archivos
-    :param mascaras: Diccionario
-    :param nombre: nombre del archivo
+    Guarda varios GeoDataFrames en distintos archivos .parquet.
+    
+    :param mascaras: Diccionario con nombres de regiones y sus GeoDataFrames
+    :return None: Realiza la subida a MinIO mediante parquet.to_parquet
     '''
 
     assert isinstance(mascaras, dict), "La variable no es un diccionario"
@@ -146,8 +154,10 @@ def bioregions_to_parquet(mascaras: dict):
         
 def parse_parquet(path: str):
     '''
-    Convierte parquet a geodataframe
-    :param path: ruta al archivo (string)
+    Convierte un archivo .parquet en un GeoDataFrame.
+    
+    :param path: Ruta al archivo .parquet
+    :return gpd.GeoDataFrame: GeoDataFrame cargado y configurado con CRS 4326
     '''
     gdf = gpd.read_parquet(path)
 
@@ -174,7 +184,9 @@ import matplotlib.pyplot as plt
 def extraer_mascaras_faltantes():
     '''
     Función para extraer las máscaras de los países que faltan por generar
-    puntos de no incendios. Se suben los parquets automáticamente a MinIO
+    puntos de no incendios. Se suben los parquets automáticamente a MinIO.
+
+    :return None: Realiza la subida a MinIO directamente
     '''
     for pais in ["Belarus", "Spain", "Russian Federation", "Ukraine"]:
         df_pais = extraer_pais(pais)

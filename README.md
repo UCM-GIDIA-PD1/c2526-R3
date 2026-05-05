@@ -274,6 +274,10 @@ podman rm -f ignis-app
 
 La API de IgnisAI permite integrar las capacidades de predicción de incendios en otras aplicaciones o scripts. Está construida con **FastAPI** y ofrece predicciones basadas en modelos XGBoost entrenados con datos meteorológicos y satelitales.
 
+### Ejecución sin contenedor
+
+Se debe ejecutar el comando uv run uvicorn app.main:app --reload, para comprobar el correcto funcionamiento. 
+
 ### Documentación Interactiva
 Una vez que la API está en ejecución, puedes acceder a la documentación interactiva y probar los endpoints directamente desde el navegador:
 - **Swagger UI**: `http://localhost:8000/docs`
@@ -407,8 +411,17 @@ Para iniciar el servidor de desarrollo, ejecuta (en la carpeta de mapa-ignis) :
 ```bash
 npm run dev
 ```
+Luego, abre la URL que aparece en la terminal (usualmente `http://localhost:5173/`) en tu navegador. 
+El mapa aparecerá en una terminal independiente del resto de páginas asociadas con la API. 
 
-Luego, abre la URL que aparece en la terminal (usualmente `http://localhost:5173/`) en tu navegador.
+### Ejecución del Mapa 2
+
+Para poder visualizar el mapa en la terminal que conecta con las páginas html informativas (una vez ejecutado el comando uv run uvicorno app.main:app --reload), será necesario ejecutar (en la carpeta de mapa-ignis):
+
+```bash
+npm run build
+```
+Este comando creará una carpeta dist. 
 
 ---
 

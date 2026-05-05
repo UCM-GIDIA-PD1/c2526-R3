@@ -338,7 +338,19 @@ Estos endpoints son ideales para interfaces de usuario, ya que notifican cada pa
   - Recupera imágenes almacenadas en el servidor MinIO.
 
 ---
+## Extraer el CSV de incendios
 
+Para descargar los datos, sigue estos pasos:
+
+1. Entra a [NASA FIRMS](https://firms.modaps.eosdis.nasa.gov/download/).
+2. Pon tu correo y dale a **Email code**. Te llegará un código que debes introducir en la siguiente pantalla.
+3. Pulsa en **Create New Request**.
+4. Donde pone *World*, selecciona **Custom Region** y pon en el campo `-10,35,35,75` (este es el recuadro que cubre Europa).
+5. En *Fire Source*, selecciona **VIIRS NOAA-20**.
+6. Rellena las fechas deseadas (inicio y fin de los datos).
+7. Pon el formato en **.csv**, mantén marcada la última caja y dale a **Submit**.
+
+Suele tardar unos 10 minutos aproximadamente. Podrás descargar el archivo en la página siguiente.
 
 ## Configuración de Google Earth Engine
 

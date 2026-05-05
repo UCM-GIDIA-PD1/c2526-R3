@@ -582,6 +582,8 @@ async def main():
                 print("7.Modelo Incremental.")
                 modelo = input("\n Indica el modelo que quieres entrenar (el número): ")
                 
+
+
                 if modelo == '6':
                     print("\n--- Opciones Modelo Inversa ---")
                     print("1. Ejecutar Búsqueda Exhaustiva (Grid Sweep)")

@@ -193,16 +193,29 @@ async def fetch_environment_batch(session, coords_list, date, intentos=3, direct
                 async with session.get(url, params=params) as response:
                     data = await response.json()
                     
+                    if isinstance(data, dict) and data.get("error"):
+                        error_msg = data.get("reason") or "Error desconocido de la API"
+                        print(f"Error: Intento {i+1} fallido en batch de {len(coords_list)} puntos: {error_msg}")
+                        if "limit exceeded" in error_msg.lower():
+                            print(f"Limite de API alcanzado. Esperando 60 segundos antes de reintentar...")
+                            await asyncio.sleep(60)
+                        else:
+                            await asyncio.sleep(2 * (i + 1))
+                        continue
+                    
                     if not isinstance(data, list):
                         data = [data]
+                        
+                    if len(data) != len(coords_list):
+                        print(f"Advertencia: El numero de resultados devueltos ({len(data)}) no coincide con el batch ({len(coords_list)}).")
                     
                     resultados = []
-                    for idx, r in enumerate(data):
-                        lat = lats[idx]
-                        lon = lons[idx]
+                    for idx, coord in enumerate(coords_list):
+                        lat = coord['lat']
+                        lon = coord['lon']
                         
-                        if "daily" in r:
-                            d = r["daily"]
+                        if idx < len(data) and "daily" in data[idx]:
+                            d = data[idx]["daily"]
                             res = {
                                 "lat": lat,
                                 "lon": lon,
@@ -217,7 +230,7 @@ async def fetch_environment_batch(session, coords_list, date, intentos=3, direct
                                 "sunshine_seconds": d["sunshine_duration"][0]
                             }
                             if is_future:
-                                h = r.get("hourly", {})
+                                h = data[idx].get("hourly", {})
                                 res["temp_mean"] = sum(h.get("temperature_2m", [0])) / 24
                                 res["humidity_mean"] = sum(h.get("relative_humidity_2m", [0])) / 24
                                 res["pressure_mean"] = sum(h.get("surface_pressure", [0])) / 24
@@ -235,13 +248,22 @@ async def fetch_environment_batch(session, coords_list, date, intentos=3, direct
                                                     "radiation", "evapotranspiration", "sunshine_seconds"]})
                             resultados.append(error)
                     
+                    print(f"Batch de {len(resultados)} puntos procesado correctamente (Request #{contador}).")
                     return resultados
                     
             except Exception as e:
-                print(f"Error en batch: {e}")
-                await asyncio.sleep(1)
+                print(f"Error de conexion en batch: {e}")
+                await asyncio.sleep(2 * (i + 1))
         
-        return []
+        print(f"Fallaron todos los intentos para el batch de {len(coords_list)} puntos.")
+        resultados = []
+        for coord in coords_list:
+            error = {"lat": coord['lat'], "lon": coord['lon'], "date": date}
+            error.update({k: None for k in ["temp_mean", "temp_max", "temp_min", "humidity_mean", "precipitation",
+                                    "wind_speed_max", "wind_gusts_max", "pressure_mean", "cloud_cover",
+                                    "radiation", "evapotranspiration", "sunshine_seconds"]})
+            resultados.append(error)
+        return resultados
 
 async def df_fisicas(fires, limit=20, fecha_ini=None, fecha_fin=None, directo=False, pipeline=False, anio=None):
     '''
@@ -256,6 +278,7 @@ async def df_fisicas(fires, limit=20, fecha_ini=None, fecha_fin=None, directo=Fa
     if limit != -1:
         fires = fires.head(limit)
 
+    fires = fires.copy()
     fires['date_str'] = fires['date'].astype(str).str.split().str[0]
     grupos = fires.groupby('date_str')
 

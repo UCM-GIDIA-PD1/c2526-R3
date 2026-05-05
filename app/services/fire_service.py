@@ -80,6 +80,8 @@ async def extraer_variables_punto(
                     suelo2.soil_temp(lat, lon, fecha_str, 0)
                 ]
                 
+                print(f"--- Intento {intentos + 1} de 3 ---")
+                print("Lanzando tareas de extraccion en paralelo: Fisicas, Vegetacion, Pendiente, Suelo...")
                 resultados = await asyncio.gather(*tareas, return_exceptions=True)
                 
                 if not isinstance(resultados[0], Exception): features.update(resultados[0])
@@ -92,11 +94,14 @@ async def extraer_variables_punto(
                 features['dist_civ'] = dist_civ
                 
                 faltantes = sum(pd.isna(v) or v is None for v in features.values())
+                print(f"Resultado intento {intentos + 1}: Faltan {faltantes} variables clave.")
+                
                 if faltantes <= 1:
+                    print("Extraccion exitosa (<= 1 variables faltantes). Terminando reintentos.")
                     break
                     
             except Exception as e:
-                print(f"Error en intento {intentos + 1}: {e}")
+                print(f"Error general en intento {intentos + 1}: {e}")
                 
             intentos += 1
             if intentos < 3: await asyncio.sleep(0.5)

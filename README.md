@@ -28,6 +28,24 @@ Antes de comenzar, asegúrate de tener lo siguiente:
 
 ```text
 c2526-R3/
+├── app/                        # Contenedor principal de la aplicación
+│   ├── mapa-ignis/             # Frontend (Vite + JS)
+│   │   ├── src/
+│   │   │   ├── counter.js
+│   │   │   ├── main.js
+│   │   │   └── style.css
+│   │   ├── index.html
+│   │   ├── package.json
+│   │   └── vite.config.js
+│   ├── services/              
+│   │   └── fire_service.py
+│   ├── templates/              # Plantillas HTML (info_frp, info_incendios)
+│   │   ├── info_frp.html
+│   │   └── info_incendios.html
+│   ├── main.py                 # Punto de entrada de la API (dentro de app)
+│   └── schemas.py                          
+├── scratch/                    # Entorno de pruebas y experimentación rápida
+│   └── test_api.py
 ├── src/
 │   ├── extraccion/                     # Scripts de extracción de datos (Fase 2)
 │   │   ├── descartadas/                # Variables descartadas del pipeline final
@@ -80,8 +98,11 @@ c2526-R3/
 │   │       ├── personalizacion.py
 │   │       └── wandbFunctions.py
 │   └── main.py
+├── .dockerignore
+├── .env.example
 ├── .gitignore
 ├── .python-version
+├── Dockerfile
 ├── README.md
 ├── pyproject.toml
 └── uv.lock
@@ -217,6 +238,12 @@ En caso de error, revisar especialmente:
 - Conectividad de red o VPN si aplica.
 
 ---
+### Mejores resultados obtenidos (en el conjunto de test)
+1. Modelo de predicción de incendios:
+   - XGBoostClassifier: f2 = 0.37.
+2. Modelo de predicción del frp:
+   - XGBoostRegressor: $R^2$ = 0.0585 y RMSE = 39.47.
+---
 
 ## Despliegue con Podman (Contenedores)
 
@@ -276,7 +303,13 @@ La API de IgnisAI permite integrar las capacidades de predicción de incendios e
 
 ### Ejecución sin contenedor
 
-Se debe ejecutar el comando uv run uvicorn app.main:app --reload, para comprobar el correcto funcionamiento. 
+Se debe ejecutar el comando:
+
+```bash
+uv run uvicorn app.main:app --reload
+```
+
+Para comprobar el correcto funcionamiento. 
 
 ### Documentación Interactiva
 Una vez que la API está en ejecución, puedes acceder a la documentación interactiva y probar los endpoints directamente desde el navegador:

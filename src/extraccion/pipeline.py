@@ -112,7 +112,7 @@ async def extraccion(df_final, anio):
     print("\n====================> PASO 4: EXTRACCIÓN, CONCATENACIÓN Y LIMPIEZA DE LAS VARIABLES ...")
 
     # Extraemos y concatenamos las variables
-    resultados_extraccion = await construccion_df.extraccion_pipeline(df_final, anio=anio, limite_extraccion=10)
+    resultados_extraccion = await construccion_df.extraccion_pipeline(df_final, anio=anio, limite_extraccion=-1)
     
     # Comprobamos que la extracción se ha realizado correctamente
     if resultados_extraccion is None:

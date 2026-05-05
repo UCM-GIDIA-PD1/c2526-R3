@@ -338,9 +338,8 @@ Estos endpoints son ideales para interfaces de usuario, ya que notifican cada pa
   - Recupera imágenes almacenadas en el servidor MinIO.
 
 ---
-## Extraer el CSV de incendios
-
-Para descargar los datos, sigue estos pasos:
+## Ejecución del pipeline
+Para la ejecución del pipeline se requiere un csv con datos de incendios de un año concreto. Para que se ejecute correctamente siga lo siguientes pasos:
 
 1. Entra a [NASA FIRMS](https://firms.modaps.eosdis.nasa.gov/download/).
 2. Pon tu correo y dale a **Email code**. Te llegará un código que debes introducir en la siguiente pantalla.
@@ -350,7 +349,20 @@ Para descargar los datos, sigue estos pasos:
 6. Rellena las fechas deseadas (inicio y fin de los datos).
 7. Pon el formato en **.csv**, mantén marcada la última caja y dale a **Submit**.
 
-Suele tardar unos 10 minutos aproximadamente. Podrás descargar el archivo en la página siguiente.
+Suele tardar unos 10 minutos aproximadamente. Podrás descargar el archivo en la página siguiente. Tras descargar el archivo:
+
+1. Modifica el nombre del archivo a: año.csv (donde el año es el número correspondiente al año de los incendios del archivo en formato "AAAA", p.e. 2026.csv).
+2. Sube tu archivo a MinIO a la siguiente ruta: pd1/grupo3/raw/incendios/ (p.e. pd1/grupo3/raw/incendios/2026.csv)
+
+Por último, si se quiere comprobar el funcionamiento correcto del pipeline sin tener que esperar toda la extracción de variables (**¡OJO ESTO PUEDE MODIFICAR ARCHIVOS DEL MISMO AÑO YA EXTRAÍDOS EN MINIO!**):
+
+1. sitúate en pipeline.py.
+2. sitúate en la función extraccion.
+3. Modifica el parámetro `limite_extraccion` con el número de variables que se quieren extraer en la siguiente línea:
+   ```
+   # Extraemos y concatenamos las variables
+    resultados_extraccion = asyncio.run(await construccion_df.extraccion_pipeline(df_final, anio=anio, limite_extraccion=-1))
+   ```
 
 ## Configuración de Google Earth Engine
 

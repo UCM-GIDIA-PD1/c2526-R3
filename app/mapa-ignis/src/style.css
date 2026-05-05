@@ -395,7 +395,7 @@ input:checked+.slider:before {
   border-radius: 12px;
   width: 360px;
   max-width: calc(100vw - 40px);
-  max-height: calc(100vh - 130px);
+  max-height: calc(100vh - 40px);
   display: flex;
   flex-direction: column;
   box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.7);

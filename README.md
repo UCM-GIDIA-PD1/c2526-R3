@@ -407,11 +407,13 @@ Solo es necesaria si se quiere re-ejecutar la extracción de datos desde cero. P
 
 1. Ve a [Google Earth Engine](https://earthengine.google.com/), haz clic en **"Get Started"** y selecciona tu cuenta de Google.
 2. Selecciona **"Consultar si cumples con los requisitos para el uso no comercial"**.
-3. Rellena los datos de tu organización (tipo: Institución académica) y haz clic en **"Verificar requisitos"**.
-4. Elige el plan **"Comunidad"** y registra tu proyecto.
+3. Rellena los datos de tu organización (tipo: Institución académica, uso para investigación, la pregunta de investigación Incendios Forestales, alcance geográfico Regional (especificar Europa) y en la última parte poner 'No') y haz clic en **"Verificar requisitos"**.
+4. Elige el plan **"Comunidad"**, en el siguiente paso es indiferente lo que hagas, recomendable rellenar como industria "Inteligencia Artificial y Aprendizaje Automatico" y registra tu proyecto.
 5. Habilita la **API de Google Earth Engine** en tu proyecto de Google Cloud.
-6. Ve a **"API y servicios" → "Credenciales"** y crea una cuenta de servicio con el rol **"Administrador de recursos de Earth Engine"**.
-7. Genera una clave en formato JSON, renómbrala a `google-credentials.json` y añade su ruta al `.env` como `RUTA_CREDENCIALES`.
+6. Ahora aparecerá una pantalla que pone algo como "Te damos la bienvenida a Earth Engine", haz clic arriba a la derecha en los tres puntos, al lado de tu foto de perfil, y pulsa en "Configuración del proyecto"
+7. Ve a **"Cuentas de servicio" → "Crear cuenta de servicio"** y crea una cuenta de servicio (el nombre, id y descripción son indiferentes) con el rol **"Administrador de recursos de Earth Engine"**, el tercer paso es opcional.
+8. Ahora estarás en la pantalla anterior de  "cuentas de servicio" y debería de aparecer la nueva cuenta que acabas de crear abajo, pulsa en el correo electrónico que se ha generado y en el menú de arriba selecciona **Claves → Agregar clave → Crear clave nueva** y selecciona el tipo JSON.
+9. Genera la clave, que se descargará automáticamente en tu ordenador (recuerda donde la guardaste), renómbrala a `google-credentials.json`,  y añade su ruta al `.env` como `RUTA_CREDENCIALES`.
 
 ## Mapa Interactivo Mapbox 3D
 
